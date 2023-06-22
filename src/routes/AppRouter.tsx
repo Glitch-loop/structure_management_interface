@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Home from "../pages/Home";
 import Layout from "../pages/Layout";
 import AddMember from "../pages/AddMember";
+import ManageMember from "../pages/ManageMember";
 
 const AppRouter = () => {
   return (
@@ -12,6 +13,7 @@ const AppRouter = () => {
           
           <Route path="/app" element={<Layout />}>
             <Route path="newMember" element={<AddMember />} />
+            <Route path="manageMember" element={<ManageMember />} />
           </Route>
 
           <Route path="/" element={<Navigate replace to = '/home'/>}/>
