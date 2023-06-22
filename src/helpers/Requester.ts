@@ -11,7 +11,7 @@ const requester = async <T>(
     extraHeaders?: any
   }) => {
     return Axios({
-      headers: {'x-access-token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZF9jb2xsYWJvcmF0b3IiOjExLCJpYXQiOjE2ODczODczNjQsImV4cCI6MTY4NzQwMTc2NH0.AcyDds_CCy7NfAPqk_ZWC7GOUrc6GalHkscoggKVhFU'
+      headers: {'x-access-token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZF9jb2xsYWJvcmF0b3IiOjExLCJpYXQiOjE2ODc0MDgwMTMsImV4cCI6MTY4NzQyMjQxM30.Qz5R1ZUi9G-qRkR3qb8YLsbjrpr1Ux9Wz6IqQG5vmoQ'
       // localStorage.getItem('hjN8wY5KBs3NWhGv')
       , ...extraHeaders },
       baseURL: import.meta.env.VITE_ENDPOINT,

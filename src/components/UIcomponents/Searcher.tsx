@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { HiOutlineSearch } from "react-icons/hi";
 const Searcher = ({handleSearcher}: {handleSearcher:any}) => {
-  const [groupToSearch, setGroupToSearch] = useState('');
+  const [itemToSearch, setItemToSearch] = useState('');
   const handleType = (e:any):void => {
     e.preventDefault();
     if(e.key=="Enter"){
-      handleSearcher(groupToSearch)
-      setGroupToSearch('')
+      handleSearcher(itemToSearch)
+      setItemToSearch('')
     }
   }
 
@@ -17,8 +17,8 @@ const Searcher = ({handleSearcher}: {handleSearcher:any}) => {
         <input 
           className='rounded-full pl-1 py-1 appearance-none focus:outline-none bg-transparent flex-1 pr-3'
           placeholder='Find'
-          value={groupToSearch}
-          onChange={(e): void => {setGroupToSearch(e.target.value)}}
+          value={itemToSearch}
+          onChange={(e): void => {setItemToSearch(e.target.value)}}
           onKeyUp={handleType}
         />
       </div>
