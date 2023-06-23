@@ -10,22 +10,50 @@ import Chip from "@mui/material/Chip";
 const FormPerson = (
   {
     label,
+    initialFirstName = '',
+    initialLastName = '',
+    initialStreet = '',
+    initialExtNumber = '',
+    initialIntNumber = '',
+    initialCellphoneNumber = '',
+    initialIdColony = undefined,
+    initialSearchColony = '',
+
+    initialIdLeader = undefined,
+    initialSearchLeader = '',
+    initialIdStrategy = undefined,
+    initialSearchStrategyLevel = '',
+    initialIdFollowers = [],
   }: {
-    label: string
+    label: string,
+    initialFirstName?: string,
+    initialLastName?: string,
+    initialStreet?: string,
+    initialExtNumber?: string,
+    initialIntNumber?: string,
+    initialCellphoneNumber?: string,
+    initialIdColony?: number|undefined,
+    initialSearchColony?: string,
+
+    initialIdLeader?: number|undefined,
+    initialSearchLeader?: string,
+    initialIdStrategy?: number|undefined,
+    initialSearchStrategyLevel?: string,
+    initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
-    const [firstName, setFirstName] = useState<string>('');
-    const [lastName, setLastName] = useState<string>('');
-    const [street, setStreet] = useState<string>('');
-    const [extNumber, setExtNumber] = useState<string>('');
-    const [intNumber, setIntNumber] = useState<string>('');
-    const [cellphoneNumber, setCellphoneNumber] = useState<string>('');
-    const [idColony, setIdColony] = useState<number|undefined>(undefined);
+    const [firstName, setFirstName] = useState<string>(initialFirstName);
+    const [lastName, setLastName] = useState<string>(initialLastName);
+    const [street, setStreet] = useState<string>(initialStreet);
+    const [extNumber, setExtNumber] = useState<string>(initialExtNumber);
+    const [intNumber, setIntNumber] = useState<string>(initialIntNumber);
+    const [cellphoneNumber, setCellphoneNumber] = useState<string>(initialCellphoneNumber);
+    const [idColony, setIdColony] = useState<number|undefined>(initialIdColony);
 
     // Members fields
-    const [idLeader, setIdLeader] = useState<number|undefined>(undefined);
-    const [idFollowers, setIdFollower] = useState<IStructure[]>([]);
-    const [idStrategy, setIdStrategy] = useState<number|undefined>(undefined);
+    const [idLeader, setIdLeader] = useState<number|undefined>(initialIdLeader);
+    const [idFollowers, setIdFollower] = useState<IStructure[]>(initialIdFollowers === undefined ? [] : initialIdFollowers);
+    const [idStrategy, setIdStrategy] = useState<number|undefined>(initialIdStrategy);
 
     //Collaborator fields
     const [email, setEmail] = useState<string>('')
@@ -37,9 +65,10 @@ const FormPerson = (
     const [arrayLeader, setArrayLeader] = useState<IStructure[]>([])
     const [arrayFollower, setArrayFollower] = useState<IStructure[]>([])
     const [searchFollower, setSearchFollower] = useState<string>('')
-    const [searchLeader, setSearchLeader] = useState<string>('')
-    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>('')
-    const [searchColony, setSearchColony] = useState<string>('');
+    const [searchLeader, setSearchLeader] = useState<string|undefined>(
+      initialSearchLeader===' ' ? undefined : initialSearchLeader)
+    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>(initialSearchStrategyLevel)
+    const [searchColony, setSearchColony] = useState<string>(initialSearchColony);
 
     useEffect(() => {
       getStrategy()

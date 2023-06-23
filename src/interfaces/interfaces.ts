@@ -25,6 +25,8 @@ export interface IMember {
   id_follower?: number[];
   id_colony?: number;
   id_strategy?: number;
+  colony_name?: string;
+  postal_code?: string;
 }
 
 export interface IAssignPrivilege {
@@ -72,11 +74,25 @@ export interface IRequest<T> {
   data?: T
 }
 
+
 export interface IStructure {
   id_member: number;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
+
+  id_strategy?: number;
+  zone_type?: string;
+  role?: string;
+  cardinality_level?: number;
+
+  id_leader?: number;
   first_name_leader?: string;
   last_name_leader?: string;
+
+  followers?: IStructure[];
+
+  id_geographic_area?: number;
   geographic_area_name?: string;
+
+
 }

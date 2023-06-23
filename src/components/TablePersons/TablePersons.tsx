@@ -10,13 +10,14 @@ import { IStructure, IRequest, IMember } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { Paper, Tooltip } from "@mui/material";
 import {MdDeleteForever, MdEditDocument} from 'react-icons/md'
+import FormPerson from "../FormPersons/FormPerson";
 
 const TablePersons = () => {
   const [personsFounded, setPersonsFounded] = useState<IStructure[]>([]);
-
+  const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
+  const [memberStrategicInfoToUpdate, setMemberStrategicInfoToUpdate] = useState<IStructure>();
+  const [showForm, setShowForm] = useState<boolean>();
   const handleSearchPerson = async (personToSearch: string) => {
-    console.log("Search: ", personToSearch)
-    
     const re = new RegExp(`^${personToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
     
     const personsToShow:IStructure[] = personsFounded.filter(person => {
@@ -27,7 +28,6 @@ const TablePersons = () => {
     
     try {
       if(personsToShow[0] === undefined) {
-        console.log("PEDIR A API")
         const resultPerson:IRequest<IStructure[]> = await requester(
           {
             url: `/members/name/${personToSearch}`,
@@ -44,69 +44,132 @@ const TablePersons = () => {
   }
 
   const handleOnUpdate = async (idMember:number) => {
-    console.log(idMember)
+    console.log("Start")
     try {
-      const memberResult:IRequest<IMember> = await requester({
+      //To updata member case
+      //Get basic member's information  
+      const memberResult:IRequest<IMember[]> = await requester({
         url: `/members/${idMember}`,
         method: 'GET'
       })
-      console.log(memberResult)
+      
+      //Get strategic member's information case
+      if(memberResult.data !== undefined) {
+        const basicMemberInformation:IMember = memberResult.data[0];
+        setMemberBasicInfoToUpdate(basicMemberInformation)
+      }
+      
+      //Get strategic information
+      const strategicInfoResult:IRequest<IStructure[]> = await requester({
+        url: `/members/strategicInformation/${idMember}`
+      })
+      console.log("Second: ", strategicInfoResult)
+      if(strategicInfoResult.data !== undefined) {
+        const strategicMemberInformation:IStructure = strategicInfoResult.data[0];
+        // If the member has a leader
+        console.log("This is leader: ", strategicMemberInformation.id_leader)
+        
+          if(strategicMemberInformation.id_leader !== null) {
+            const leaderResult:IRequest<IMember[]> = await requester({
+              url: `/members/${strategicMemberInformation.id_leader}`
+            })
+            console.log("Third: ", leaderResult)
+            if(leaderResult.data !== undefined) {
+              const leaderData:IMember = leaderResult.data[0];
+              strategicMemberInformation.first_name_leader=leaderData.first_name 
+              strategicMemberInformation.last_name_leader = leaderData.last_name  
+              }
+            } 
+              
+          if (strategicMemberInformation.first_name_leader === undefined)
+            strategicMemberInformation.first_name_leader = '' 
+          if (strategicMemberInformation.last_name_leader === undefined)
+            strategicMemberInformation.last_name_leader= '' 
+          
+          setMemberStrategicInfoToUpdate(strategicMemberInformation)
+          setShowForm(true)             
+      } 
+      
     } catch (error) {
       console.log(error)
     }
   }  
   return (
-    <>
-      
-      <Searcher handleSearcher={handleSearchPerson}/>
-      {personsFounded[0] !== undefined &&
-      <div className="mt-2 overscroll-y-contain">
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell align="center">ID</TableCell>
-                <TableCell align="center">Nombre</TableCell>
-                <TableCell align="center">Modificar</TableCell>
-                <TableCell align="center">Eliminar</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {
-                personsFounded.map(person => {
-                  return (
-                    <TableRow key={person.id_member}>
-                      <TableCell align="center">
-                        {person.id_member}
-                      </TableCell>
-                      <TableCell align="center">
-                        {person.first_name} {person.last_name}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Editar">
-                          <button
-                          onClick={() => 
-                            {handleOnUpdate(person.id_member)}}
-                          className="text-2xl">
-                            <MdEditDocument />
-                          </button>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Eliminar">
-                          <button className="text-2xl">
-                            <MdDeleteForever />
-                          </button>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              }
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </div>
+    <> 
+      {
+        (showForm===true) ?
+        (<FormPerson
+          label="Actualizar miembro"
+          initialFirstName={memberBasicInfoToUpdate?.first_name} 
+          initialLastName={memberBasicInfoToUpdate?.last_name}
+          initialStreet = {memberBasicInfoToUpdate?.street}
+          initialExtNumber = {memberBasicInfoToUpdate?.ext_number}
+          initialIntNumber = {memberBasicInfoToUpdate?.int_number}
+          initialCellphoneNumber = {memberBasicInfoToUpdate?.cell_phone_number}
+          initialIdColony = {memberBasicInfoToUpdate?.id_colony}
+          initialSearchColony = {memberBasicInfoToUpdate?.colony_name}
+
+          initialIdLeader = {memberStrategicInfoToUpdate?.id_leader}
+          
+          initialSearchLeader = 
+          {`${memberStrategicInfoToUpdate?.first_name_leader} ${memberStrategicInfoToUpdate?.last_name_leader}`}
+
+          initialIdStrategy= {memberStrategicInfoToUpdate?.id_strategy}
+          initialSearchStrategyLevel={memberStrategicInfoToUpdate?.role}
+          initialIdFollowers={memberStrategicInfoToUpdate?.followers}
+        />) :
+        (<>
+          <Searcher handleSearcher={handleSearchPerson}/>
+          {personsFounded[0] !== undefined &&
+          <div className="mt-2 overscroll-y-contain">
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="center">ID</TableCell>
+                    <TableCell align="center">Nombre</TableCell>
+                    <TableCell align="center">Modificar</TableCell>
+                    <TableCell align="center">Eliminar</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {
+                    personsFounded.map(person => {
+                      return (
+                        <TableRow key={person.id_member}>
+                          <TableCell align="center">
+                            {person.id_member}
+                          </TableCell>
+                          <TableCell align="center">
+                            {person.first_name} {person.last_name}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Editar">
+                              <button
+                              onClick={() => 
+                                {handleOnUpdate(person.id_member)}}
+                              className="text-2xl">
+                                <MdEditDocument />
+                              </button>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Eliminar">
+                              <button className="text-2xl">
+                                <MdDeleteForever />
+                              </button>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  }
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
+          }
+        </>)
       }
     </>
   )
