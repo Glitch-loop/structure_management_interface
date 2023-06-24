@@ -6,6 +6,7 @@ const AddMember = () => {
         <div className="bg-white rounded-md p-3">
           <FormPerson 
             label={"Agregar nuevo miembro"}
+            action={0}
           />
         </div>
         

@@ -44,7 +44,6 @@ const TablePersons = () => {
   }
 
   const handleOnUpdate = async (idMember:number) => {
-    console.log("Start")
     try {
       //To updata member case
       //Get basic member's information  
@@ -63,31 +62,27 @@ const TablePersons = () => {
       const strategicInfoResult:IRequest<IStructure[]> = await requester({
         url: `/members/strategicInformation/${idMember}`
       })
-      console.log("Second: ", strategicInfoResult)
       if(strategicInfoResult.data !== undefined) {
         const strategicMemberInformation:IStructure = strategicInfoResult.data[0];
-        // If the member has a leader
-        console.log("This is leader: ", strategicMemberInformation.id_leader)
-        
-          if(strategicMemberInformation.id_leader !== null) {
-            const leaderResult:IRequest<IMember[]> = await requester({
-              url: `/members/${strategicMemberInformation.id_leader}`
-            })
-            console.log("Third: ", leaderResult)
-            if(leaderResult.data !== undefined) {
-              const leaderData:IMember = leaderResult.data[0];
-              strategicMemberInformation.first_name_leader=leaderData.first_name 
-              strategicMemberInformation.last_name_leader = leaderData.last_name  
-              }
-            } 
+        // If the member has a leader        
+        if(strategicMemberInformation.id_leader !== null) {
+          const leaderResult:IRequest<IMember[]> = await requester({
+            url: `/members/${strategicMemberInformation.id_leader}`
+          })
+          if(leaderResult.data !== undefined) {
+            const leaderData:IMember = leaderResult.data[0];
+            strategicMemberInformation.first_name_leader=leaderData.first_name 
+            strategicMemberInformation.last_name_leader = leaderData.last_name  
+          }
+        } 
               
-          if (strategicMemberInformation.first_name_leader === undefined)
-            strategicMemberInformation.first_name_leader = '' 
-          if (strategicMemberInformation.last_name_leader === undefined)
-            strategicMemberInformation.last_name_leader= '' 
-          
-          setMemberStrategicInfoToUpdate(strategicMemberInformation)
-          setShowForm(true)             
+        if (strategicMemberInformation.first_name_leader === undefined)
+          strategicMemberInformation.first_name_leader = '' 
+        if (strategicMemberInformation.last_name_leader === undefined)
+          strategicMemberInformation.last_name_leader= '' 
+        
+        setMemberStrategicInfoToUpdate(strategicMemberInformation)
+        setShowForm(true)             
       } 
       
     } catch (error) {
@@ -100,6 +95,8 @@ const TablePersons = () => {
         (showForm===true) ?
         (<FormPerson
           label="Actualizar miembro"
+          action={1}
+          idPerson={memberBasicInfoToUpdate?.id_member}
           initialFirstName={memberBasicInfoToUpdate?.first_name} 
           initialLastName={memberBasicInfoToUpdate?.last_name}
           initialStreet = {memberBasicInfoToUpdate?.street}

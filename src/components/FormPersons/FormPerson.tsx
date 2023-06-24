@@ -6,10 +6,15 @@ import { IColony, IRequest, IStrategy, IStructure } from "../../interfaces/inter
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
 
+const avoidNull = (data: any):string => {
+  return data === null ? '' : data;
+}
 
 const FormPerson = (
   {
     label,
+    action,
+    idPerson = undefined,
     initialFirstName = '',
     initialLastName = '',
     initialStreet = '',
@@ -26,6 +31,9 @@ const FormPerson = (
     initialIdFollowers = [],
   }: {
     label: string,
+    action: number,
+    idPerson?: number | undefined,
+
     initialFirstName?: string,
     initialLastName?: string,
     initialStreet?: string,
@@ -42,12 +50,12 @@ const FormPerson = (
     initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
-    const [firstName, setFirstName] = useState<string>(initialFirstName);
-    const [lastName, setLastName] = useState<string>(initialLastName);
-    const [street, setStreet] = useState<string>(initialStreet);
-    const [extNumber, setExtNumber] = useState<string>(initialExtNumber);
-    const [intNumber, setIntNumber] = useState<string>(initialIntNumber);
-    const [cellphoneNumber, setCellphoneNumber] = useState<string>(initialCellphoneNumber);
+    const [firstName, setFirstName] = useState<string>(avoidNull(initialFirstName));
+    const [lastName, setLastName] = useState<string>(avoidNull(initialLastName));
+    const [street, setStreet] = useState<string>(avoidNull(initialStreet));
+    const [extNumber, setExtNumber] = useState<string>(avoidNull(initialExtNumber));
+    const [intNumber, setIntNumber] = useState<string>(avoidNull(initialIntNumber));
+    const [cellphoneNumber, setCellphoneNumber] = useState<string>(avoidNull(initialCellphoneNumber));
     const [idColony, setIdColony] = useState<number|undefined>(initialIdColony);
 
     // Members fields
@@ -67,8 +75,8 @@ const FormPerson = (
     const [searchFollower, setSearchFollower] = useState<string>('')
     const [searchLeader, setSearchLeader] = useState<string|undefined>(
       initialSearchLeader===' ' ? undefined : initialSearchLeader)
-    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>(initialSearchStrategyLevel)
-    const [searchColony, setSearchColony] = useState<string>(initialSearchColony);
+    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>(avoidNull(initialSearchStrategyLevel))
+    const [searchColony, setSearchColony] = useState<string>(avoidNull(initialSearchColony));
 
     useEffect(() => {
       getStrategy()
@@ -186,7 +194,7 @@ const FormPerson = (
         idColony=== undefined ||
         idStrategy=== undefined
         ){
-          console.log("")
+          console.log("There can't be empty data")
       }
 
       e.preventDefault();
@@ -201,42 +209,17 @@ const FormPerson = (
         "idStrategyLevel": idStrategy
       }
 
-
-      // const strategicData = {
-
-      // }
-
-      // const collaboratorData = {
-
-      // }
       try {
-        // const response:IRequest<any> = await requester({
-        //   url: '/members/', 
-        //   method: "POST", 
-        //   data: basicData})
-        
-        // if(response.data !== undefined) {
-        //   const idMember:number = response.data.idMember
-
-        //   //Update member's leader
-        //   await requester({
-        //     url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
-        //     method: 'PUT'
-        //   });
-
-        //   //Update member's followers 
-        //   const followers: number[] = [];
-        //   idFollowers.forEach(follower => followers.push(follower.id_member));
-        //   await requester({
-        //     url: `/members/strategicInformation/followers/${idMember}`,
-        //     method: 'POST',
-        //     data: { followers }
-        //   })
-        // }
+        if(action==0) {
+          await addNewMember(basicData);
+        } else if(action==1) {
+          await updateMember(basicData);
+        }
 
         //Reset variables
         //Basic information
         resetAllStates()
+        console.log("Everything is OK")
       } catch (error) {
         console.log("Err: ", error)
       }
@@ -283,6 +266,59 @@ const FormPerson = (
       //Collaborator information states related
       setEmail('')
       setPassword('')
+    }
+
+    const addNewMember = async (basicData: any) => {
+        const response:IRequest<any> = await requester({
+          url: '/members/', 
+          method: "POST", 
+          data: basicData})
+        
+        if(response.data !== undefined) {
+          const idMember:number = response.data.idMember
+
+          //Update member's leader
+          updateLeader(idMember)
+
+          //Update member's followers 
+          updateFollowers(idMember)
+        }
+    }
+
+    const updateMember = async (basicData: any) => {
+      if(idPerson !== undefined) {
+        console.log("Member to update: ", idPerson)
+        console.log("New info: ", basicData)
+        const response:IRequest<any> = await requester({
+          url: `/members/${idPerson}`,
+          method: "PUT",
+          data: basicData
+        })
+        console.log(response)
+  
+        //Update member's leader
+        updateLeader(idPerson)
+  
+        //Update member's followers 
+        updateFollowers(idPerson)
+      }
+    }
+
+    const updateLeader = async (idMember: number) => {
+      await requester({
+        url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
+        method: 'PUT'
+      });
+    }
+
+    const updateFollowers = async (idMember: number) => {
+      const followers: number[] = [];
+      idFollowers.forEach(follower => followers.push(follower.id_member));
+      await requester({
+        url: `/members/strategicInformation/followers/${idMember}`,
+        method: 'PUT',
+        data: { followers }
+      })
     }
 
   return (
