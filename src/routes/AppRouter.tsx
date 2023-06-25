@@ -4,6 +4,7 @@ import Layout from "../pages/Layout";
 import AddMember from "../pages/AddMember";
 import ManageMember from "../pages/ManageMember";
 import DataView from "../pages/DataView";
+import GeographicArea from "../pages/GeographicArea";
 
 const AppRouter = () => {
   return (
@@ -16,6 +17,7 @@ const AppRouter = () => {
             <Route path="newMember" element={<AddMember />} />
             <Route path="manageMember" element={<ManageMember />} />
             <Route path="data" element={<DataView />} />
+            <Route path="geographicArea" element={<GeographicArea />} />
           </Route>
 
           <Route path="/" element={<Navigate replace to = '/home'/>}/>

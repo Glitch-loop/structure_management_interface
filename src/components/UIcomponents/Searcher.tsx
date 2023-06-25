@@ -11,7 +11,7 @@ const Searcher = ({handleSearcher}: {handleSearcher:any}) => {
   }
 
   return (
-    <div className="flex flex-1 items-center gap-x-3">
+    <div className="flex flex-1 items-center gap-x-3 mb-3">
       <div className="flex w-[400px] items-center bg-slate-100 rounded-full pl-3 py-1">
         <HiOutlineSearch className='text-gray-500'/>
         <input 

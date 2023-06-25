@@ -12,7 +12,7 @@ const itemsSideBar = [
   { label: 'Administrar miembro', icon: FaUserCog, path: 'manageMember' },
   { label: 'Agrega colaborador', icon: HiUserAdd, path: 'newCollaborator' },
   { label: 'Administrar colaborador', icon: BsPersonFillGear, path: 'manageCollaborator' },
-  { label: 'Agregar area geografica', icon: BsGlobe, path: 'newGeographicArea' },
+  { label: 'Areas geograficas', icon: BsGlobe, path: 'geographicArea' },
   { label: 'Administrar area geografica', icon: IoGolfOutline, path: 'manageGeographicArea' },
   { label: 'Administrar estrategia', icon: FaMapPin, path: 'strategy' },
   { label: 'Visualizar datos', icon: VscGraph, path: 'data' }

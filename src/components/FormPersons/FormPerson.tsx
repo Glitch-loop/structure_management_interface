@@ -6,14 +6,42 @@ import { IColony, IRequest, IStrategy, IStructure } from "../../interfaces/inter
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
 
-const avoidNull = (data: any):string => {
-  return data === null ? '' : data;
+const avoidNull = (data: any, replace: any):any => {
+  return data === null ? replace : data;
 }
+
+
+const showLeaderInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
+  if(idStrategy!==undefined && idStrategy!==null) {
+    const index = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === idStrategy)
+    if(arrayStrategyLevel[index].cardinality_level !== 1) return true  
+  }  
+  return false
+}
+
+const showFollowerInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
+  //Always "arrayStrategyLevel" will be ordered in ascending order according to "cardinality"
+  //The order will be 1, 2, 3 (took the cardinality)
+  if(idStrategy!==undefined && idStrategy!==null) {
+    if(arrayStrategyLevel[arrayStrategyLevel.length - 1].id_strategy !== idStrategy) return true
+  }
+  return false
+}
+
+
+/*
+  action props
+  0 = add member
+  1 = update member
+  2 = add collaborator
+  3 = update collaborator
+*/
 
 const FormPerson = (
   {
     label,
     action,
+    handleSubmit,
     idPerson = undefined,
     initialFirstName = '',
     initialLastName = '',
@@ -25,13 +53,14 @@ const FormPerson = (
     initialSearchColony = '',
 
     initialIdLeader = undefined,
-    initialSearchLeader = '',
+    initialSearchLeader = undefined,
     initialIdStrategy = undefined,
-    initialSearchStrategyLevel = '',
+    initialSearchStrategyLevel = undefined,
     initialIdFollowers = [],
   }: {
     label: string,
     action: number,
+    handleSubmit?: any;
     idPerson?: number | undefined,
 
     initialFirstName?: string,
@@ -50,18 +79,18 @@ const FormPerson = (
     initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
-    const [firstName, setFirstName] = useState<string>(avoidNull(initialFirstName));
-    const [lastName, setLastName] = useState<string>(avoidNull(initialLastName));
-    const [street, setStreet] = useState<string>(avoidNull(initialStreet));
-    const [extNumber, setExtNumber] = useState<string>(avoidNull(initialExtNumber));
-    const [intNumber, setIntNumber] = useState<string>(avoidNull(initialIntNumber));
-    const [cellphoneNumber, setCellphoneNumber] = useState<string>(avoidNull(initialCellphoneNumber));
+    const [firstName, setFirstName] = useState<string>(avoidNull(initialFirstName, ''));
+    const [lastName, setLastName] = useState<string>(avoidNull(initialLastName, ''));
+    const [street, setStreet] = useState<string>(avoidNull(initialStreet, ''));
+    const [extNumber, setExtNumber] = useState<string>(avoidNull(initialExtNumber, ''));
+    const [intNumber, setIntNumber] = useState<string>(avoidNull(initialIntNumber, ''));
+    const [cellphoneNumber, setCellphoneNumber] = useState<string>(avoidNull(initialCellphoneNumber, ''));
     const [idColony, setIdColony] = useState<number|undefined>(initialIdColony);
 
     // Members fields
     const [idLeader, setIdLeader] = useState<number|undefined>(initialIdLeader);
     const [idFollowers, setIdFollower] = useState<IStructure[]>(initialIdFollowers === undefined ? [] : initialIdFollowers);
-    const [idStrategy, setIdStrategy] = useState<number|undefined>(initialIdStrategy);
+    const [idStrategy, setIdStrategy] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
 
     //Collaborator fields
     const [email, setEmail] = useState<string>('')
@@ -75,8 +104,12 @@ const FormPerson = (
     const [searchFollower, setSearchFollower] = useState<string>('')
     const [searchLeader, setSearchLeader] = useState<string|undefined>(
       initialSearchLeader===' ' ? undefined : initialSearchLeader)
-    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>(avoidNull(initialSearchStrategyLevel))
-    const [searchColony, setSearchColony] = useState<string>(avoidNull(initialSearchColony));
+    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string|undefined>(initialSearchStrategyLevel)
+    const [searchColony, setSearchColony] = useState<string>(avoidNull(initialSearchColony, ''));
+
+    //Show data
+    const [showLeaderInput, setShowLeaderInput] = useState<boolean>(false);
+    const [showFollowerInput, setShowFollowerInput] = useState<boolean>(false);
 
     useEffect(() => {
       getStrategy()
@@ -88,7 +121,11 @@ const FormPerson = (
         url: `/strategyLevels`,
         method: 'GET'
       })
-      if(strategy.data !== undefined) setArrayStrategyLevel(strategy.data)
+      if(strategy.data !== undefined) {
+        setArrayStrategyLevel(strategy.data)
+        setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, strategy.data))
+        setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, strategy.data))
+      }
     }
 
     //Handlers basic information
@@ -117,15 +154,25 @@ const FormPerson = (
       const strategyLevelSelected: IStrategy|undefined = 
       arrayStrategyLevel.find(strategyLevel => strategyLevel.role === newValue)
       if(strategyLevelSelected===undefined) setIdStrategy(undefined);
-      else setIdStrategy(strategyLevelSelected.id_strategy);
+      else { 
+        setIdStrategy(strategyLevelSelected.id_strategy)
+        setShowFollowerInput(showFollowerInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
+        setShowLeaderInput(showLeaderInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
+      }
       setIdFollower([]);
       setIdLeader(undefined);
       setSearchLeader('');
     }
 
     const handleSearchStrategyLevel = async (event: any, newInputValue: string | null) => {
-      if (newInputValue !== null)
-        setSearchStrategyLevel(newInputValue)
+      if (newInputValue !== null) {
+        if(newInputValue!=="") setSearchStrategyLevel(newInputValue)
+        else {
+          handleSelectLeader("", null);
+          setIdFollower([]);
+        }
+      }
+
     }
 
     const handleSearchLeader = async (event: any, newInputValue: string | null) => {
@@ -150,6 +197,7 @@ const FormPerson = (
       arrayLeader.find(leader => `${leader.first_name} ${leader.last_name}` === newInputValue);
       if(leaderSelected===undefined) setIdLeader(undefined);
       else setIdLeader(leaderSelected.id_member);
+      setArrayLeader([]);
     }
 
     const handleSearchFollowers = async (event: any, newInputValue: string | null) => {
@@ -214,12 +262,11 @@ const FormPerson = (
           await addNewMember(basicData);
         } else if(action==1) {
           await updateMember(basicData);
+          handleSubmit(true)
         }
-
         //Reset variables
         //Basic information
         resetAllStates()
-        console.log("Everything is OK")
       } catch (error) {
         console.log("Err: ", error)
       }
@@ -287,46 +334,61 @@ const FormPerson = (
 
     const updateMember = async (basicData: any) => {
       if(idPerson !== undefined) {
-        console.log("Member to update: ", idPerson)
-        console.log("New info: ", basicData)
         const response:IRequest<any> = await requester({
           url: `/members/${idPerson}`,
           method: "PUT",
           data: basicData
         })
         console.log(response)
-  
+        
+        //Update member's strategy level
+        await updateStrategyLevel(idPerson)
+
         //Update member's leader
-        updateLeader(idPerson)
+        await updateLeader(idPerson)
   
         //Update member's followers 
-        updateFollowers(idPerson)
+        await updateFollowers(idPerson)
+      }
+    }
+
+    const updateStrategyLevel = async (idMember: number) => {
+      if(idStrategy!== undefined && idStrategy!==null) {
+        await requester({
+          url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
+          method: 'PUT'
+        });
       }
     }
 
     const updateLeader = async (idMember: number) => {
-      await requester({
-        url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
-        method: 'PUT'
-      });
+      if(idLeader!== undefined && idLeader!==null) {
+        await requester({
+          url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
+          method: 'PUT'
+        });
+      }
     }
 
     const updateFollowers = async (idMember: number) => {
-      const followers: number[] = [];
-      idFollowers.forEach(follower => followers.push(follower.id_member));
-      await requester({
-        url: `/members/strategicInformation/followers/${idMember}`,
-        method: 'PUT',
-        data: { followers }
-      })
+      if(idFollowers[0] !== undefined) {
+        const followers: number[] = [];
+        idFollowers.forEach(follower => followers.push(follower.id_member));
+        await requester({
+          url: `/members/strategicInformation/followers/${idMember}`,
+          method: 'PUT',
+          data: { followers }
+        })
+      }
     }
-
+    
   return (
     <>
       <div className="text-center text-xl font-bold">
         {label}
       </div>
-      <form onSubmit={handleOnSubmit}>
+
+      <form>
         <div className="flex flex-row">
           <div className="mr-3">
             <p className="text-md">
@@ -383,6 +445,8 @@ const FormPerson = (
                   inputName={'Telefono'}
                   inputType={'text'}
                   required={true}
+                  testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
+                  testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
                 />
             </div>
             <div className="flex mt-3 justify-center">
@@ -398,92 +462,120 @@ const FormPerson = (
                 renderInput={(params) => <TextField {...params} label="Colonia" />}
                 />
             </div>
-            <div className="flex flex-row">
-              <div className="mr-2">
-                <Input
-                  onType={setEmail}
-                  inputValue={email} 
-                  inputName={'Email'}
-                  inputType={'text'}
-                />
-              </div>
-              <Input
-                onType={setPassword}
-                inputValue={password} 
-                inputName={'Contraseña'}
-                inputType={'text'}
-              />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-md">Información estrategica</p>
-            <div className="flex flex-col">
-              <div className="flex mt-3 justify-center">
-                <Autocomplete
-                  disablePortal
-                  id="input-strategy"
-                  onInputChange={(event: any, newInputValue: string | null) => 
-                    { handleSearchStrategyLevel(event, newInputValue) }}
-                  onChange={(event: any, newValue: string | null) => 
-                    handleSelectStrategyLevel(event, newValue) }
-                  value={searchStrategyLevel}
-                  options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-                  sx={{ width: 300 }}
-                  renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
+            {
+              (action === 2 || action === 3) &&
+                <div className="flex flex-row">
+                  <div className="mr-2">
+                    <Input
+                      onType={setEmail}
+                      inputValue={email} 
+                      inputName={'Email'}
+                      inputType={'text'}
+                    />
+                  </div>
+                  <Input
+                    onType={setPassword}
+                    inputValue={password} 
+                    inputName={'Contraseña'}
+                    inputType={'text'}
                   />
-              </div>
-              <div className="flex mt-3 justify-center">
-                <Autocomplete
-                  disablePortal
-                  id="input-leader"
-                  onInputChange={(event: any, newInputValue: string | null) => 
-                    { handleSearchLeader(event, newInputValue) }}
-                  onChange={(event: any, newValue: string | null) => {
-                    handleSelectLeader(event, newValue)
-                  }}
-                  options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
-                  value={searchLeader}
-                  sx={{ width: 300 }}
-                  renderInput={(params) => <TextField {...params} label="Lider" />}
-                  />
-              </div>
-              <div className="flex mt-3 justify-center">
-                <Autocomplete
-                  disablePortal
-                  id="input-follower"
-                  onInputChange={(event: any, newInputValue: string | null) => 
-                    handleSearchFollowers(event, newInputValue) }
-                  onChange={(event:any, newInputValue: string | null) => 
-                    handleAddFollower(event,newInputValue)}
-                  options={ 
-                    filterSelectedFollowers(arrayFollower).map(follower => 
-                      `${follower.first_name} ${follower.last_name}`)
-                  }
-                  sx={{ width: 300 }}
-                  value={searchFollower}
-                  renderInput={(params) => <TextField {...params} label="Seguidores" />}
-                  />
-              </div>
-              <div className=" flex justify-center">
-                <div className="w-52 mt-3 flex flex-wrap justify-center">
-                    {
-                      idFollowers.map((follower) => 
-                        <div key={follower.id_member} className="m-1">
-                          <Chip 
-                            label={`${follower.first_name} ${follower.last_name}`} 
-                            onDelete={() => handleDeleteFollower(follower)}
-                            />
-                        </div>
-                      )
-                    }
                 </div>
+            }
+          </div>
+          {
+            (action === 0 || action === 1) &&
+            <div className="mt-3">
+              <p className="text-md">Información estrategica</p>
+              <div className="flex flex-col">
+                <div className="flex mt-3 justify-center">
+                  <Autocomplete
+                    disablePortal
+                    id="input-strategy"
+                    onInputChange={(event: any, newInputValue: string | null) => 
+                      { handleSearchStrategyLevel(event, newInputValue) }}
+                    onChange={(event: any, newValue: string | null) => 
+                      handleSelectStrategyLevel(event, newValue) }
+                    value={
+                      searchStrategyLevel
+                      // arrayStrategyLevel[0]===undefined ? undefined : searchStrategyLevel
+                    }
+                    options={ 
+                      arrayStrategyLevel[0]===undefined ? [] :
+                      arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                    sx={{ width: 300 }}
+                    renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
+                    />
+                </div>
+                {
+                  (showLeaderInput) &&                  
+                  <div className="flex mt-3 justify-center">
+                    <Autocomplete
+                      disablePortal
+                      id="input-leader"
+                      onInputChange={(event: any, newInputValue: string | null) => 
+                        { handleSearchLeader(event, newInputValue) }}
+                      onChange={(event: any, newValue: string | null) => {
+                        handleSelectLeader(event, newValue)
+                      }}
+                      options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
+                      value={searchLeader}
+                      sx={{ width: 300 }}
+                      renderInput={(params) => <TextField {...params} label="Lider" />}
+                      />
+                  </div>
+                }
+                {
+                  (showFollowerInput) && 
+                  <>
+                    <div className="flex mt-3 justify-center">
+                      <Autocomplete
+                        disablePortal
+                        id="input-follower"
+                        onInputChange={(event: any, newInputValue: string | null) => 
+                          handleSearchFollowers(event, newInputValue) }
+                        onChange={(event:any, newInputValue: string | null) => 
+                          handleAddFollower(event,newInputValue)}
+                        options={ 
+                          filterSelectedFollowers(arrayFollower).map(follower => 
+                            `${follower.first_name} ${follower.last_name}`)
+                        }
+                        sx={{ width: 300 }}
+                        value={searchFollower}
+                        renderInput={(params) => <TextField {...params} label="Seguidores" />}
+                        />
+                    </div>
+                    <div className=" flex justify-center">
+                      <div className="w-52 mt-3 flex flex-wrap justify-center">
+                          {
+                            idFollowers.map((follower) => 
+                              <div key={follower.id_member} className="m-1">
+                                <Chip 
+                                  label={`${follower.first_name} ${follower.last_name}`} 
+                                  onDelete={() => handleDeleteFollower(follower)}
+                                  />
+                              </div>
+                            )
+                          }
+                      </div>
+                    </div>
+                  </>
+                }
               </div>
             </div>
-          </div>
+          }
         </div>
         <div className="flex flex-row justify-center">
-          <Button label="Aceptar"/>
-        </div>
+          <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
+        </div>  
+        {
+          (action===1 || action===3) && 
+            <Button 
+              label="Cancelar" 
+              onClick={(e:any) => {
+                handleSubmit(true)
+              }}
+              />
+        }
       </form>
     </>
   )

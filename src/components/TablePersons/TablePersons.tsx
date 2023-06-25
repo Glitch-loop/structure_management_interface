@@ -5,10 +5,11 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
 import Searcher from '../UIcomponents/Searcher';
 import { IStructure, IRequest, IMember } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
-import { Paper, Tooltip } from "@mui/material";
+import { Tooltip } from "@mui/material";
 import {MdDeleteForever, MdEditDocument} from 'react-icons/md'
 import FormPerson from "../FormPersons/FormPerson";
 
@@ -42,6 +43,12 @@ const TablePersons = () => {
       console.log(error)
     }
   }
+
+  const handleOnSendData = async (status:boolean) => {
+    setShowForm(false)
+    setPersonsFounded([])
+  }
+
 
   const handleOnUpdate = async (idMember:number) => {
     try {
@@ -89,13 +96,27 @@ const TablePersons = () => {
       console.log(error)
     }
   }  
+
+  const handleOnDelete = async (idPerson:number) => {
+    try {
+      const operationResult:IRequest<undefined> = await requester({
+        url: `/members/${idPerson}`,
+        method: 'DELETE'
+      })
+      console.log("Result of operation: ", operationResult)
+
+    } catch (error) {
+      console.log("there is an error: ", error)
+    }
+  }
   return (
-    <> 
+    <div className=""> 
       {
         (showForm===true) ?
         (<FormPerson
           label="Actualizar miembro"
           action={1}
+          handleSubmit={handleOnSendData}
           idPerson={memberBasicInfoToUpdate?.id_member}
           initialFirstName={memberBasicInfoToUpdate?.first_name} 
           initialLastName={memberBasicInfoToUpdate?.last_name}
@@ -116,10 +137,11 @@ const TablePersons = () => {
           initialIdFollowers={memberStrategicInfoToUpdate?.followers}
         />) :
         (<>
+
           <Searcher handleSearcher={handleSearchPerson}/>
-          {personsFounded[0] !== undefined &&
-          <div className="mt-2 overscroll-y-contain">
-            <TableContainer component={Paper}>
+          {personsFounded[0] !== undefined &&          
+          <Paper sx={{overflow: 'hidden'}}>
+            <TableContainer sx={{ maxHeight: 440 }}>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -152,7 +174,9 @@ const TablePersons = () => {
                           </TableCell>
                           <TableCell align="center">
                             <Tooltip title="Eliminar">
-                              <button className="text-2xl">
+                              <button onClick={() => 
+                                {handleOnDelete(person.id_member)}}
+                              className="text-2xl">
                                 <MdDeleteForever />
                               </button>
                             </Tooltip>
@@ -164,11 +188,11 @@ const TablePersons = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-          </div>
+          </Paper>
           }
         </>)
       }
-    </>
+    </div>
   )
 }
 
