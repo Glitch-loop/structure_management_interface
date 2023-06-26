@@ -1,13 +1,15 @@
 import { GoogleMap, useLoadScript, PolygonF, Polyline } from "@react-google-maps/api"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {FiPlus} from "react-icons/fi"
 import '../../styles/global.css'
-import { Tooltip } from "@mui/material"
+import { DialogTitle, Tooltip } from "@mui/material"
+import {Dialog} from "@mui/material"
+import Input from "../UIcomponents/Input"
+import Button from "../UIcomponents/Button"
+import requester from "../../helpers/Requester"
+import { IRequest, LatLng, IGeographicArea } from "../../interfaces/interfaces"
 
-interface LatLng {
-  lat: number,
-  lng: number
-}
+
  
 function getCoordinate(e: any): LatLng {
   const latitude = e.latLng.lat();
@@ -36,28 +38,52 @@ function MapRender() {
   const [lastPointAdded, setLastPointAdded] = useState<LatLng|undefined>(undefined);
   const [polygons, setPolygons] = useState<LatLng[][]>([]);
   const [createNewPolygon, setCreateNewPolygon] = useState<boolean>(false)
+  const [showDialog, setShowDialog] = useState<boolean>(false)
+  const [geographicAreaName, setGeographicAreaName] = useState<string>("")
 
+  useEffect(() => {
+    getAllPolygons()
+  }, [])
+
+  //Use effect functions
+  const getAllPolygons = async () => { 
+    const response:IRequest<IGeographicArea[]> = await requester({
+      url: `/geographicAreas`
+    })
+
+    if(response.data !== undefined) {
+      const polygonsDB = response.data;
+      const currentPolygons:LatLng[][] = [];
+      
+      polygonsDB.forEach(polygonDB => {
+        if(polygonDB.coordinates!==undefined)
+          currentPolygons.push(polygonDB.coordinates)
+      })
+      console.log(currentPolygons)
+      setPolygons(currentPolygons)
+    }
+  }
+
+  //Handlers
   const newPolygoncreation = (e: any):void => {
     if(createNewPolygon) {
+      console.log("Agregando primer punto")
       const newCoordinate:LatLng = getCoordinate(e);
+
       if(line!==undefined) setLine([...line, newCoordinate]);
     }
   }
 
   //This function was though for complete the polygon
   const handleClickLine = (e: any): void => {
-    console.log("-------------------------------------------------")
-    console.log(line)
-    console.log("-------------------------------------------------")
     if(line !== undefined){
       if(line.length >= 3) {
         const terminalCoordinate:LatLng = getCoordinate(e);
         if(line[0].lat === terminalCoordinate.lat && line[0].lng === terminalCoordinate.lng){
-          console.log("Finishing our region")
+          line.push(terminalCoordinate)
           polygons.push(line);
-          console.log(polygons)
           setPolygons(polygons);
-          setLine([]);
+          setShowDialog(true)
           setCreateNewPolygon(false);
         }
       }  
@@ -139,12 +165,54 @@ function MapRender() {
   const handleCreateNewArea = (): void => {
     if(createNewPolygon) {
       setLine([]);
+      console.log("No puedes crear")
       setCreateNewPolygon(false);
     } else {
+      console.log("Crea tu nueva area")
+      setLine([])
       setCreateNewPolygon(true);
     }
   }
-  return <>
+
+  const handleCloseDialog = ():void => {
+    setShowDialog(!showDialog)
+  }
+
+  const handleOnSubmitNewGeographicArea = async () => {
+    const geographicArea = {
+      geographicAreaName: geographicAreaName,
+      geographicAreaCoordinates: line
+    }
+    const response:IRequest<any> = await requester({
+      url: "/geographicAreas",
+      method: "POST",
+      data: geographicArea
+      
+    })
+
+    console.log(response)
+    setLine([]);
+  }
+
+
+  return (<>
+    <Dialog onClose={handleCloseDialog} open={showDialog}>
+      <div className="p-5 flex flex-col justify-center">
+        <DialogTitle>Agregar nueva area geografica</DialogTitle>
+
+        <Input 
+            onType={setGeographicAreaName} 
+            inputValue={geographicAreaName}
+            inputName="Nombre de area greografica"
+            inputType="text"            
+        />
+        <Button 
+          label="Aceptar"
+          onClick={handleOnSubmitNewGeographicArea}
+          />
+      </div>
+    </Dialog>
+    
     <div className="absolute flex-col w-full h-full justify-center">
       {/* <h1 className="bg-blue-100 z-10 absolute">class</h1> */}
       <Tooltip title="Crear nueva area">
@@ -166,7 +234,7 @@ function MapRender() {
           {
             polygons.map((polygon) => 
             <PolygonF
-              key={polygon[0].lat}
+              key={`${polygon[0].lat}-${polygon[0].lng}`}
               visible={true}
               editable
               path={polygon}
@@ -190,7 +258,7 @@ function MapRender() {
               />          
           }
     </GoogleMap>
-  </>
+  </>)
 }
 
 export default Map

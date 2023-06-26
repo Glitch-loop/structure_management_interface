@@ -53,14 +53,6 @@ export interface IStrategy {
   cardinality_level: number;
 }
 
-export interface IGeographicArea {
-  id_geographic_area?: number;
-  geographic_area_name?: string;
-  id_geographic_area_belongs?: string;
-  id_member?: number;
-  id_strategy?: number;
-}
-
 export interface IGeographicAreaCoordinates {
   id_geographic_area_coordinates?: number;
   latitude?: number;
@@ -93,6 +85,19 @@ export interface IStructure {
 
   id_geographic_area?: number;
   geographic_area_name?: string;
-
-
 }
+
+export interface LatLng {
+  lat: number,
+  lng: number
+}
+
+export interface IGeographicArea {
+  id_geographic_area?: number;
+  id_geographic_area_belongs?: number;
+  geographic_area_name?: string;
+  id_member?: number;
+  id_strategy?: number;
+  coordinates?: LatLng[];
+}
+
