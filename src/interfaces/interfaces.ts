@@ -48,7 +48,7 @@ export interface IColony {
 
 export interface IStrategy {
   id_strategy: number;
-  zone_type?: string;
+  zone_type: string;
   role: string;
   cardinality_level: number;
 }
@@ -99,5 +99,6 @@ export interface IGeographicArea {
   id_member?: number;
   id_strategy?: number;
   coordinates?: LatLng[];
+  edtiable?: boolean;
 }
 

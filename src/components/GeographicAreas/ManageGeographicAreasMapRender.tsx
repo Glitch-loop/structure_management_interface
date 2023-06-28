@@ -1,5 +1,5 @@
-import { GoogleMap, useLoadScript, PolygonF, Polyline } from "@react-google-maps/api"
-import { useState, useEffect } from "react"
+import { GoogleMap, PolygonF, Polyline } from "@react-google-maps/api"
+import { useState, useEffect, useRef } from "react"
 import {FiPlus} from "react-icons/fi"
 import '../../styles/global.css'
 import { DialogTitle, Tooltip } from "@mui/material"
@@ -7,8 +7,8 @@ import {Dialog} from "@mui/material"
 import Input from "../UIcomponents/Input"
 import Button from "../UIcomponents/Button"
 import requester from "../../helpers/Requester"
-import { IRequest, LatLng, IGeographicArea } from "../../interfaces/interfaces"
-
+import { IRequest, LatLng, IGeographicArea, IStrategy } from "../../interfaces/interfaces"
+import { Autocomplete, TextField } from "@mui/material"
  
 function getCoordinate(e: any): LatLng {
   const latitude = e.latLng.lat();
@@ -21,6 +21,19 @@ function getCoordinate(e: any): LatLng {
   return coordinate;
 }
 
+function getPolygonCoordinatesInUnmount(polygon: any):LatLng[] {
+  const dataToReturn:LatLng[] = [];
+  for(let i = 0; i < polygon.g.length; i++) {
+    dataToReturn.push(
+      {
+        lat: polygon.g[i].lat(), 
+        lng: polygon.g[i].lng()
+      }
+    )
+  }
+  return dataToReturn;
+}
+
 function ManageGeographicAreasMapRender() {
   const [line, setLine] = useState<LatLng[]|undefined>(undefined);
   const [centerMap, setCenterMap] = useState<LatLng>({lat:20.64125680004875, lng: -105.22139813464167});
@@ -28,11 +41,26 @@ function ManageGeographicAreasMapRender() {
   const [lastPointAdded, setLastPointAdded] = useState<LatLng|undefined>(undefined);
   const [polygons, setPolygons] = useState<IGeographicArea[]>([]);
   const [createNewPolygon, setCreateNewPolygon] = useState<boolean>(false)
-  const [showDialog, setShowDialog] = useState<boolean>(false)
+  const [showDialog, setShowDialog] = useState<boolean>(false);
   const [geographicAreaName, setGeographicAreaName] = useState<string>("")
+  const [ask, setAsk] = useState<boolean>(true)
+  
+  //Logic for geographic areas --- Polygons
+  //False = line, true = polygon
+  const [managePolygon, setManagePolygon] = useState<boolean>(false) 
+  const [currentPolygonToUpdate, setCurrentPolygonToUpdate] = useState<undefined|IGeographicArea>(undefined)
+  const [currentPolygonPoint, setCurrentPolygonPoint] = useState<LatLng|undefined>(undefined)
+
+  const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
+  const refCurrentPolygonAction = useRef<boolean>(false)
+  //Logic for strategy
+  const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
+  const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>("");
+  const [idStrategy, setIdStrategy] = useState<number|undefined>(undefined);
 
   useEffect(() => {
     getAllPolygons()
+    getStrategy()
   }, [])
 
   //Use effect functions
@@ -43,25 +71,32 @@ function ManageGeographicAreasMapRender() {
 
     if(response.data !== undefined) {
       const polygonsDB = response.data;
-      // const currentPolygons:LatLng[][] = [];
-      
-      // polygonsDB.forEach(polygonDB => {
-      //   if(polygonDB.coordinates!==undefined)
-      //     currentPolygons.push(polygonDB.coordinates)
-      // })
-      console.log(polygonsDB)
       setPolygons(polygonsDB)
+      console.log("ASK DB: ", polygonsDB)
     }
   }
 
-  //Handlers
-  const newPolygoncreation = (e: any):void => {
+
+  const getStrategy = async() => {
+    const response:IRequest<IStrategy[]> = await requester({
+      url: `/strategyLevels`,
+      method: 'GET'
+    })
+    if(response.data !== undefined) {
+      const strategyLevels:IStrategy[] = response.data.filter(level => level.zone_type !== "")
+      setArrayStrategyLevel(strategyLevels)
+    }
+  }
+  //Handlers -- LINES
+  const handleClickMap = (e: any):void => {
     if(createNewPolygon) {
-      console.log("Agregando primer punto")
       const newCoordinate:LatLng = getCoordinate(e);
 
       if(line!==undefined) setLine([...line, newCoordinate]);
     }
+
+    refCurrentPolygon.current = undefined;
+    setPolygons(polygons.map(polygon => {polygon.edtiable=false; return polygon}));
   }
 
   //This function was though for complete the polygon
@@ -164,10 +199,8 @@ function ManageGeographicAreasMapRender() {
   const handleCreateNewArea = (): void => {
     if(createNewPolygon) {
       setLine([]);
-      console.log("No puedes crear")
       setCreateNewPolygon(false);
     } else {
-      console.log("Crea tu nueva area")
       setLine([])
       setCreateNewPolygon(true);
     }
@@ -177,38 +210,276 @@ function ManageGeographicAreasMapRender() {
     setShowDialog(!showDialog)
   }
 
-  const handleOnSubmitNewGeographicArea = async () => {
+  const handleOnSubmitAddGeographicArea = async () => {
     const geographicArea = {
       geographicAreaName: geographicAreaName,
       geographicAreaCoordinates: line
     }
-    const response:IRequest<any> = await requester({
+    const response:IRequest<IGeographicArea> = await requester({
       url: "/geographicAreas",
       method: "POST",
       data: geographicArea
-      
     })
 
-    console.log(response)
+    if(response.data !== undefined) {
+      const id_geographic_area:number|undefined = response.data.id_geographic_area
+      if(id_geographic_area !== undefined && idStrategy !== undefined) {
+        const response:IRequest<IGeographicArea> = await requester({
+          url: `/geographicAreas/strategicInformation/strategyLevel/${id_geographic_area}/${idStrategy}`,
+          method: "PUT"
+        })
+      }
+    }
+    setShowDialog(false)
     setLine([]);
   }
 
 
+  // Handlers -- POLYGON
+  const handleDataClickPolygon = (e: any, polygon: IGeographicArea):void => {
+    console.log("Click")
+    const idPolygon = polygon.id_geographic_area;
+    if(idPolygon!==undefined) {
+      const coordinate:LatLng = getCoordinate(e);
+      
+      //Be secure that there is just one polygon to update
+      const newPolygons = polygons.map(polygon => {polygon.edtiable = false; return polygon})
+
+      //Find the polygon's index to update
+      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
+
+      newPolygons[index].edtiable = true;
+      setPolygons(newPolygons)
+      setAsk(!ask)
+    }
+  }
+
+  const handleDbClickPolygon = (e: any, polygon: IGeographicArea): void => {
+    setManagePolygon(true)
+    setShowDialog(true)
+    if(polygon.geographic_area_name !== undefined) {
+      setGeographicAreaName(polygon.geographic_area_name)
+    }
+    if(polygon.id_strategy !== undefined && polygon.id_strategy !== null) {
+      const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy)
+      setIdStrategy(polygon.id_strategy)
+      setSearchStrategyLevel(arrayStrategyLevel[index].zone_type)
+    } else {
+      setIdStrategy(undefined)
+      setSearchStrategyLevel("")
+    }
+    setCurrentPolygonToUpdate(polygon)
+  }
+
+  const handleRightClickLinePolyline = (e:any, idPolygon: number|undefined):void => {
+    if(idPolygon!== undefined) {
+      const coordinateToDelete = getCoordinate(e); // Get coordinate to delete
+      
+      //Get index of the area to delete the coordinate
+      const index = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon);
+      if(polygons[index].coordinates !== undefined) { 
+        
+        //Get new polygon
+        const newPolygon:LatLng[]|undefined = polygons[index].coordinates?.filter(coordinate => {
+          if(coordinate.lat !== coordinateToDelete.lat && 
+            coordinate.lng !== coordinateToDelete.lng) return true
+          else return false
+        })
+
+        //If the polygon is not undefined 
+        if(newPolygon !== undefined) {
+          if(newPolygon.length >= 3) {
+            polygons[index].coordinates = newPolygon
+            const newGeographicArea:IGeographicArea[] = polygons
+  
+            setPolygons(newGeographicArea)
+            setAsk(!ask)
+          } 
+        }
+      }
+    }
+  }
+
+  const handleMouseDownPolygon = (e:any) => {
+    const coordinates = getCoordinate(e);
+    setCurrentPolygonPoint(coordinates)
+  }
+
+  const handleMouseUpPolygon = (e:any, currentPolygon: IGeographicArea): void => {
+    const idPolygon = currentPolygon.id_geographic_area;
+    const editable =  currentPolygon.edtiable;
+    const coordinates = getCoordinate(e)
+    if(idPolygon!==undefined && 
+      editable && 
+      coordinates.lat !== currentPolygonPoint?.lat &&
+      coordinates.lng !== currentPolygonPoint?.lng) {
+      //Find the geographic area to save
+      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
+      refCurrentPolygon.current = polygons[index]; //Save geographic area
+
+      //Delete the geographic area
+
+      setPolygons(polygons.filter(polygon => polygon.id_geographic_area !== idPolygon))
+    } else { 
+      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
+      polygons[index].edtiable = false
+      setPolygons(polygons)
+      setAsk(!ask)
+    }
+  }
+
+  const handleUnmountPolygon = async (e:any, idPolygon: number|undefined) => {
+    console.log("UNMOUNTING")
+    if(idPolygon !== undefined) {
+      //This process is to update the polygon (add, delete, move vertices)
+      if(refCurrentPolygon!==undefined) {
+        //Get current polygon
+        const currentCoordinatesPolygon:any = e.getPath();
+        //If there are coordinates, save the new polygon 
+        if(refCurrentPolygon.current?.coordinates != undefined){
+          refCurrentPolygon.current.coordinates = getPolygonCoordinatesInUnmount(currentCoordinatesPolygon);
+
+          //Find the geographic area to save
+          const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === refCurrentPolygon.current?.id_geographic_area)
+
+          polygons[index].coordinates = refCurrentPolygon.current.coordinates;
+        }
+      }
+    }
+    
+    if(refCurrentPolygonAction.current === true) {
+      refCurrentPolygonAction.current = false;
+      getAllPolygons();
+    }
+    else setPolygons(polygons)
+    refCurrentPolygon.current = undefined;
+    setAsk(!ask)
+  }
+
+  const handleOnSubmitUpdateGeographicArea = async (e: any) => {
+    try {
+      if(currentPolygonToUpdate!==undefined) {
+        const indexPolygonUpdating:number = polygons.findIndex(
+          polygon => polygon.id_geographic_area === currentPolygonToUpdate.id_geographic_area)
+        
+        if(polygons[indexPolygonUpdating].geographic_area_name !== geographicAreaName) {
+          const responseUpdateGeographicArea:IRequest<undefined> = await requester({
+            url: `/geographicAreas/${currentPolygonToUpdate.id_geographic_area}`,
+            method: 'PUT',
+            data: {geographicAreaName: geographicAreaName}
+          })
+          
+          if(responseUpdateGeographicArea.code === 200) 
+            polygons[indexPolygonUpdating].geographic_area_name = geographicAreaName;
+        }
+        
+        const responseCoordinates:IRequest<undefined> = await requester({
+          url: `/geographicAreas/coordinates/${currentPolygonToUpdate.id_geographic_area}`,
+          method: 'PUT',
+          data: {geographicAreaCoordinates: currentPolygonToUpdate.coordinates}
+        })
+        
+        if(responseCoordinates.code === 200) 
+          polygons[indexPolygonUpdating].coordinates = currentPolygonToUpdate.coordinates;
+      
+        if(idStrategy !== undefined) {
+          if(polygons[indexPolygonUpdating].id_strategy !== idStrategy) {
+            const responseIdStrategyGeographicArea:IRequest<undefined> =await requester({
+              url: `/geographicAreas/strategicInformation/strategyLevel/${currentPolygonToUpdate.id_geographic_area}/${idStrategy}`,
+              method: "PUT"
+            })
+  
+            if(responseIdStrategyGeographicArea.code === 200) 
+              polygons[indexPolygonUpdating].id_strategy = idStrategy;
+          }
+        }
+  
+        setShowDialog(false)
+        setPolygons(polygons)
+        setAsk(!ask)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const handleOnSubmitDeleteGeographicArea = async (e: any) => {
+    if(currentPolygonToUpdate!==undefined) { 
+      const response:IRequest<undefined> = await requester({
+        url: `/geographicAreas/${currentPolygonToUpdate.id_geographic_area}`,
+        method: "DELETE"
+      })
+
+      if(response.code === 200) {
+        refCurrentPolygonAction.current = true;
+        setAsk(!ask)
+        setShowDialog(false)
+        await getAllPolygons()
+      }
+    }
+  }
+
+  // Handlers strategy autocomplete
+  const handleSearchStrategyLevel = async (event: any, newInputValue: string | null) => {
+    if (newInputValue !== null) {
+      if(newInputValue!=="") setSearchStrategyLevel(newInputValue)
+    }
+  }
+
+  const handleSelectStrategyLevel = async (event: any, newValue: string | null) => {
+    const strategyLevelSelected: IStrategy|undefined = 
+    arrayStrategyLevel.find(strategyLevel => strategyLevel.zone_type === newValue)
+    if(strategyLevelSelected===undefined) setIdStrategy(undefined);
+    else { 
+      setIdStrategy(strategyLevelSelected.id_strategy)
+    }
+  }
+  
   return (<>
     <Dialog onClose={handleCloseDialog} open={showDialog}>
-      <div className="p-5 flex flex-col justify-center">
-        <DialogTitle>Agregar nueva area geografica</DialogTitle>
-
+      <div className="p-5 pb-10 flex flex-col justify-center">
+        <DialogTitle>
+          { managePolygon ? 'Administrar area geografica' : 'Agregar area geografica' }
+        </DialogTitle>
         <Input 
-            onType={setGeographicAreaName} 
-            inputValue={geographicAreaName}
-            inputName="Nombre de area greografica"
-            inputType="text"            
-        />
-        <Button 
-          label="Aceptar"
-          onClick={handleOnSubmitNewGeographicArea}
+          onType={setGeographicAreaName} 
+          inputValue={geographicAreaName}
+          inputName="Nombre de area greografica"
+          inputType="text"            
           />
+        <div className="mt-3">
+          <Autocomplete
+            disablePortal
+            id="input-strategy"
+            onInputChange={(event: any, newInputValue: string | null) => 
+              { handleSearchStrategyLevel(event, newInputValue) }}
+            onChange={(event: any, newValue: string | null) => 
+              handleSelectStrategyLevel(event, newValue) }
+            value={
+              searchStrategyLevel
+            }
+            options={ 
+              arrayStrategyLevel[0]===undefined ? [] :
+              arrayStrategyLevel.map((strategyLevel => strategyLevel.zone_type)) }
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Tipo de zona" />}
+            />
+        </div>
+        <div className="flex flex-row justify-center">
+          <Button 
+            label={managePolygon ? "Actualizar" : "Agregar"}
+            onClick={
+              managePolygon ? handleOnSubmitUpdateGeographicArea : handleOnSubmitAddGeographicArea
+            }
+            />
+            {
+              managePolygon &&
+              <Button 
+                label="Eliminar"
+                onClick={handleOnSubmitDeleteGeographicArea}
+              />
+            }
+        </div>
       </div>
     </Dialog>
     
@@ -228,15 +499,21 @@ function ManageGeographicAreasMapRender() {
         zoom={14}
         center={centerMap} 
         mapContainerClassName="map-container"
-        onClick={(e: any) => newPolygoncreation(e)}
+        onClick={(e: any) => handleClickMap(e)}
         >
           {
             polygons.map((polygon) => 
             <PolygonF
               key={polygon.id_geographic_area}
               visible={true}
-              editable
-
+              editable={polygon.edtiable}
+              // onMouseOut={(e:any) => {handleMouseUp(e, polygon)}}
+              onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
+              onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
+              onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}
+              onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
+              onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
+              onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
               path={polygon.coordinates}
             ></PolygonF>
             )
