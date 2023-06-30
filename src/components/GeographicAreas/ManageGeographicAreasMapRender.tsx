@@ -1,15 +1,19 @@
 import { GoogleMap, PolygonF, Polyline } from "@react-google-maps/api"
 import { useState, useEffect, useRef } from "react"
-import {FiPlus} from "react-icons/fi"
+import {FiPlus, FiEye } from "react-icons/fi"
 import '../../styles/global.css'
-import { DialogTitle, Tooltip } from "@mui/material"
+import { DialogTitle, Tooltip, Switch } from "@mui/material"
 import {Dialog} from "@mui/material"
 import Input from "../UIcomponents/Input"
 import Button from "../UIcomponents/Button"
 import requester from "../../helpers/Requester"
 import { IRequest, LatLng, IGeographicArea, IStrategy } from "../../interfaces/interfaces"
 import { Autocomplete, TextField } from "@mui/material"
- 
+
+interface IStrategyShow extends IStrategy {
+  show?: boolean
+}
+
 function getCoordinate(e: any): LatLng {
   const latitude = e.latLng.lat();
   const longuitude = e.latLng.lng();
@@ -34,38 +38,51 @@ function getPolygonCoordinatesInUnmount(polygon: any):LatLng[] {
   return dataToReturn;
 }
 
+function polygonViseble(
+  arrayStrategyLevels: IStrategyShow[], 
+  polygon: IGeographicArea):boolean {
+    const statusPolygon: IStrategyShow|undefined = arrayStrategyLevels.find(
+      strategyLevel => strategyLevel.id_strategy === polygon.id_strategy);
+
+      if(statusPolygon !== undefined) {
+        if(statusPolygon.show !== undefined) {
+          return statusPolygon.show;
+        } 
+      }
+
+      return true;
+}
+
 function ManageGeographicAreasMapRender() {
+  //General States
   const [line, setLine] = useState<LatLng[]|undefined>(undefined);
   const [centerMap, setCenterMap] = useState<LatLng>({lat:20.64125680004875, lng: -105.22139813464167});
   
+  //Line states
   const [modifyCoordinateInLine, setModifyCoordinateInLine] = useState<number|undefined>(undefined);
   const [lastPointAdded, setLastPointAdded] = useState<LatLng|undefined>(undefined);
   
+  //Polygon states
   const [polygons, setPolygons] = useState<IGeographicArea[]>([]);
   const [polygonsForWork, setPolygonForWork] = useState<IGeographicArea[]>([]);
   const [createNewPolygon, setCreateNewPolygon] = useState<boolean>(false)
- 
   
-  const [showDialog, setShowDialog] = useState<boolean>(false);
-  const [ask, setAsk] = useState<boolean>(true)
-  
-  //Logic for geographic areas --- Polygons
-  //False = line, true = polygon
-  const [managePolygon, setManagePolygon] = useState<boolean>(false) 
+  const [managePolygon, setManagePolygon] = useState<boolean>(false) //False = line, true = polygon
   const [currentPolygonToUpdate, setCurrentPolygonToUpdate] = useState<undefined|IGeographicArea>(undefined)
   const [currentPolygonPoint, setCurrentPolygonPoint] = useState<LatLng|undefined>(undefined)
   const [polygonToManage, setPolygonToManage] = useState<IGeographicArea|undefined>(undefined)
 
-  const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
-  const refCurrentPolygonAction = useRef<boolean>(false)
-  //Logic for strategy
-  const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
+  //Logic for forms
+  const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategyShow[]>([]);
   const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>("");
   const [idStrategy, setIdStrategy] = useState<number|undefined>(undefined);
   const [geographicAreaName, setGeographicAreaName] = useState<string>("")
-
-  //Especial logic
-  const [updateMap, setUpdateMap] = useState<boolean>(false)
+  const [showDialog, setShowDialog] = useState<boolean>(false);
+  
+  //Logic areas visualization
+  const [showVisualizationForm, setShowVisualizationForm] = useState<boolean>(false)
+  
+  const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
 
   useEffect(() => {
     getAllPolygons()
@@ -94,36 +111,35 @@ function ManageGeographicAreasMapRender() {
       method: 'GET'
     })
     if(response.data !== undefined) {
-      const strategyLevels:IStrategy[] = response.data.filter(level => level.zone_type !== "")
-      setArrayStrategyLevel(strategyLevels)
+      const strategyLevels:IStrategyShow[] = response.data.filter(level => level.zone_type !== "")
+
+      
+      setArrayStrategyLevel(strategyLevels.map(strategyLevel => {
+        strategyLevel.show = true;
+        return strategyLevel
+      }))
     }
   }
 
   //Handlers -- MAPS
-  const handleClickMap = async (e: any):void => {
+  const handleClickMap = async (e: any) => {
     if(createNewPolygon) {
       const newCoordinate:LatLng = getCoordinate(e);
       setManagePolygon(false);
       if(line!==undefined) setLine([...line, newCoordinate]);
     }
-    // console.log("maps")
-    // if(updateMap){
-    //   await getAllPolygons()
-    //   setUpdateMap(false)
-    //   // setPolygons(polygons.map(polygon => {polygon.edtiable=false; return polygon}));
-    // } else {
-    //   setPolygons([])
-    // }
-    setAsk(!ask)
+
+    const newPolygonsForWorkArray:IGeographicArea[] = polygonsForWork.map(polygon => 
+      {polygon.edtiable = false; return polygon});
+    setPolygonForWork(newPolygonsForWorkArray);
+    setPolygons(newPolygonsForWorkArray);
     refCurrentPolygon.current = undefined;
-    
   }
 
   const handleOnMouseMoveMap = (e: any): void => {
-    console.log("move map")
-    
     if(polygonToManage !== undefined) {
-      const index:number = polygonsForWork.findIndex(polygon => polygon.id_geographic_area === polygonToManage.id_geographic_area)
+      const index:number = polygonsForWork.findIndex(
+        polygon => polygon.id_geographic_area === polygonToManage.id_geographic_area)
       polygonsForWork[index] = polygonToManage
       setPolygonToManage(undefined)
     }
@@ -253,19 +269,22 @@ function ManageGeographicAreasMapRender() {
 
     if(response.data !== undefined) {
       const id_geographic_area:number|undefined = response.data.id_geographic_area;
-
-      polygonsForWork.push({
+      const newPolygon:IGeographicArea = {
         id_geographic_area: id_geographic_area,
         coordinates: line,
         geographic_area_name: geographicAreaName
-      })
+      }
+
 
       if(id_geographic_area !== undefined && idStrategy !== undefined) {
+        newPolygon.id_strategy = idStrategy
         const response:IRequest<IGeographicArea> = await requester({
           url: `/geographicAreas/strategicInformation/strategyLevel/${id_geographic_area}/${idStrategy}`,
           method: "PUT"
         })
       }
+
+      polygonsForWork.push(newPolygon)
     }
 
     setShowDialog(false)
@@ -286,12 +305,10 @@ function ManageGeographicAreasMapRender() {
 
       newPolygons[index].edtiable = true;
       // setPolygons(newPolygons)
-      setAsk(!ask)
     }
 
     setLine([]);
     setCreateNewPolygon(false);
-    refCurrentPolygonAction.current = false;
   }
 
   const handleDbClickPolygon = (e: any, polygon: IGeographicArea): void => {
@@ -333,7 +350,6 @@ function ManageGeographicAreasMapRender() {
             const newGeographicArea:IGeographicArea[] = polygons
   
             setPolygons(newGeographicArea)
-            setAsk(!ask)
           } 
         }
       }
@@ -364,7 +380,6 @@ function ManageGeographicAreasMapRender() {
       const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
       polygons[index].edtiable = false
       setPolygons(polygons)
-      setAsk(!ask)
     }
   }
 
@@ -431,7 +446,6 @@ function ManageGeographicAreasMapRender() {
   
         setShowDialog(false)
         setPolygons(polygons)
-        setAsk(!ask)
       }
     } catch (error) {
       console.log(error)
@@ -473,6 +487,28 @@ function ManageGeographicAreasMapRender() {
   const handleCloseDialog = ():void => {
     setShowDialog(!showDialog)
     setManagePolygon(false)
+  }
+
+  const handleShowTypeArea = ():void => {
+    setShowVisualizationForm(true)
+  }
+
+  const handleCloseShowTypeArea = ():void => {
+    setShowVisualizationForm(false)
+  }
+
+  const handleSwitchShowZoneType = (e: any, strategyLevelSwitch: IStrategyShow):void => {
+    const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === strategyLevelSwitch.id_strategy);
+
+    setArrayStrategyLevel(
+      arrayStrategyLevel.map(stretegyLevel => {
+        if(stretegyLevel.id_strategy === strategyLevelSwitch.id_strategy) {
+          if(stretegyLevel.show) stretegyLevel.show = false
+          else stretegyLevel.show = true
+        }
+        return stretegyLevel
+      })
+    )
   }
 
   return (<>
@@ -523,14 +559,41 @@ function ManageGeographicAreasMapRender() {
       </div>
     </Dialog>
     
+    <Dialog onClose={handleCloseShowTypeArea} open={showVisualizationForm}>
+      <DialogTitle>Visualizar areas</DialogTitle>   
+      <div className="p-5 pb-10 flex flex-col justify-center">
+        {
+          arrayStrategyLevel.map(strategyLevel => {
+            return <div className="flex row justify-between">
+              <p className="text-lg">{strategyLevel.zone_type}</p>
+              <Switch 
+                checked={strategyLevel.show}
+                onChange={(e:any) => handleSwitchShowZoneType(e, strategyLevel)}
+              />
+            </div>
+          })
+        }
+      </div>
+    </Dialog>
+
     <div className="absolute flex-col w-full h-full justify-center">
-      {/* <h1 className="bg-blue-100 z-10 absolute">class</h1> */}
       <Tooltip title="Crear nueva area">
         <button
           onClick={() => handleCreateNewArea()} 
           className={`z-10 absolute p-5 rounded-full hover:bg-blue-800 bottom-0 left-0 mb-12 ml-3 ${createNewPolygon ? "bg-blue-800" : "bg-blue-600"}`} >
           <div className="text-white">
             <FiPlus />
+          </div>
+        </button>
+      </Tooltip>
+    </div>
+    <div className="absolute flex-col w-full h-full justify-center">
+      <Tooltip title="Crear nueva area">
+        <button
+          onClick={() => handleShowTypeArea()} 
+          className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
+          <div className="text-white">
+            <FiEye />
           </div>
         </button>
       </Tooltip>
@@ -546,9 +609,8 @@ function ManageGeographicAreasMapRender() {
             polygons.map((polygon) => 
             <PolygonF
               key={polygon.id_geographic_area}
-              visible={true}
+              visible={polygonViseble(arrayStrategyLevel, polygon)}
               editable={polygon.edtiable}
-              // onMouseOut={(e:any) => {handleMouseUp(e, polygon)}}
               onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
               onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
               onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}

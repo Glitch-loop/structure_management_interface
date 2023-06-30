@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Input from "../UIcomponents/Input";
 import { Autocomplete, TextField } from "@mui/material";
 import Button from "../UIcomponents/Button";
-import { IColony, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
+import { IColony, IGeographicArea, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
 
@@ -13,7 +13,8 @@ const avoidNull = (data: any, replace: any):any => {
 
 const showLeaderInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
   if(idStrategy!==undefined && idStrategy!==null) {
-    const index = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === idStrategy)
+    const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === idStrategy)
+
     if(arrayStrategyLevel[index].cardinality_level !== 1) return true  
   }  
   return false
@@ -24,6 +25,14 @@ const showFollowerInputFunction = (idStrategy:number|undefined, arrayStrategyLev
   //The order will be 1, 2, 3 (took the cardinality)
   if(idStrategy!==undefined && idStrategy!==null) {
     if(arrayStrategyLevel[arrayStrategyLevel.length - 1].id_strategy !== idStrategy) return true
+  }
+  return false
+}
+
+const showGeographicAreaInputFunction = (idStrategy:number|undefined, arrStrategyLevel:IStrategy[]):boolean => {
+  if(idStrategy!==undefined && idStrategy!==null) {
+    const index:number = arrStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy == idStrategy);
+    if(arrStrategyLevel[index].zone_type !== '') return true
   }
   return false
 }
@@ -55,6 +64,7 @@ const FormPerson = (
     initialIdLeader = undefined,
     initialSearchLeader = undefined,
     initialIdStrategy = undefined,
+    initialIdGeographicArea = undefined,
     initialSearchStrategyLevel = undefined,
     initialIdFollowers = [],
   }: {
@@ -76,6 +86,7 @@ const FormPerson = (
     initialSearchLeader?: string,
     initialIdStrategy?: number|undefined,
     initialSearchStrategyLevel?: string,
+    initialIdGeographicArea?: number,
     initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
@@ -88,9 +99,10 @@ const FormPerson = (
     const [idColony, setIdColony] = useState<number|undefined>(initialIdColony);
 
     // Members fields
+    const [idStrategy, setIdStrategy] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
     const [idLeader, setIdLeader] = useState<number|undefined>(initialIdLeader);
     const [idFollowers, setIdFollower] = useState<IStructure[]>(initialIdFollowers === undefined ? [] : initialIdFollowers);
-    const [idStrategy, setIdStrategy] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
+    const [idGeographicArea, setIdGeographicArea] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
 
     //Collaborator fields
     const [email, setEmail] = useState<string>('')
@@ -101,15 +113,19 @@ const FormPerson = (
     const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([])
     const [arrayLeader, setArrayLeader] = useState<IStructure[]>([])
     const [arrayFollower, setArrayFollower] = useState<IStructure[]>([])
+    const [arrayGeographicArea, setArrayGeographicArea] = useState<IGeographicArea[]>([])
+    
     const [searchFollower, setSearchFollower] = useState<string>('')
     const [searchLeader, setSearchLeader] = useState<string|undefined>(
       initialSearchLeader===' ' ? undefined : initialSearchLeader)
     const [searchStrategyLevel, setSearchStrategyLevel] = useState<string|undefined>(initialSearchStrategyLevel)
     const [searchColony, setSearchColony] = useState<string>(avoidNull(initialSearchColony, ''));
+    const [searchGeographicArea, setSearchGeographicArea] = useState<string|undefined>(avoidNull(initialSearchColony, ''));
 
     //Show data
     const [showLeaderInput, setShowLeaderInput] = useState<boolean>(false);
     const [showFollowerInput, setShowFollowerInput] = useState<boolean>(false);
+    const [showGeographicArea, setShowGeographicArea] = useState<boolean>(false);
 
     useEffect(() => {
       getStrategy()
@@ -125,6 +141,7 @@ const FormPerson = (
         setArrayStrategyLevel(strategy.data)
         setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, strategy.data))
         setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, strategy.data))
+        setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, arrayStrategyLevel))
       }
     }
 
@@ -150,6 +167,7 @@ const FormPerson = (
     }
 
     //Handlers strategic information 
+    //Strategy level related
     const handleSelectStrategyLevel = async (event: any, newValue: string | null) => {
       const strategyLevelSelected: IStrategy|undefined = 
       arrayStrategyLevel.find(strategyLevel => strategyLevel.role === newValue)
@@ -158,6 +176,7 @@ const FormPerson = (
         setIdStrategy(strategyLevelSelected.id_strategy)
         setShowFollowerInput(showFollowerInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
         setShowLeaderInput(showLeaderInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
+        setShowGeographicArea(showGeographicAreaInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
       }
       setIdFollower([]);
       setIdLeader(undefined);
@@ -175,6 +194,7 @@ const FormPerson = (
 
     }
 
+    //Searcher related
     const handleSearchLeader = async (event: any, newInputValue: string | null) => {
       if(newInputValue !== null) {
         setSearchLeader(newInputValue);
@@ -200,6 +220,7 @@ const FormPerson = (
       setArrayLeader([]);
     }
 
+    //Follower related
     const handleSearchFollowers = async (event: any, newInputValue: string | null) => {
       if(newInputValue!== null) {
         setSearchFollower(newInputValue);
@@ -229,6 +250,33 @@ const FormPerson = (
 
     const handleDeleteFollower = async(e: IStructure) => { 
       setIdFollower(idFollowers.filter(follower => follower.id_member !== e.id_member)) 
+    }
+
+    //Geographic area related
+    const handleSearchGeographicArea = async (event: any, newInputValue: string | null) => {
+      if(newInputValue !== null) {
+        setSearchGeographicArea(newInputValue);
+        if(idStrategy !== undefined) {
+          if(newInputValue==='') setArrayGeographicArea([]);
+          console.log(idStrategy)
+          if(arrayGeographicArea[0] === undefined && newInputValue !== '') {
+            const response: IRequest<IGeographicArea[]> = await requester({
+              url: `/geographicAreas/strategicInformation/${idStrategy}/${newInputValue}`,
+              method: `GET`
+            }) 
+            if(response.data !== undefined) 
+              setArrayGeographicArea(response.data)
+          }
+        } else console.log("idStrategy cannot be undefined")
+      }
+    }
+
+    const handleSelectGeographicArea = async (event: any, newInputValue: string | null) => {
+      const geographicAreaSelected: IGeographicArea|undefined = 
+      arrayGeographicArea.find(geographicArea => `${geographicArea.geographic_area_name}-${geographicArea.id_geographic_area}` === newInputValue);
+      if(geographicAreaSelected===undefined) setIdGeographicArea(undefined);
+      else setIdGeographicArea(geographicAreaSelected.id_geographic_area);
+      setArrayGeographicArea([]);
     }
 
     //Handler to submit
@@ -303,18 +351,25 @@ const FormPerson = (
       setIdLeader(undefined)
       setIdFollower([])
       setIdStrategy(undefined)
+      setIdGeographicArea(undefined)
 
       setArrayLeader([])
       setArrayFollower([])
+      setArrayGeographicArea([])
+      
       setSearchFollower('')
       setSearchLeader('')
       setSearchStrategyLevel('')
+      setSearchGeographicArea('')
+      
 
       //Collaborator information states related
       setEmail('')
       setPassword('')
     }
 
+
+    //Calls to API
     const addNewMember = async (basicData: any) => {
         const response:IRequest<any> = await requester({
           url: '/members/', 
@@ -329,6 +384,9 @@ const FormPerson = (
 
           //Update member's followers 
           updateFollowers(idMember)
+
+          //Update geographic area's manager
+          updateGeographicAreaManage(idMember);
         }
     }
 
@@ -382,6 +440,17 @@ const FormPerson = (
       }
     }
     
+
+    const updateGeographicAreaManage = async(idMember: number) => {
+      if(idGeographicArea !== undefined && idGeographicArea !== null) {
+        await requester({
+          url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
+          method: 'PUT'
+        })
+      }
+    }
+
+
   return (
     <>
       <div className="text-center text-xl font-bold">
@@ -559,6 +628,25 @@ const FormPerson = (
                       </div>
                     </div>
                   </>
+                }
+                {
+                  (showGeographicArea) &&
+                  <div className="flex mt-3 justify-center">
+                    <Autocomplete
+                      disablePortal
+                      id="input-geographic-area"
+                      onInputChange={(event: any, newInputValue: string | null) => 
+                        { handleSearchGeographicArea(event, newInputValue) }}
+                      onChange={(event: any, newValue: string | null) => {
+                        handleSelectGeographicArea(event, newValue)
+                      }}
+                      options={arrayGeographicArea.map(geographicArea => 
+                        `${geographicArea.geographic_area_name}-${geographicArea.id_geographic_area}`)}
+                      value={searchGeographicArea}
+                      sx={{ width: 300 }}
+                      renderInput={(params) => <TextField {...params} label="Area geografica" />}
+                      />
+                  </div>
                 }
               </div>
             </div>
