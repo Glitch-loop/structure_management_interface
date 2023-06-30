@@ -50,10 +50,7 @@ class TreeNode {
   }
 
   private addNodeRecursive(currentNode: NodeMember[], child: NodeMember) {
-    // console.log("There is a member that a child: ", child)
     for(let i = 0; i < currentNode.length; i++) {
-      // console.log("Child leader: ", child.data.id_leader)
-      // console.log(" leader: ", child.data.id_leader)
       if(currentNode[i].data.id_member === child.data.id_leader) {
         currentNode[i].childs.push(child);
       } else {
@@ -63,6 +60,65 @@ class TreeNode {
       }
     }
   }
+
+  public countStructure():number {
+    let count = 0;
+    for(let i = 0; i < this.root.length; i++) {
+      const child:NodeMember = this.root[i];
+      count += this.countRecursiveStructure(child.childs)
+    }
+
+    return count;
+  }
+
+  private countRecursiveStructure(currentNode: NodeMember[]):number {
+    let count = 1;
+    for(let i = 0; i < currentNode.length; i++) {
+        const child:NodeMember = currentNode[i];
+        count += this.countRecursiveStructure(child.childs)
+    }
+    return count;
+  }
+
+  public countMemberStructure(idMember: number):number {
+    let count = 0;
+    let memberFounded = false;
+    for(let i = 0; i < this.root.length; i++) {
+      
+      const child:NodeMember = this.root[i];
+      // console.log("Main: ", child.data)
+      
+      if(child.data.id_member === idMember) memberFounded = true;
+
+      count += this.countMemberRecursiveStructure(child.childs, idMember, memberFounded)
+
+      // console.log("Main: ", count)
+
+      if (memberFounded) i = this.root.length + 1;
+    }
+
+    return count;
+  }
+
+  private countMemberRecursiveStructure(
+    currentNode: NodeMember[], 
+    idMember: number, 
+    memberFounded: boolean):number {
+
+      let count = memberFounded ? 1 : 0;
+      for(let i = 0; i < currentNode.length; i++) {
+        const child:NodeMember = currentNode[i];
+        if(child.data.id_member === idMember) {
+          memberFounded = true;
+          count += this.countRecursiveStructure(child.childs)
+        } else {
+          count += this.countMemberRecursiveStructure(child.childs, idMember, memberFounded)
+        }
+        if (memberFounded) i = this.root.length + 1;
+    }
+    return count;
+  }
+
 }
 
 
@@ -83,19 +139,21 @@ const MapDataView = () => {
     if(response.data !== undefined) {
       const members = response.data;
       const tree = new TreeNode()
-      // setTreeMembers(tree)
-      // console.log(members)
-
-      // let membersTree:NodeMember[] = [];
 
       for(let i = 0; i < members.length; i++) {
         tree.addNode(members[i]);
       }
 
-      console.log("*************************************************")
-      console.log(tree)
-      // setMembers(response.data)    
-      // console.log(response.data)
+      setTreeMembers(tree)
+      setMembers(members)
+
+      // console.log(tree.countStructure())
+      console.log("*******************************************")
+      console.log(tree.countMemberStructure(19))
+      console.log(tree.countMemberStructure(69))
+      console.log(tree.countMemberStructure(77))
+      console.log(tree.countMemberStructure(78))
+      console.log(tree.countMemberStructure(93))
     }
   }
 
