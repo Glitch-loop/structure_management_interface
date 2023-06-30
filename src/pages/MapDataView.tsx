@@ -80,19 +80,22 @@ class TreeNode {
     return count;
   }
 
+
+  /*
+    If in the root is founded the member to count his followers, then, "memberFounded" variable is
+    assigned true and go to recursivity... When the recursivity ends (and you get the number of
+    followers that the member has), we avoid to iterate to the others "trees".
+  */  
   public countMemberStructure(idMember: number):number {
     let count = 0;
     let memberFounded = false;
     for(let i = 0; i < this.root.length; i++) {
       
       const child:NodeMember = this.root[i];
-      // console.log("Main: ", child.data)
       
       if(child.data.id_member === idMember) memberFounded = true;
 
       count += this.countMemberRecursiveStructure(child.childs, idMember, memberFounded)
-
-      // console.log("Main: ", count)
 
       if (memberFounded) i = this.root.length + 1;
     }
@@ -100,6 +103,18 @@ class TreeNode {
     return count;
   }
 
+  /*
+  This is the recursive part of the alghoritm to count how many followers has a certain member.
+  In this case if we already founded the member, then we count as if we were counted normaly the 
+  tree (all the nodes below the target node are part of the sum...).
+
+  Otherwise, if we don't still to find the node target, then we continue trying to find the node...
+
+  In the case when were we already founded the node, we again avoid to follow iterating in the current level
+  (we already have the tree that we want to found, so it isn't necessary to find in the tree).
+
+  At the end we jut return the count that we has until now.
+  */
   private countMemberRecursiveStructure(
     currentNode: NodeMember[], 
     idMember: number, 
@@ -150,17 +165,6 @@ const MapDataView = () => {
 
       setTreeMembers(tree)
       setMembers(members)
-
-      // console.log(tree.countStructure())
-      console.log("*******************************************")
-      console.log("Number members of 19 member: ", tree.countMemberStructure(19))
-      console.log("Number members of 69 member: ", tree.countMemberStructure(69))
-      console.log("Number members of 77 member: ", tree.countMemberStructure(77))
-      console.log("Number members of 78 member:", tree.countMemberStructure(78))
-      console.log("Number members of 93 member: ", tree.countMemberStructure(93))
-      console.log("Number members of 34 member: ", tree.countMemberStructure(34))
-      console.log("Number members of 96 member: ", tree.countMemberStructure(96))
-      console.log("Number members of 96 member: ", tree.countMemberStructure(72))
     }
   }
 
