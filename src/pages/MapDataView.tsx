@@ -105,16 +105,20 @@ class TreeNode {
     idMember: number, 
     memberFounded: boolean):number {
 
-      let count = memberFounded ? 1 : 0;
-      for(let i = 0; i < currentNode.length; i++) {
-        const child:NodeMember = currentNode[i];
-        if(child.data.id_member === idMember) {
-          memberFounded = true;
-          count += this.countRecursiveStructure(child.childs)
-        } else {
-          count += this.countMemberRecursiveStructure(child.childs, idMember, memberFounded)
-        }
-        if (memberFounded) i = this.root.length + 1;
+      let count = 0;
+      if(memberFounded) {
+        count += this.countRecursiveStructure(currentNode)
+      } else {
+        for(let i = 0; i < currentNode.length; i++) {
+          const child:NodeMember = currentNode[i];
+          if(child.data.id_member === idMember) {
+            memberFounded = true;
+            count += this.countRecursiveStructure(child.childs)
+          } else {
+            count += this.countMemberRecursiveStructure(child.childs, idMember, memberFounded)
+          }
+          if (memberFounded) i = this.root.length + 1;
+      }
     }
     return count;
   }
@@ -149,11 +153,14 @@ const MapDataView = () => {
 
       // console.log(tree.countStructure())
       console.log("*******************************************")
-      console.log(tree.countMemberStructure(19))
-      console.log(tree.countMemberStructure(69))
-      console.log(tree.countMemberStructure(77))
-      console.log(tree.countMemberStructure(78))
-      console.log(tree.countMemberStructure(93))
+      console.log("Number members of 19 member: ", tree.countMemberStructure(19))
+      console.log("Number members of 69 member: ", tree.countMemberStructure(69))
+      console.log("Number members of 77 member: ", tree.countMemberStructure(77))
+      console.log("Number members of 78 member:", tree.countMemberStructure(78))
+      console.log("Number members of 93 member: ", tree.countMemberStructure(93))
+      console.log("Number members of 34 member: ", tree.countMemberStructure(34))
+      console.log("Number members of 96 member: ", tree.countMemberStructure(96))
+      console.log("Number members of 96 member: ", tree.countMemberStructure(72))
     }
   }
 
