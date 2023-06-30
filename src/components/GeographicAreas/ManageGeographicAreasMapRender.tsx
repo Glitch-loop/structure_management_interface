@@ -38,7 +38,7 @@ function getPolygonCoordinatesInUnmount(polygon: any):LatLng[] {
   return dataToReturn;
 }
 
-function polygonViseble(
+function polygonVisible(
   arrayStrategyLevels: IStrategyShow[], 
   polygon: IGeographicArea):boolean {
     const statusPolygon: IStrategyShow|undefined = arrayStrategyLevels.find(
@@ -609,7 +609,7 @@ function ManageGeographicAreasMapRender() {
             polygons.map((polygon) => 
             <PolygonF
               key={polygon.id_geographic_area}
-              visible={polygonViseble(arrayStrategyLevel, polygon)}
+              visible={polygonVisible(arrayStrategyLevel, polygon)}
               editable={polygon.edtiable}
               onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
               onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
