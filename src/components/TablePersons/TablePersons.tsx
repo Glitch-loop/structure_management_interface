@@ -122,17 +122,9 @@ const TablePersons = () => {
           handleSubmit={handleOnSendData}
 
           initialPersonInformation={memberBasicInfoToUpdate}
-
-          initialIdColony = {memberBasicInfoToUpdate?.id_colony}
-          initialSearchColony = {memberBasicInfoToUpdate?.colony_name}
-
-          initialIdLeader = {memberStrategicInfoToUpdate?.id_leader}
+          initialStrategicInformation={memberStrategicInfoToUpdate}
           
-          initialSearchLeader = 
-          {`${memberStrategicInfoToUpdate?.first_name_leader} ${memberStrategicInfoToUpdate?.last_name_leader}`}
-
           initialIdStrategy= {memberStrategicInfoToUpdate?.id_strategy}
-          initialSearchStrategyLevel={memberStrategicInfoToUpdate?.role}
           initialIdFollowers={memberStrategicInfoToUpdate?.followers}
         />) :
         (<>

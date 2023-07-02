@@ -325,9 +325,10 @@ const VisualizateGeographicArea = () => {
         center={centerMap} 
         mapContainerClassName="map-container"
         >
-          {
-            polygons.map((polygon) => 
-            <PolygonF
+        {
+          polygons[0]!==undefined &&
+          polygons.map((polygon) => {
+            return <PolygonF
               key={polygon.id_geographic_area}
               visible={polygonVisible(arrayStrategyLevel, polygon)}
               // onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
@@ -335,10 +336,11 @@ const VisualizateGeographicArea = () => {
                 handleOpenShowAnalysisGeographicArea(e, polygon)
               }}
               path={polygon.coordinates}
-
+  
             ></PolygonF>
-            )
           }
+          )
+        }
     </GoogleMap>
   </>)
 }

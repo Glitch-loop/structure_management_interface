@@ -22,6 +22,22 @@ const initialPersonState:IMember = {
   postal_code: ""
 }
 
+const initialStrategicInformationState:IStructure = {
+  id_member: 0,
+  first_name: "",
+  last_name: "",
+  id_strategy: 0,
+  zone_type: "",
+  role: "",
+  cardinality_level: 0,
+  id_leader: 0,
+  first_name_leader: "",
+  last_name_leader: "",
+  followers: [],
+  id_geographic_area: 0,
+  geographic_area_name: ""  
+}
+
 const avoidNull = (data: any, replace: any):any => {
   return data === null ? replace : data;
 }
@@ -80,7 +96,6 @@ const getStrategy = async ():Promise<IStrategy[]> => {
   //   // setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, arrayStrategyLevel))
   // }
 }
-
 
 const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
   try {
@@ -182,6 +197,64 @@ const updateGeographicAreaManage = async(idMember: number, idGeographicArea: num
   }
 }
 
+const searchColonies = async (colonyToSearch: string):Promise<IColony[]> => {
+  try {
+    const response: IRequest<IColony[]> = await requester({
+      url: `/colonies/name/${colonyToSearch}`,
+      method: 'GET',
+    })
+    if(response.code === 200) {
+      if(response.data !== undefined) return response.data;
+    } else {
+      console.log("There was an error while searching the colinies")
+    }
+    return [];
+  } catch (error) {
+    console.log("There was an error while searching the colinies")
+    return [];
+  }
+
+}
+
+const searchLeaderByNameAndStrategyLevel = async (idStrategy: number, leaderName:string):Promise<IStructure[]> => {
+  try {
+    
+    const response: IRequest<IStructure[]> = await requester({
+      url: `/members/strategicInformation/leaders/${idStrategy}/${leaderName}`,
+      method: `GET`
+    }) 
+
+    if(response.code===200) 
+      if(response.data !== undefined) 
+        return response.data;
+      
+    console.log("There was an error while searching the leader")
+    return [];
+  } catch (error) {
+    console.log("There was an error while searching the leader")
+    return [];
+  }
+}
+
+const searchGeographicAreasByNameAndStrategyLevel = async (idStrategy: number, geographicAreaName:string):Promise<IGeographicArea[]> => {
+  try {
+    const response: IRequest<IGeographicArea[]> = await requester({
+      url: `/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`,
+      method: `GET`
+    }) 
+    
+    if(response.code===200) 
+      if(response.data !== undefined) 
+        return response.data;
+    
+    console.log("There was an error while searching the leader")
+    return [];
+  } catch (error) {
+    console.log("There was an error while searching the leader")
+    return [];
+  }
+}
+
 /*
   action props
   0 = add member
@@ -196,64 +269,50 @@ const FormPerson = (
     action,
     handleSubmit,
     initialPersonInformation = initialPersonState,
-    initialIdColony = undefined,
-    initialSearchColony = '',
+    initialStrategicInformation = initialStrategicInformationState,
 
-    initialIdLeader = undefined,
-    initialSearchLeader = undefined,
 
     initialIdStrategy = undefined,
     initialIdGeographicArea = undefined,
 
-    initialSearchStrategyLevel = undefined,
     initialIdFollowers = [],
   }: {
     label: string,
     action: number,
     handleSubmit?: any;
     initialPersonInformation?: IMember, 
-
-    initialIdColony?: number|undefined,
-    initialSearchColony?: string,
-
-    initialIdLeader?: number|undefined,
-    initialSearchLeader?: string,
+    initialStrategicInformation?: IStructure, 
 
     initialIdStrategy?: number|undefined,
-    initialSearchStrategyLevel?: string,
 
     initialIdGeographicArea?: number,
     initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
     const [person, setPerson] = useState<IMember>(initialPersonInformation);
+    const [strategicInformationPerson, setStrategicInformationPerson] = useState<IStructure>(initialStrategicInformation)
 
-    const [idColony, setIdColony] = useState<number|undefined>(initialIdColony);
 
     // Members fields
     const [idStrategy, setIdStrategy] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
-    const [idLeader, setIdLeader] = useState<number|undefined>(initialIdLeader);
+
     const [idFollowers, setIdFollower] = useState<IStructure[]>(initialIdFollowers === undefined ? [] : initialIdFollowers);
-    const [idGeographicArea, setIdGeographicArea] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
 
     //Collaborator fields
     const [email, setEmail] = useState<string>('')
     const [password, setPassword] = useState<string>('')
 
-    //Operational input
+    //Operational input 
+    const [searchFollower, setSearchFollower] = useState<string>('')
+
+    //States to save the results of the search
     const [arraySearchColony, setArraySearchColony] = useState<IColony[]>([])
     const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([])
     const [arrayLeader, setArrayLeader] = useState<IStructure[]>([])
     const [arrayFollower, setArrayFollower] = useState<IStructure[]>([])
     const [arrayGeographicArea, setArrayGeographicArea] = useState<IGeographicArea[]>([])
-    
-    const [searchFollower, setSearchFollower] = useState<string>('')
-    const [searchLeader, setSearchLeader] = useState<string|undefined>(
-      initialSearchLeader===' ' ? undefined : initialSearchLeader)
-    const [searchStrategyLevel, setSearchStrategyLevel] = useState<string|undefined>(initialSearchStrategyLevel)
-    const [searchColony, setSearchColony] = useState<string>(avoidNull(initialSearchColony, ''));
-    const [searchGeographicArea, setSearchGeographicArea] = useState<string|undefined>(avoidNull(initialSearchColony, ''));
 
+    
     //Show data
     const [showLeaderInput, setShowLeaderInput] = useState<boolean>(false);
     const [showFollowerInput, setShowFollowerInput] = useState<boolean>(false);
@@ -269,78 +328,163 @@ const FormPerson = (
       console.log(initialPersonInformation)
     }, [])
 
-    //Handlers basic information
+    //Handlers basic information ---
+    //Handlers for colony autocomplete
     const handleSearchColony = async (event: any, newInputValue: string | null) => {
       if(newInputValue !== null) {
-        setSearchColony(newInputValue)
-        if(newInputValue==='') setArraySearchColony([])
-        if(arraySearchColony[0] === undefined && newInputValue !== '') {
-          const coloniesResult: IRequest<IColony[]> = await requester({
-            url: `/colonies/name/${newInputValue}`,
-            method: 'GET',
-          })
-          if(coloniesResult.data !== undefined) setArraySearchColony(coloniesResult.data)
-        }
+        //Save the current user's search
+        setPerson({...person, colony_name: newInputValue}) 
+        //If the user doesn't search anything, delete the current results 
+        if(newInputValue==='') setArraySearchColony([]) 
+
+        /*
+          If the array of results is empty and the user is searcher something, 
+          make a request to backend to search what the user is searching.
+        */
+        if(arraySearchColony[0] === undefined && newInputValue !== '') 
+          setArraySearchColony(await searchColonies(newInputValue))
+        
       }
     }
 
     const handleSelectColony = async (event: any, newInputValue: string | null) => {
-      const colonySelected:IColony|undefined = arraySearchColony.find(searchColony => searchColony.name_colony === newInputValue);
-      if(colonySelected===undefined) setIdColony(undefined);
-      else setIdColony(colonySelected.id_colony);
+      // Search through the name, the colony that the user selected
+      const colonySelected:IColony|undefined = arraySearchColony
+      .find(searchColony => searchColony.name_colony === newInputValue);
+
+      /*
+        If the colony wasn't founded, reset the fields in the state, otherwise
+        save the ID and name of the colony selected
+      */
+      if(colonySelected===undefined) setPerson({...person, id_colony: 0, colony_name: ""});
+      else 
+        setPerson({
+          ...person, 
+          id_colony: colonySelected.id_colony, 
+          colony_name: colonySelected.name_colony});
     }
 
-    //Handlers strategic information 
-    //Strategy level related
-    const handleSelectStrategyLevel = async (event: any, newValue: string | null) => {
-      const strategyLevelSelected: IStrategy|undefined = 
-      arrayStrategyLevel.find(strategyLevel => strategyLevel.role === newValue)
-      if(strategyLevelSelected===undefined) setIdStrategy(undefined);
-      else { 
-        setIdStrategy(strategyLevelSelected.id_strategy)
-        setShowFollowerInput(showFollowerInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
-        setShowLeaderInput(showLeaderInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
-        setShowGeographicArea(showGeographicAreaInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel))
-      }
-      setIdFollower([]);
-      setIdLeader(undefined);
-      setSearchLeader('');
-    }
-
+    //Handlers strategic information --- 
+    //Handlers for strategic level autocomplete
     const handleSearchStrategyLevel = async (event: any, newInputValue: string | null) => {
       if (newInputValue !== null) {
-        if(newInputValue!=="") setSearchStrategyLevel(newInputValue)
-        else {
+        //Save the current search of the user
+        setStrategicInformationPerson({...strategicInformationPerson, role: newInputValue});
+        
+        //If the user delete the input (in other words the input is empty), restart the states
+        if(newInputValue === "") {
+          setShowFollowerInput(false);
+          setShowLeaderInput(false);
+          setShowGeographicArea(false);
+
+          //Pending
+          /*
+            If the user delete the strategic level, it's necessary to delete the current 
+            member's strategic information
+          */
           handleSelectLeader("", null);
           setIdFollower([]);
+          setStrategicInformationPerson({
+            ...strategicInformationPerson,
+            role: "",
+            id_strategy: 0
+          })
         }
       }
+    }
+    
+    const handleSelectStrategyLevel = async (event: any, newValue: string | null) => {
+      /*
+        Find the strategic level by role, comparing with the user's value selected 
+      */
+      const strategyLevelSelected: IStrategy|undefined = 
+      arrayStrategyLevel.find(strategyLevel => strategyLevel.role === newValue);
+      /*
+        If the strategic level is not founded, reset the state, otherwise, check which inputs
+        show of the strategic information
+      */
+      if(strategyLevelSelected===undefined || strategyLevelSelected===null) 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          role: "",
+          id_strategy: 0,
+          first_name_leader: "",
+          id_leader: 0
+        });
+      else { 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          id_strategy: strategyLevelSelected.id_strategy,
+          role: strategyLevelSelected.role,
+          //If there is a change of level, it's necessary to delete all the current strategic data
+          first_name_leader: "",
+          id_leader: 0
+        });
+        setShowFollowerInput(
+          showFollowerInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel));
+        setShowLeaderInput(
+          showLeaderInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel));
+        setShowGeographicArea(
+          showGeographicAreaInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel));
 
+      }
+
+      //Pending
+      /*
+        If the user change of strategic level, it's necessary to delete the current 
+        member's strategic information
+      */
+      
+      setIdFollower([]);
     }
 
-    //Searcher related
+    //Handlers for leader autocomplete
     const handleSearchLeader = async (event: any, newInputValue: string | null) => {
       if(newInputValue !== null) {
-        setSearchLeader(newInputValue);
-        if(idStrategy !== undefined) {
+        //Save the current user's search input
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          first_name_leader: newInputValue
+        });
+        if(strategicInformationPerson.id_strategy !== undefined) {
+          /*
+           If the user's input is empty, then delete the current leader's store values.
+           There isn't what the user is try to find
+          */
           if(newInputValue==='') setArrayLeader([]);
+
+          // If the leader's array is empty and the user's input is different to empty, request data to API
           if(arrayLeader[0] === undefined && newInputValue !== '') {
-            const leaderResult: IRequest<IStructure[]> = await requester({
-              url: `/members/strategicInformation/leaders/${idStrategy}/${newInputValue}`,
-              method: `GET`
-            }) 
-            if(leaderResult.data !== undefined) 
-              setArrayLeader(leaderResult.data)
+            setArrayLeader(
+              await searchLeaderByNameAndStrategyLevel(
+                strategicInformationPerson.id_strategy, newInputValue));
           }
-        } else console.log("idStrategy cannot be undefined")
+        }
       }
     }
 
     const handleSelectLeader = async (event: any, newInputValue: string | null) => {
+      /*
+        Find by full name the leader in the current data saved in arrayLeader
+      */
       const leaderSelected: IStructure|undefined = 
       arrayLeader.find(leader => `${leader.first_name} ${leader.last_name}` === newInputValue);
-      if(leaderSelected===undefined) setIdLeader(undefined);
-      else setIdLeader(leaderSelected.id_member);
+
+      /*
+        If the leader wasn't founded, then reset the state, otherwise, save the state
+      */
+      if(leaderSelected === undefined || newInputValue === null) 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          first_name_leader: "",
+          id_leader: 0});
+      else 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          first_name_leader: newInputValue,
+          id_leader: leaderSelected.id_member});
+      
+      //Reset the array of leader (the leader already was founded)
       setArrayLeader([]);
     }
 
@@ -376,30 +520,52 @@ const FormPerson = (
       setIdFollower(idFollowers.filter(follower => follower.id_member !== e.id_member)) 
     }
 
-    //Geographic area related
+    //Handlers for geographic area autocomplete
     const handleSearchGeographicArea = async (event: any, newInputValue: string | null) => {
       if(newInputValue !== null) {
-        setSearchGeographicArea(newInputValue);
-        if(idStrategy !== undefined) {
+        //Save the current user's search 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          geographic_area_name: newInputValue
+        });
+        if(strategicInformationPerson.id_strategy !== undefined) {
+          /*
+           If the user's input is empty, then delete the current geographic areas' stored values.
+           There isn't what the user is try to find
+          */
           if(newInputValue==='') setArrayGeographicArea([]);
-          console.log(idStrategy)
+          // If the leader's array is empty and the user's input is different to empty, request data to API
           if(arrayGeographicArea[0] === undefined && newInputValue !== '') {
-            const response: IRequest<IGeographicArea[]> = await requester({
-              url: `/geographicAreas/strategicInformation/${idStrategy}/${newInputValue}`,
-              method: `GET`
-            }) 
-            if(response.data !== undefined) 
-              setArrayGeographicArea(response.data)
+             setArrayGeographicArea(
+              await searchGeographicAreasByNameAndStrategyLevel(
+                strategicInformationPerson.id_strategy, newInputValue));
           }
-        } else console.log("idStrategy cannot be undefined")
+        }
       }
     }
 
     const handleSelectGeographicArea = async (event: any, newInputValue: string | null) => {
+      /*
+        Find by geographic area name (and its ID) the geographic area 
+        in the current data saved in arrayLeader
+      */
       const geographicAreaSelected: IGeographicArea|undefined = 
       arrayGeographicArea.find(geographicArea => `${geographicArea.geographic_area_name}-${geographicArea.id_geographic_area}` === newInputValue);
-      if(geographicAreaSelected===undefined) setIdGeographicArea(undefined);
-      else setIdGeographicArea(geographicAreaSelected.id_geographic_area);
+
+      /*
+        If the geographic are wasn't founded, then reset the state, otherwise, save the state
+      */
+      if(geographicAreaSelected === undefined || newInputValue === null) 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          geographic_area_name: "",
+          id_geographic_area: 0})
+      else 
+        setStrategicInformationPerson({
+          ...strategicInformationPerson, 
+          geographic_area_name: geographicAreaSelected.geographic_area_name,
+          id_geographic_area: geographicAreaSelected.id_geographic_area})
+      
       setArrayGeographicArea([]);
     }
 
@@ -412,8 +578,8 @@ const FormPerson = (
         person.street === '' ||
         person.ext_number === '' ||
         person.cell_phone_number === '' ||
-        idColony === undefined ||
-        idStrategy === undefined
+        person.id_colony === undefined ||
+        strategicInformationPerson.id_strategy === undefined
         ){
           console.log("There can't be empty data")
       }
@@ -427,16 +593,25 @@ const FormPerson = (
         "extNumber": avoidNull(person.ext_number, ""),
         "intNumber": avoidNull(person.int_number, ""),
         "cellphoneNumber": avoidNull(person.cell_phone_number, ""),
-        "idColony": avoidNull(idColony, 0),
-        "idStrategyLevel": avoidNull(idStrategy, 0)
+        "idColony": avoidNull(person.id_colony, 0),
+        "idStrategyLevel": avoidNull(strategicInformationPerson.id_strategy, 0)
       }
 
       try {
         if(action==0) {
-          await addNewMember(basicData, idLeader, idFollowers, idGeographicArea);
+          await addNewMember(
+            basicData, 
+            strategicInformationPerson.id_leader, 
+            strategicInformationPerson.followers, 
+            strategicInformationPerson.id_geographic_area);
         } else if(action==1) {
           console.log("initializing")
-          await updateMember(basicData, idStrategy, idLeader, idFollowers, idGeographicArea);
+          await updateMember(
+            basicData, 
+            strategicInformationPerson.id_strategy, 
+            strategicInformationPerson.id_leader, 
+            strategicInformationPerson.followers, 
+            strategicInformationPerson.id_geographic_area);
           handleSubmit(true)
         }
         //Reset variables
@@ -463,27 +638,23 @@ const FormPerson = (
 
     const resetAllStates = ():void => {
       //Basic information states related
-      setPerson(initialPersonState)
-      setIdColony(undefined)
+      setPerson(initialPersonState);
 
-      setArraySearchColony([])
-      setSearchColony('')
-      
       //Strategic information states related
-      setIdLeader(undefined)
-      setIdFollower([])
-      setIdStrategy(undefined)
-      setIdGeographicArea(undefined)
-
+      setStrategicInformationPerson(initialStrategicInformationState);
+      
+      //Autocomplete store data states related
+      setArraySearchColony([])
       setArrayLeader([])
       setArrayFollower([])
       setArrayGeographicArea([])
-      
+
+
+      setIdFollower([])
+      setIdStrategy(undefined)
+
       setSearchFollower('')
-      setSearchLeader('')
-      setSearchStrategyLevel('')
-      setSearchGeographicArea('')
-      
+            
 
       //Collaborator information states related
       setEmail('')
@@ -571,8 +742,10 @@ const FormPerson = (
                 onInputChange={(event: any, newInputValue: string | null) => 
                    handleSearchColony(event, newInputValue) }
                 onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
-                value={searchColony}
-                options={ arraySearchColony.map((searchColony => searchColony.name_colony)) }
+                value={person.colony_name}
+                options={ 
+                  arraySearchColony.map((searchColony => searchColony.name_colony)) 
+                }
                 sx={{ width: 300 }}
                 renderInput={(params) => <TextField {...params} label="Colonia" />}
                 />
@@ -612,13 +785,8 @@ const FormPerson = (
                       { handleSearchStrategyLevel(event, newInputValue) }}
                     onChange={(event: any, newValue: string | null) => 
                       handleSelectStrategyLevel(event, newValue) }
-                    value={
-                      searchStrategyLevel
-                      // arrayStrategyLevel[0]===undefined ? undefined : searchStrategyLevel
-                    }
-                    options={ 
-                      arrayStrategyLevel[0]===undefined ? [] :
-                      arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                    value={ strategicInformationPerson.role }
+                    options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
                     sx={{ width: 300 }}
                     renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
                     />
@@ -635,7 +803,7 @@ const FormPerson = (
                         handleSelectLeader(event, newValue)
                       }}
                       options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
-                      value={searchLeader}
+                      value={ strategicInformationPerson.first_name_leader }
                       sx={{ width: 300 }}
                       renderInput={(params) => <TextField {...params} label="Lider" />}
                       />
@@ -690,7 +858,7 @@ const FormPerson = (
                       }}
                       options={arrayGeographicArea.map(geographicArea => 
                         `${geographicArea.geographic_area_name}-${geographicArea.id_geographic_area}`)}
-                      value={searchGeographicArea}
+                      value={strategicInformationPerson.geographic_area_name}
                       sx={{ width: 300 }}
                       renderInput={(params) => <TextField {...params} label="Area geografica" />}
                       />
@@ -702,7 +870,6 @@ const FormPerson = (
         </div>
         <div className="flex flex-row justify-center">
           <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
-        </div>  
         {
           (action===1 || action===3) && 
             <Button 
@@ -710,8 +877,11 @@ const FormPerson = (
               onClick={(e:any) => {
                 handleSubmit(true)
               }}
+              colorButton="bg-red-400"
+              colorButtonHover="bg-red-600"
               />
         }
+        </div>  
       </form>
     </>
   )
