@@ -123,9 +123,6 @@ const TablePersons = () => {
 
           initialPersonInformation={memberBasicInfoToUpdate}
           initialStrategicInformation={memberStrategicInfoToUpdate}
-          
-          initialIdStrategy= {memberStrategicInfoToUpdate?.id_strategy}
-          initialIdFollowers={memberStrategicInfoToUpdate?.followers}
         />) :
         (<>
 

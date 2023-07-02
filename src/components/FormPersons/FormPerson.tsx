@@ -6,6 +6,8 @@ import { ICollaborator, IColony, IGeographicArea, IMember, IRequest, IStrategy, 
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
 
+
+//Initial states
 const initialPersonState:IMember = {
   id_member: 0,
   first_name: "",
@@ -38,10 +40,26 @@ const initialStrategicInformationState:IStructure = {
   geographic_area_name: ""  
 }
 
+
+//Auxiliar functions
 const avoidNull = (data: any, replace: any):any => {
   return data === null ? replace : data;
 }
 
+const filterSelectedFollowers = (arrayTofilter: IStructure[], currentFollowersSelected:IStructure[]|undefined):IStructure[] => {
+  if(currentFollowersSelected !== undefined) {
+    const filterFollowersSelected:IStructure[] = [];
+        
+    for(let i = 0; i < arrayTofilter.length; i++) {
+      if(currentFollowersSelected.find(
+          follower => follower.id_member === arrayTofilter[i].id_member) ===
+          undefined
+        ) filterFollowersSelected.push(arrayTofilter[i])
+    }
+  
+    return filterFollowersSelected;
+  } else return arrayTofilter;
+}
 
 //Auxiliar functions to show inputs
 const showLeaderInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
@@ -87,14 +105,6 @@ const getStrategy = async ():Promise<IStrategy[]> => {
     console.log(error)
     return [];
   }
-
-  
-  // if(strategy.data !== undefined) {
-  //   setArrayStrategyLevel(strategy.data)
-  //   // setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, strategy.data))
-  //   // setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, strategy.data))
-  //   // setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, arrayStrategyLevel))
-  // }
 }
 
 const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
@@ -247,10 +257,29 @@ const searchGeographicAreasByNameAndStrategyLevel = async (idStrategy: number, g
       if(response.data !== undefined) 
         return response.data;
     
-    console.log("There was an error while searching the leader")
+    console.log("There was an error while searching the geographic area")
     return [];
   } catch (error) {
-    console.log("There was an error while searching the leader")
+    console.log("There was an error while searching the geographic area")
+    return [];
+  }
+}
+
+const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInputValue: string):Promise<IStructure[]> => {
+  try {    
+    const response: IRequest<IStructure[]> = await requester({
+      url: `/members/strategicInformation/followers/${idStrategy}/${newInputValue}`,
+      method: `GET`
+    }) 
+  
+    if(response.code === 200) 
+      if(response.data !== undefined) 
+        return response.data;
+    
+    console.log("There was an error while searching the follower")
+    return [];
+  } catch (error) {
+    console.log("There was an error while searching the follower")
     return [];
   }
 }
@@ -270,33 +299,16 @@ const FormPerson = (
     handleSubmit,
     initialPersonInformation = initialPersonState,
     initialStrategicInformation = initialStrategicInformationState,
-
-
-    initialIdStrategy = undefined,
-    initialIdGeographicArea = undefined,
-
-    initialIdFollowers = [],
   }: {
     label: string,
     action: number,
     handleSubmit?: any;
     initialPersonInformation?: IMember, 
     initialStrategicInformation?: IStructure, 
-
-    initialIdStrategy?: number|undefined,
-
-    initialIdGeographicArea?: number,
-    initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
     const [person, setPerson] = useState<IMember>(initialPersonInformation);
     const [strategicInformationPerson, setStrategicInformationPerson] = useState<IStructure>(initialStrategicInformation)
-
-
-    // Members fields
-    const [idStrategy, setIdStrategy] = useState<number|undefined>(avoidNull(initialIdStrategy, undefined));
-
-    const [idFollowers, setIdFollower] = useState<IStructure[]>(initialIdFollowers === undefined ? [] : initialIdFollowers);
 
     //Collaborator fields
     const [email, setEmail] = useState<string>('')
@@ -321,9 +333,12 @@ const FormPerson = (
     useEffect(() => {
       getStrategy().then((dataResponse) => {
         setArrayStrategyLevel(dataResponse)
-        setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, dataResponse))
-        setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, dataResponse))
-        setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, dataResponse))
+        setShowLeaderInput(
+          showLeaderInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+        setShowFollowerInput(
+          showFollowerInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+        setShowGeographicArea(
+          showGeographicAreaInputFunction(strategicInformationPerson.id_strategy, dataResponse))
       })
       console.log(initialPersonInformation)
     }, [])
@@ -377,17 +392,19 @@ const FormPerson = (
           setShowLeaderInput(false);
           setShowGeographicArea(false);
 
-          //Pending
           /*
             If the user delete the strategic level, it's necessary to delete the current 
             member's strategic information
           */
-          handleSelectLeader("", null);
-          setIdFollower([]);
           setStrategicInformationPerson({
             ...strategicInformationPerson,
             role: "",
-            id_strategy: 0
+            id_strategy: 0,
+            first_name_leader: "",
+            id_leader: 0,
+            geographic_area_name: "",
+            id_geographic_area: 0,
+            followers: []
           })
         }
       }
@@ -409,7 +426,10 @@ const FormPerson = (
           role: "",
           id_strategy: 0,
           first_name_leader: "",
-          id_leader: 0
+          id_leader: 0,
+          geographic_area_name: "",
+          id_geographic_area: 0,
+          followers: []
         });
       else { 
         setStrategicInformationPerson({
@@ -418,7 +438,10 @@ const FormPerson = (
           role: strategyLevelSelected.role,
           //If there is a change of level, it's necessary to delete all the current strategic data
           first_name_leader: "",
-          id_leader: 0
+          id_leader: 0,
+          geographic_area_name: "",
+          id_geographic_area: 0,
+          followers: []
         });
         setShowFollowerInput(
           showFollowerInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel));
@@ -434,8 +457,6 @@ const FormPerson = (
         If the user change of strategic level, it's necessary to delete the current 
         member's strategic information
       */
-      
-      setIdFollower([]);
     }
 
     //Handlers for leader autocomplete
@@ -488,36 +509,61 @@ const FormPerson = (
       setArrayLeader([]);
     }
 
-    //Follower related
+    //Handlers for leader autocomplete
     const handleSearchFollowers = async (event: any, newInputValue: string | null) => {
       if(newInputValue!== null) {
         setSearchFollower(newInputValue);
-        if(idStrategy !== undefined) {
+        if(strategicInformationPerson.id_strategy !== undefined) {
           if(newInputValue==='') setArrayFollower([]); //If the input is '' empty the array
           /*If the user is searching a follower, and there is still empty the array, ask 
           to the API, other
           */
           if(arrayFollower[0] === undefined && newInputValue !== '') {
-            const followerResult: IRequest<IStructure[]> = await requester({
-              url: `/members/strategicInformation/followers/${idStrategy}/${newInputValue}`,
-              method: `GET`
-            }) 
-            if(followerResult.data !== undefined) 
-              setArrayFollower(followerResult.data)
+            setArrayFollower(
+              await searchFollowerByNameAndStrategicLevel(
+                strategicInformationPerson.id_strategy, newInputValue))
           }
-        } else console.log("idStrategy cannot be undefined")
+        }
       }
     }
 
-    const handleAddFollower = async(event:any, newInputValue: string | null) => {
+    const handleSelectFollower = async(event:any, newInputValue: string | null) => {
+      //Restart the state (user found the follower that he wanted to find)
       setSearchFollower('');
-      const data:IStructure|undefined = arrayFollower
+      
+      //Find the follower through the full name
+      const follower:IStructure|undefined = arrayFollower
       .find(follower => newInputValue === `${follower.first_name} ${follower.last_name}`);
-      if(data !== undefined) setIdFollower(idFollowers.concat(data))
+
+
+      /*
+        If the follower is founded, then add that follower to the current followers that 
+        has the member
+      */
+      if(follower !== undefined){
+        const currentFollower:IStructure[]|undefined = strategicInformationPerson.followers;
+        if(currentFollower !== undefined) {
+          currentFollower.push(follower);
+          setStrategicInformationPerson({
+            ...strategicInformationPerson,
+            followers: currentFollower
+          })
+        }
+      } 
     }
 
-    const handleDeleteFollower = async(e: IStructure) => { 
-      setIdFollower(idFollowers.filter(follower => follower.id_member !== e.id_member)) 
+    const handleDeleteFollower = (e: IStructure):void => { 
+
+      //Get the current followers stored
+      const currentFollowers:IStructure[]|undefined = strategicInformationPerson.followers;
+      
+      if(currentFollowers !== undefined) {
+        //Save the new array without the follower that the user want to delete  
+        setStrategicInformationPerson({
+          ...strategicInformationPerson,
+          followers: currentFollowers.filter(follower => follower.id_member !== e.id_member)
+        })
+      }
     }
 
     //Handlers for geographic area autocomplete
@@ -569,7 +615,7 @@ const FormPerson = (
       setArrayGeographicArea([]);
     }
 
-    //Handler to submit
+    //Handle to submit ---
     const handleOnSubmit = async(e: any) => {
       if(
         
@@ -623,18 +669,7 @@ const FormPerson = (
     }
 
     //Auxiliar functions
-    const filterSelectedFollowers = (arrayTofilter: IStructure[]):IStructure[] => {
-      const filterFollowersSelected:IStructure[] = [];
-          
-      for(let i = 0; i < arrayTofilter.length; i++) {
-        if(idFollowers.find(
-            follower => follower.id_member === arrayTofilter[i].id_member) ===
-            undefined
-          ) filterFollowersSelected.push(arrayTofilter[i])
-      }
 
-      return filterFollowersSelected;
-    }
 
     const resetAllStates = ():void => {
       //Basic information states related
@@ -646,21 +681,15 @@ const FormPerson = (
       //Autocomplete store data states related
       setArraySearchColony([])
       setArrayLeader([])
-      setArrayFollower([])
       setArrayGeographicArea([])
-
-
-      setIdFollower([])
-      setIdStrategy(undefined)
-
+      
+      setArrayFollower([])
       setSearchFollower('')
-            
 
       //Collaborator information states related
       setEmail('')
       setPassword('')
     }
-
 
   return (
     <>
@@ -819,9 +848,12 @@ const FormPerson = (
                         onInputChange={(event: any, newInputValue: string | null) => 
                           handleSearchFollowers(event, newInputValue) }
                         onChange={(event:any, newInputValue: string | null) => 
-                          handleAddFollower(event,newInputValue)}
+                          handleSelectFollower(event,newInputValue)}
                         options={ 
-                          filterSelectedFollowers(arrayFollower).map(follower => 
+                          filterSelectedFollowers(
+                            arrayFollower, 
+                            strategicInformationPerson.followers)
+                          .map(follower => 
                             `${follower.first_name} ${follower.last_name}`)
                         }
                         sx={{ width: 300 }}
@@ -832,14 +864,15 @@ const FormPerson = (
                     <div className=" flex justify-center">
                       <div className="w-52 mt-3 flex flex-wrap justify-center">
                           {
-                            idFollowers.map((follower) => 
-                              <div key={follower.id_member} className="m-1">
-                                <Chip 
-                                  label={`${follower.first_name} ${follower.last_name}`} 
-                                  onDelete={() => handleDeleteFollower(follower)}
-                                  />
-                              </div>
-                            )
+                            strategicInformationPerson.followers !== undefined &&
+                              strategicInformationPerson.followers.map((follower) => 
+                                <div key={follower.id_member} className="m-1">
+                                  <Chip 
+                                    label={`${follower.first_name} ${follower.last_name}`} 
+                                    onDelete={() => handleDeleteFollower(follower)}
+                                    />
+                                </div>
+                              )
                           }
                       </div>
                     </div>
