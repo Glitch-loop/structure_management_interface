@@ -63,10 +63,14 @@ const filterSelectedFollowers = (arrayTofilter: IStructure[], currentFollowersSe
 
 //Auxiliar functions to show inputs
 const showLeaderInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
+
   if(idStrategy!==undefined && idStrategy!==null && arrayStrategyLevel[0]!==undefined) {
     const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === idStrategy)
 
-    if(arrayStrategyLevel[index].cardinality_level !== 1) return true  
+    if(index !== -1) 
+      if(arrayStrategyLevel[index].cardinality_level !== 1) return true  
+
+    
   }  
   return false
 }
@@ -75,7 +79,9 @@ const showFollowerInputFunction = (idStrategy:number|undefined, arrayStrategyLev
   //Always "arrayStrategyLevel" will be ordered in ascending order according to "cardinality"
   //The order will be 1, 2, 3 (took the cardinality)
   if(idStrategy!==undefined && idStrategy!==null && arrayStrategyLevel[0]!==undefined) {
-    if(arrayStrategyLevel[arrayStrategyLevel.length - 1].id_strategy !== idStrategy) return true
+    const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === idStrategy)
+    if(index !== -1)  
+      if(arrayStrategyLevel[arrayStrategyLevel.length - 1].id_strategy !== idStrategy) return true
   }
   return false
 }
@@ -83,7 +89,8 @@ const showFollowerInputFunction = (idStrategy:number|undefined, arrayStrategyLev
 const showGeographicAreaInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
   if(idStrategy!==undefined && idStrategy!==null && arrayStrategyLevel[0]!==undefined) {
     const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy == idStrategy);
-    if(arrayStrategyLevel[index].zone_type !== '') return true
+    if(index !== -1)  
+      if(arrayStrategyLevel[index].zone_type !== '') return true
   }
   return false
 }
@@ -134,9 +141,7 @@ const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: ISt
 
 const updateMember = async (basicData: any, idStrategy?: number, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
   try {
-    console.log(basicData)
     if(basicData.idMember !== undefined) {
-      console.log("ok")
       const idMember:number = basicData.idMember;
 
       //Update basic member's information 
@@ -146,7 +151,6 @@ const updateMember = async (basicData: any, idStrategy?: number, idLeader?: numb
         data: basicData
       })
       
-      console.log(response)
       //Update member's strategy level
       idStrategy !== undefined && await updateStrategyLevel(idMember, idStrategy)
   
@@ -535,7 +539,6 @@ const FormPerson = (
       const follower:IStructure|undefined = arrayFollower
       .find(follower => newInputValue === `${follower.first_name} ${follower.last_name}`);
 
-
       /*
         If the follower is founded, then add that follower to the current followers that 
         has the member
@@ -553,7 +556,6 @@ const FormPerson = (
     }
 
     const handleDeleteFollower = (e: IStructure):void => { 
-
       //Get the current followers stored
       const currentFollowers:IStructure[]|undefined = strategicInformationPerson.followers;
       
