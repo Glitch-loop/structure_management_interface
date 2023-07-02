@@ -2,17 +2,34 @@ import { useEffect, useState } from "react";
 import Input from "../UIcomponents/Input";
 import { Autocomplete, TextField } from "@mui/material";
 import Button from "../UIcomponents/Button";
-import { IColony, IGeographicArea, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
+import { ICollaborator, IColony, IGeographicArea, IMember, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
+
+const initialPersonState:IMember = {
+  id_member: 0,
+  first_name: "",
+  last_name: "",
+  street: "",
+  ext_number: "", 
+  int_number: "",
+  cell_phone_number: "",
+  id_leader: 0,
+  id_follower: [],
+  id_colony: 0,
+  id_strategy: 0,
+  colony_name: "",
+  postal_code: ""
+}
 
 const avoidNull = (data: any, replace: any):any => {
   return data === null ? replace : data;
 }
 
 
+//Auxiliar functions to show inputs
 const showLeaderInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
-  if(idStrategy!==undefined && idStrategy!==null) {
+  if(idStrategy!==undefined && idStrategy!==null && arrayStrategyLevel[0]!==undefined) {
     const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === idStrategy)
 
     if(arrayStrategyLevel[index].cardinality_level !== 1) return true  
@@ -23,20 +40,147 @@ const showLeaderInputFunction = (idStrategy:number|undefined, arrayStrategyLevel
 const showFollowerInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
   //Always "arrayStrategyLevel" will be ordered in ascending order according to "cardinality"
   //The order will be 1, 2, 3 (took the cardinality)
-  if(idStrategy!==undefined && idStrategy!==null) {
+  if(idStrategy!==undefined && idStrategy!==null && arrayStrategyLevel[0]!==undefined) {
     if(arrayStrategyLevel[arrayStrategyLevel.length - 1].id_strategy !== idStrategy) return true
   }
   return false
 }
 
-const showGeographicAreaInputFunction = (idStrategy:number|undefined, arrStrategyLevel:IStrategy[]):boolean => {
-  if(idStrategy!==undefined && idStrategy!==null) {
-    const index:number = arrStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy == idStrategy);
-    if(arrStrategyLevel[index].zone_type !== '') return true
+const showGeographicAreaInputFunction = (idStrategy:number|undefined, arrayStrategyLevel:IStrategy[]):boolean => {
+  if(idStrategy!==undefined && idStrategy!==null && arrayStrategyLevel[0]!==undefined) {
+    const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy == idStrategy);
+    if(arrayStrategyLevel[index].zone_type !== '') return true
   }
   return false
 }
 
+//Calls to API
+const getStrategy = async ():Promise<IStrategy[]> => {
+  try {
+    const strategy: IRequest<IStrategy[]> = await requester({
+      url: `/strategyLevels`,
+      method: 'GET'
+    })
+    
+    if(strategy.data !== undefined) {
+      return strategy.data;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.log(error)
+    return [];
+  }
+
+  
+  // if(strategy.data !== undefined) {
+  //   setArrayStrategyLevel(strategy.data)
+  //   // setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, strategy.data))
+  //   // setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, strategy.data))
+  //   // setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, arrayStrategyLevel))
+  // }
+}
+
+
+const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
+  try {
+    const response:IRequest<any> = await requester({
+      url: '/members/', 
+      method: "POST", 
+      data: basicData})
+
+    if(response.data !== undefined) {
+      const idMember:number = response.data.idMember
+  
+      //Update member's leader
+      idLeader !== undefined && await updateLeader(idMember, idLeader)
+  
+      //Update member's followers 
+      idFollowers !== undefined && await updateFollowers(idMember, idFollowers)
+  
+      //Update geographic area's manager
+      idGeographicArea !== undefined && idGeographicArea !== undefined && await updateGeographicAreaManage(idMember, idGeographicArea);
+    }
+    
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const updateMember = async (basicData: any, idStrategy?: number, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
+  try {
+    console.log(basicData)
+    if(basicData.idMember !== undefined) {
+      console.log("ok")
+      const idMember:number = basicData.idMember;
+
+      //Update basic member's information 
+      const response:IRequest<undefined> = await requester({
+        url: `/members/${idMember}`,
+        method: "PUT",
+        data: basicData
+      })
+      
+      console.log(response)
+      //Update member's strategy level
+      idStrategy !== undefined && await updateStrategyLevel(idMember, idStrategy)
+  
+      //Update member's leader
+      idLeader !== undefined && await updateLeader(idMember, idLeader)
+  
+      //Update member's followers 
+      idFollowers !== undefined && await updateFollowers(idMember, idFollowers)
+
+      //Update geographic area's manager
+      idGeographicArea !== undefined && await updateGeographicAreaManage(idMember, idGeographicArea);
+    }
+    console.log("Finalizing")
+  } catch (error) {
+    console.log(error)
+    console.log("No se pudo actualizar")
+  }
+}
+
+const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise<void> => {
+if(idStrategy!== undefined && idStrategy!==null) {
+  const response:IRequest<undefined> = await requester({
+    url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
+    method: 'PUT'
+  });
+  console.log(response)
+}
+}
+
+const updateLeader = async (idMember: number, idLeader: number):Promise<void> => {
+  if(idLeader!== undefined && idLeader!==null) {
+    await requester({
+      url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
+      method: 'PUT'
+    });
+  }
+}
+
+const updateFollowers = async (idMember: number, idFollowers: IStructure[]):Promise<void> => {
+  if(idFollowers[0] !== undefined) {
+    const followers: number[] = [];
+    idFollowers.forEach(follower => followers.push(follower.id_member));
+    await requester({
+      url: `/members/strategicInformation/followers/${idMember}`,
+      method: 'PUT',
+      data: { followers }
+    })
+  }
+}
+
+const updateGeographicAreaManage = async(idMember: number, idGeographicArea: number):Promise<void> => {
+  if(idGeographicArea !== undefined && idGeographicArea !== null) {
+    const response:IRequest<undefined> = await requester({
+      url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
+      method: 'PUT'
+    })
+    console.log(response)
+  }
+}
 
 /*
   action props
@@ -51,51 +195,39 @@ const FormPerson = (
     label,
     action,
     handleSubmit,
-    idPerson = undefined,
-    initialFirstName = '',
-    initialLastName = '',
-    initialStreet = '',
-    initialExtNumber = '',
-    initialIntNumber = '',
-    initialCellphoneNumber = '',
+    initialPersonInformation = initialPersonState,
     initialIdColony = undefined,
     initialSearchColony = '',
 
     initialIdLeader = undefined,
     initialSearchLeader = undefined,
+
     initialIdStrategy = undefined,
     initialIdGeographicArea = undefined,
+
     initialSearchStrategyLevel = undefined,
     initialIdFollowers = [],
   }: {
     label: string,
     action: number,
     handleSubmit?: any;
-    idPerson?: number | undefined,
+    initialPersonInformation?: IMember, 
 
-    initialFirstName?: string,
-    initialLastName?: string,
-    initialStreet?: string,
-    initialExtNumber?: string,
-    initialIntNumber?: string,
-    initialCellphoneNumber?: string,
     initialIdColony?: number|undefined,
     initialSearchColony?: string,
 
     initialIdLeader?: number|undefined,
     initialSearchLeader?: string,
+
     initialIdStrategy?: number|undefined,
     initialSearchStrategyLevel?: string,
+
     initialIdGeographicArea?: number,
     initialIdFollowers?: IStructure[]|undefined,
   }) => {
     //Common fileds
-    const [firstName, setFirstName] = useState<string>(avoidNull(initialFirstName, ''));
-    const [lastName, setLastName] = useState<string>(avoidNull(initialLastName, ''));
-    const [street, setStreet] = useState<string>(avoidNull(initialStreet, ''));
-    const [extNumber, setExtNumber] = useState<string>(avoidNull(initialExtNumber, ''));
-    const [intNumber, setIntNumber] = useState<string>(avoidNull(initialIntNumber, ''));
-    const [cellphoneNumber, setCellphoneNumber] = useState<string>(avoidNull(initialCellphoneNumber, ''));
+    const [person, setPerson] = useState<IMember>(initialPersonInformation);
+
     const [idColony, setIdColony] = useState<number|undefined>(initialIdColony);
 
     // Members fields
@@ -128,22 +260,14 @@ const FormPerson = (
     const [showGeographicArea, setShowGeographicArea] = useState<boolean>(false);
 
     useEffect(() => {
-      getStrategy()
-    }, [])
-
-    // useEffect functions
-    const getStrategy = async () => {
-      const strategy: IRequest<IStrategy[]> = await requester({
-        url: `/strategyLevels`,
-        method: 'GET'
+      getStrategy().then((dataResponse) => {
+        setArrayStrategyLevel(dataResponse)
+        setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, dataResponse))
+        setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, dataResponse))
+        setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, dataResponse))
       })
-      if(strategy.data !== undefined) {
-        setArrayStrategyLevel(strategy.data)
-        setShowLeaderInput(showLeaderInputFunction(initialIdStrategy, strategy.data))
-        setShowFollowerInput(showFollowerInputFunction(initialIdStrategy, strategy.data))
-        setShowGeographicArea(showGeographicAreaInputFunction(initialIdGeographicArea, arrayStrategyLevel))
-      }
-    }
+      console.log(initialPersonInformation)
+    }, [])
 
     //Handlers basic information
     const handleSearchColony = async (event: any, newInputValue: string | null) => {
@@ -282,34 +406,37 @@ const FormPerson = (
     //Handler to submit
     const handleOnSubmit = async(e: any) => {
       if(
-        firstName==='' ||
-        lastName==='' ||
-        street==='' ||
-        extNumber==='' ||
-        cellphoneNumber==='' ||
-        idColony=== undefined ||
-        idStrategy=== undefined
+        
+        person.first_name === '' ||
+        person.last_name === '' ||
+        person.street === '' ||
+        person.ext_number === '' ||
+        person.cell_phone_number === '' ||
+        idColony === undefined ||
+        idStrategy === undefined
         ){
           console.log("There can't be empty data")
       }
 
       e.preventDefault();
       const basicData = {
-        "firstName": firstName,
-        "lastName": lastName,
-        "street": street,
-        "extNumber": extNumber,
-        "intNumber": intNumber,
-        "cellphoneNumber": cellphoneNumber,
-        "idColony": idColony,
-        "idStrategyLevel": idStrategy
+        "idMember": avoidNull(person.id_member, 0),
+        "firstName": avoidNull(person.first_name, ""),
+        "lastName": avoidNull(person.last_name, ""),
+        "street": avoidNull(person.street, ""),
+        "extNumber": avoidNull(person.ext_number, ""),
+        "intNumber": avoidNull(person.int_number, ""),
+        "cellphoneNumber": avoidNull(person.cell_phone_number, ""),
+        "idColony": avoidNull(idColony, 0),
+        "idStrategyLevel": avoidNull(idStrategy, 0)
       }
 
       try {
         if(action==0) {
-          await addNewMember(basicData);
+          await addNewMember(basicData, idLeader, idFollowers, idGeographicArea);
         } else if(action==1) {
-          await updateMember(basicData);
+          console.log("initializing")
+          await updateMember(basicData, idStrategy, idLeader, idFollowers, idGeographicArea);
           handleSubmit(true)
         }
         //Reset variables
@@ -336,12 +463,7 @@ const FormPerson = (
 
     const resetAllStates = ():void => {
       //Basic information states related
-      setFirstName('')
-      setLastName('')
-      setStreet('')
-      setExtNumber('')
-      setIntNumber('')
-      setCellphoneNumber('')
+      setPerson(initialPersonState)
       setIdColony(undefined)
 
       setArraySearchColony([])
@@ -369,88 +491,6 @@ const FormPerson = (
     }
 
 
-    //Calls to API
-    const addNewMember = async (basicData: any) => {
-        const response:IRequest<any> = await requester({
-          url: '/members/', 
-          method: "POST", 
-          data: basicData})
-        
-        if(response.data !== undefined) {
-          const idMember:number = response.data.idMember
-
-          //Update member's leader
-          updateLeader(idMember)
-
-          //Update member's followers 
-          updateFollowers(idMember)
-
-          //Update geographic area's manager
-          updateGeographicAreaManage(idMember);
-        }
-    }
-
-    const updateMember = async (basicData: any) => {
-      if(idPerson !== undefined) {
-        const response:IRequest<any> = await requester({
-          url: `/members/${idPerson}`,
-          method: "PUT",
-          data: basicData
-        })
-        console.log(response)
-        
-        //Update member's strategy level
-        await updateStrategyLevel(idPerson)
-
-        //Update member's leader
-        await updateLeader(idPerson)
-  
-        //Update member's followers 
-        await updateFollowers(idPerson)
-      }
-    }
-
-    const updateStrategyLevel = async (idMember: number) => {
-      if(idStrategy!== undefined && idStrategy!==null) {
-        await requester({
-          url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
-          method: 'PUT'
-        });
-      }
-    }
-
-    const updateLeader = async (idMember: number) => {
-      if(idLeader!== undefined && idLeader!==null) {
-        await requester({
-          url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
-          method: 'PUT'
-        });
-      }
-    }
-
-    const updateFollowers = async (idMember: number) => {
-      if(idFollowers[0] !== undefined) {
-        const followers: number[] = [];
-        idFollowers.forEach(follower => followers.push(follower.id_member));
-        await requester({
-          url: `/members/strategicInformation/followers/${idMember}`,
-          method: 'PUT',
-          data: { followers }
-        })
-      }
-    }
-    
-
-    const updateGeographicAreaManage = async(idMember: number) => {
-      if(idGeographicArea !== undefined && idGeographicArea !== null) {
-        await requester({
-          url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
-          method: 'PUT'
-        })
-      }
-    }
-
-
   return (
     <>
       <div className="text-center text-xl font-bold">
@@ -465,26 +505,30 @@ const FormPerson = (
             <div className="flex flex-row">
               <div className="mr-2">
                 <Input
-                  onType={setFirstName}
-                  inputValue={firstName} 
-                  inputName={'Nombre(s)'}
+                  onType={setPerson}
+
+                  objectValue={person} 
+                  inputName={"first_name"}
+                  placeholder={'Nombre(s)'}
                   inputType={'text'}
                   required={true}
                 />
               </div>
               <Input
-                onType={setLastName}
-                inputValue={lastName} 
-                inputName={'Apellidos'}
+                onType={setPerson}
+                objectValue={person} 
+                inputName={"last_name"}
+                placeholder={'Apellidos'}
                 inputType={'text'}
                 required={true}
               />
             </div>
             <div className="flex flex-row ">
               <Input
-                onType={setStreet}
-                inputValue={street} 
-                inputName={'Calle'}
+                onType={setPerson}
+                objectValue={person} 
+                inputName={"street"}
+                placeholder={'Calle'}
                 inputType={'text'}
                 required={true}
               />
@@ -492,25 +536,28 @@ const FormPerson = (
             <div className="flex flex-row">
               <div className="mr-2">
                 <Input
-                  onType={setExtNumber}
-                  inputValue={extNumber} 
-                  inputName={'No. Exterior'}
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"ext_number"}
+                  placeholder={'No. Exterior'}
                   inputType={'text'}
                   required={true}
                 />
               </div>
               <Input
-                onType={setIntNumber}
-                inputValue={intNumber} 
-                inputName={'No. Interno (opcional)'}
+                onType={setPerson}
+                objectValue={person} 
+                inputName={"int_number"}
+                placeholder={'No. Interno (opcional)'}
                 inputType={'text'}
               />
             </div>
             <div className="flex flex-row">
               <Input
-                  onType={setCellphoneNumber}
-                  inputValue={cellphoneNumber} 
-                  inputName={'Telefono'}
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"cell_phone_number"}
+                  placeholder={'Telefono'}
                   inputType={'text'}
                   required={true}
                   testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
@@ -536,15 +583,17 @@ const FormPerson = (
                   <div className="mr-2">
                     <Input
                       onType={setEmail}
-                      inputValue={email} 
-                      inputName={'Email'}
+                      objectValue={person} 
+                      inputName={"int_number"}
+                      placeholder={'email'}
                       inputType={'text'}
                     />
                   </div>
                   <Input
                     onType={setPassword}
-                    inputValue={password} 
-                    inputName={'Contraseña'}
+                    objectValue={person} 
+                    inputName={"password"}
+                    placeholder={'Contraseña'}
                     inputType={'text'}
                   />
                 </div>

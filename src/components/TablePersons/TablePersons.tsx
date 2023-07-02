@@ -18,6 +18,8 @@ const TablePersons = () => {
   const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
   const [memberStrategicInfoToUpdate, setMemberStrategicInfoToUpdate] = useState<IStructure>();
   const [showForm, setShowForm] = useState<boolean>();
+
+
   const handleSearchPerson = async (personToSearch: string) => {
     const re = new RegExp(`^${personToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
     
@@ -109,6 +111,7 @@ const TablePersons = () => {
       console.log("there is an error: ", error)
     }
   }
+  
   return (
     <div className=""> 
       {
@@ -117,13 +120,9 @@ const TablePersons = () => {
           label="Actualizar miembro"
           action={1}
           handleSubmit={handleOnSendData}
-          idPerson={memberBasicInfoToUpdate?.id_member}
-          initialFirstName={memberBasicInfoToUpdate?.first_name} 
-          initialLastName={memberBasicInfoToUpdate?.last_name}
-          initialStreet = {memberBasicInfoToUpdate?.street}
-          initialExtNumber = {memberBasicInfoToUpdate?.ext_number}
-          initialIntNumber = {memberBasicInfoToUpdate?.int_number}
-          initialCellphoneNumber = {memberBasicInfoToUpdate?.cell_phone_number}
+
+          initialPersonInformation={memberBasicInfoToUpdate}
+
           initialIdColony = {memberBasicInfoToUpdate?.id_colony}
           initialSearchColony = {memberBasicInfoToUpdate?.colony_name}
 

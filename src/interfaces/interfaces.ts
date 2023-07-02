@@ -15,18 +15,18 @@ export interface ICollaborator {
 
 export interface IMember {
   id_member?: number;
-  first_name?: string;
-  last_name?: string;
-  street?: string;
-  ext_number?: string;
-  int_number?: string; //address
-  cell_phone_number?: string;
-  id_leader?: number;
-  id_follower?: number[];
-  id_colony?: number;
-  id_strategy?: number;
-  colony_name?: string;
-  postal_code?: string;
+  first_name: string;
+  last_name: string;
+  street: string;
+  ext_number: string;
+  int_number: string; //address
+  cell_phone_number: string;
+  id_leader: number;
+  id_follower: number[];
+  id_colony: number;
+  id_strategy: number;
+  colony_name: string;
+  postal_code: string;
 }
 
 export interface IAssignPrivilege {
