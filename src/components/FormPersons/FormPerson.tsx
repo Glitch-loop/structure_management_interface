@@ -456,7 +456,6 @@ const FormPerson = (
       <div className="text-center text-xl font-bold">
         {label}
       </div>
-
       <form>
         <div className="flex flex-row">
           <div className="mr-3">

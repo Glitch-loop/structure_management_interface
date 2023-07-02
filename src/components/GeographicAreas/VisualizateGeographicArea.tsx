@@ -34,7 +34,6 @@ class TreeNode {
     (1, 2, 3,... n)
   */
   public addNode(newMember:IStructure):void {
-    // console.log("Member to be added: ", newMember)
     const newNode:NodeMember = {
       data: newMember,
       childs: []
@@ -46,7 +45,6 @@ class TreeNode {
         Theorically the members with highest level 
         or member without leader
       */
-      // console.log("There is a member that is in the root: ", newMember)
       this.root.push(newNode)
     } else {
       // In the case of empty root
@@ -153,9 +151,6 @@ function polygonVisible(
   polygon: IGeographicArea):boolean {
     const statusPolygon: IStrategyShow|undefined = arrayStrategyLevels.find(
       strategyLevel => strategyLevel.id_strategy === polygon.id_strategy);
-      console.log("status: ", statusPolygon)
-      console.log("arrrStrategy: ", arrayStrategyLevels)
-      console.log("polygon: ", polygon)
       if(statusPolygon !== undefined) {
         if(statusPolygon.show !== undefined) {
           return statusPolygon.show;
@@ -209,7 +204,6 @@ const VisualizateGeographicArea = () => {
   
       if(response.data !== undefined) {
         const polygonsDB = response.data;
-        console.log("Polygons to draw: ", polygonsDB)
         setPolygons(polygonsDB)
       }
     }

@@ -6,6 +6,7 @@ import ManageMember from "../pages/ManageMember";
 import DataView from "../pages/DataView";
 import GeographicArea from "../pages/GeographicArea";
 import MapDataView from "../pages/MapDataView";
+import StrategyManagement from "../pages/StrategyManagement";
 const AppRouter = () => {
   return (
     <>
@@ -16,9 +17,10 @@ const AppRouter = () => {
           <Route path="/app" element={<Layout />}>
             <Route path="newMember" element={<AddMember />} />
             <Route path="manageMember" element={<ManageMember />} />
-            <Route path="data" element={<DataView />} />
             <Route path="geographicArea" element={<GeographicArea />} />
             <Route path="geographicAreaData" element={<MapDataView />} />
+            <Route path="strategy" element={<StrategyManagement />} />
+            <Route path="data" element={<DataView />} />
           </Route>
 
           <Route path="/" element={<Navigate replace to = '/home'/>}/>
