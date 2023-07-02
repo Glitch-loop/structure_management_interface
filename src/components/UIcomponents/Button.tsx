@@ -2,17 +2,25 @@
 const Button = ({
     label, 
     onClick, 
-    colorButton = 'bg-blue-200',
-    colorButtonHover = 'bg-blue-400'
+    colorButton = 0,
   }: {
     label: string, 
     onClick?: any|undefined,
-    colorButton?: string,
-    colorButtonHover?: string
+    colorButton?: number,
   }) => {
 
+    
     const getStyles = ():string => {
-      return `z-0 mt-5 mx-3 ${colorButton} rounded-full p-3 hover:${colorButtonHover}`
+      let buttonColor = '';
+      switch(colorButton) {
+        case 0:
+          buttonColor = 'z-0 mt-5 mx-3 bg-blue-200 rounded-full p-3 hover:bg-blue-400';
+          break;
+        case 1:
+          buttonColor = 'z-0 mt-5 mx-3 bg-red-200 rounded-full p-3 hover:bg-red-400';
+          break;
+      }
+      return buttonColor;
     }
   return (
     <button 

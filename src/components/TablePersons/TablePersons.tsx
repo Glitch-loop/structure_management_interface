@@ -51,7 +51,6 @@ const TablePersons = () => {
     setPersonsFounded([])
   }
 
-
   const handleOnUpdate = async (idMember:number) => {
     try {
       //To updata member case

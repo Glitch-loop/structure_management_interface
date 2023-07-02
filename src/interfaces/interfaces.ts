@@ -1,3 +1,21 @@
+import { EAlert } from "./enums";
+
+export interface IAlert {
+  alertType: EAlert;
+  message?: string;
+  dismissTime?: number;
+}
+
+export interface IApp {
+  currentAlert?: IAlert;
+  queueAlert: IAlert[];
+}
+
+export interface IAssignPrivilege {
+  id_collaborator?: number;
+  id_privilege?: number;
+  dateAssignation?: string;
+}
 
 export interface ICollaborator {
   id_collaborator?: number;
@@ -11,6 +29,35 @@ export interface ICollaborator {
   email?: string;
   password?: string;
   sessionToken?: string;
+}
+
+export interface IColony {
+  id_colony: number;
+  name_colony: string;
+  postal_code: string;
+}
+
+export interface IGeographicArea {
+  id_geographic_area?: number;
+  id_geographic_area_belongs?: number;
+  geographic_area_name?: string;
+  id_member?: number;
+  id_strategy?: number;
+  coordinates?: LatLng[];
+  edtiable?: boolean;
+}
+
+export interface IGeographicAreaCoordinates {
+  id_geographic_area_coordinates?: number;
+  latitude?: number;
+  longuitude?: number;
+  id_geographic_area?: number;
+}
+
+
+export interface LatLng {
+  lat: number,
+  lng: number
 }
 
 export interface IMember {
@@ -29,35 +76,9 @@ export interface IMember {
   postal_code: string;
 }
 
-export interface IAssignPrivilege {
-  id_collaborator?: number;
-  id_privilege?: number;
-  dateAssignation?: string;
-}
-
 export interface IPrivilege {
   id_privilege?: number;
   name_privilege?: string;
-}
-
-export interface IColony {
-  id_colony: number;
-  name_colony: string;
-  postal_code: string;
-}
-
-export interface IStrategy {
-  id_strategy: number;
-  zone_type: string;
-  role: string;
-  cardinality_level: number;
-}
-
-export interface IGeographicAreaCoordinates {
-  id_geographic_area_coordinates?: number;
-  latitude?: number;
-  longuitude?: number;
-  id_geographic_area?: number;
 }
 
 export interface IRequest<T> {
@@ -65,7 +86,6 @@ export interface IRequest<T> {
   code: number;
   data?: T
 }
-
 
 export interface IStructure {
   id_member: number;
@@ -87,18 +107,9 @@ export interface IStructure {
   geographic_area_name?: string;
 }
 
-export interface LatLng {
-  lat: number,
-  lng: number
+export interface IStrategy {
+  id_strategy: number;
+  zone_type: string;
+  role: string;
+  cardinality_level: number;
 }
-
-export interface IGeographicArea {
-  id_geographic_area?: number;
-  id_geographic_area_belongs?: number;
-  geographic_area_name?: string;
-  id_member?: number;
-  id_strategy?: number;
-  coordinates?: LatLng[];
-  edtiable?: boolean;
-}
-
