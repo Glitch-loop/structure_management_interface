@@ -1005,7 +1005,7 @@ const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInput
           (action===1 || action===3) && 
             <Button 
               label="Cancelar" 
-              onClick={(e:any) => {
+              onClick={() => {
                 handleSubmit(true)
               }}
               colorButton={1}

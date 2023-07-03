@@ -36,7 +36,7 @@ const StrategyForms = () => {
   const [typeOperation, setTypeOperation] = useState<number>(0);
   const [targetLevel, setTargetLevel] = useState<IStrategy>(initialStrategyState);
 
-  //Reducers for alerts
+  //Reducers for alerts message
   const dispatch:Dispatch<AnyAction> = useDispatch();
   const userData = useSelector((state: RootState) => state.userReducer);
 
@@ -68,7 +68,6 @@ const StrategyForms = () => {
       return [];
     }
   }
-  
   
   const deleteStrategyLevel = async(idStrategyLevel: number):Promise<IRequest<undefined>> => {
     try {
@@ -119,7 +118,6 @@ const StrategyForms = () => {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar actualizar el nivel de la estrategia"}}));
       }
-      console.log(response)
       return response;
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
@@ -173,7 +171,21 @@ const StrategyForms = () => {
     setShowDialog(false)
   }
 
+
   const handleInitializeOperation = (strategyLevel: IStrategy, typeOperation: number):void => {
+    /*
+      This handler recive 2 params, the first one is to "specify the level of the strategy" (in other words,
+      it is the data of the level becuase either it is going to be updated or deleted).
+      The second params is to specify the type of operation:
+      1 = add level
+      2 = modify level
+      3 = delete level
+      
+      At least for the case 1, it is stored in the state a initial strategy level (without define 
+      nither the role nor zone type), the unique filed that is defined is the "cardinality_level" this is
+      because the backend needs to know where the new level is goint to be.
+
+    */
     if(typeOperation===1) {
       const newStrategyLevel:IStrategy = {
         id_strategy: 0,
@@ -183,13 +195,20 @@ const StrategyForms = () => {
       }
       setTargetLevel(newStrategyLevel);
     } else setTargetLevel(strategyLevel);
-    
     setTypeOperation(typeOperation);
+    
+    // At the end, show the dialog
     setShowDialog(true);
   }
 
+  
   const handlerCancelOperation = ():void => {
+    /*
+      This function is to cancel the current operation.
+      The state of the operation is set to 0 (none), and close the dialog
+    */
     setTypeOperation(0);
+    setTargetLevel(initialStrategyState);
     setShowDialog(false);
   }
 
@@ -197,12 +216,21 @@ const StrategyForms = () => {
     if(targetLevel !== undefined) {
         let response:IRequest<undefined>|undefined = undefined;
       if(typeOperation === 1) {
+        /*
+          Call to the function to add a new strategy level.
+          If everything is fine, we call again to the API for the new 
+          strategy levels
+        */
         response = await addStrategyLevel(targetLevel);
-        console.log("Status response: ", response)
         if(response?.code === 201) {
           setStrategyLevels(await getStrategy())
         }
       } else if(typeOperation === 2) {
+        /*
+          Call to the function to update a strategy level.
+          If everything is fine, we call again to the API for the new 
+          strategy levels
+        */
          response = await updateStrategyLevel(targetLevel);
          if(response?.code === 200) {
           if(strategyLevels !== undefined) {
@@ -212,12 +240,19 @@ const StrategyForms = () => {
           }
         }
       } else if(typeOperation === 3) {
+        /*
+          Call to the function to delete a strategy level.
+          If everything is fine, we call again to the API for the new 
+          strategy levels
+        */
         response = await deleteStrategyLevel(targetLevel.id_strategy);
         if(response?.code === 200) {
           setStrategyLevels(await getStrategy())
         }
       }
     }
+
+    //At the end, restart the states
     setTypeOperation(0);
     setShowDialog(false);
     setTargetLevel(initialStrategyState);
