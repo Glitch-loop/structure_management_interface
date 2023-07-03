@@ -10,6 +10,17 @@ import requester from "../../helpers/Requester"
 import { IRequest, LatLng, IGeographicArea, IStrategy } from "../../interfaces/interfaces"
 import { Autocomplete, TextField } from "@mui/material"
 
+
+const initialGeographicAreaState:IGeographicArea = {
+  id_geographic_area: 0,
+  id_geographic_area_belongs: 0,
+  geographic_area_name: "",
+  id_member: 0,
+  id_strategy: 0,
+  coordinates: [],
+  edtiable: false,
+}
+
 interface IStrategyShow extends IStrategy {
   show?: boolean
 }
@@ -58,7 +69,7 @@ function ManageGeographicAreasMapRender() {
   const [line, setLine] = useState<LatLng[]|undefined>(undefined);
   const [centerMap, setCenterMap] = useState<LatLng>({lat:20.64125680004875, lng: -105.22139813464167});
   
-  //Line states
+  //Line states (for new polygons)
   const [modifyCoordinateInLine, setModifyCoordinateInLine] = useState<number|undefined>(undefined);
   const [lastPointAdded, setLastPointAdded] = useState<LatLng|undefined>(undefined);
   
@@ -121,22 +132,55 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
-  //Handlers -- MAPS
+  //Handlers
+  //Handlres of MAP
   const handleClickMap = async (e: any) => {
+    /*
+      If the mode create new polygon is ON, then 
+      each click on the map will be taking account as part 
+      of the new polygon
+    */
     if(createNewPolygon) {
       const newCoordinate:LatLng = getCoordinate(e);
       setManagePolygon(false);
       if(line!==undefined) setLine([...line, newCoordinate]);
     }
 
-    const newPolygonsForWorkArray:IGeographicArea[] = polygonsForWork.map(polygon => 
-      {polygon.edtiable = false; return polygon});
-    setPolygonForWork(newPolygonsForWorkArray);
+    /*
+      This map disable the the mode "editable" for all polygons.
+    */
+    const newPolygonsForWorkArray:IGeographicArea[] = polygonsForWork
+      .map(polygon => {polygon.edtiable = false; return polygon});
+    
+    /*
+      The result of the map is stored in two states:
+      - polygons: It is used to print in the map, also is the one that save the 
+      user's modification.
+      
+      - polygonForWork: This state is used to save the polygons
+      before of any modification, at the momento of update it is 
+      used for validate modification.
+    */
     setPolygons(newPolygonsForWorkArray);
+    setPolygonForWork(newPolygonsForWorkArray);
+
+    /*
+      Reset the ref of the polygon that is currently being modified.
+      This ref is used to know which polygon is being modified when it
+      is being unmounted.
+    */
     refCurrentPolygon.current = undefined;
   }
 
   const handleOnMouseMoveMap = (e: any): void => {
+    /*
+      First validate if there is being modified a geographic area,
+      if it is, then, we find index polygonsForWorks (array where
+      we stored the geographic areas modifications).
+      Once we get the index, we update in the array, reset the current
+      polygon to manage and update in "polygons" to render in the map.
+    
+    */
     if(polygonToManage !== undefined) {
       const index:number = polygonsForWork.findIndex(
         polygon => polygon.id_geographic_area === polygonToManage.id_geographic_area)
@@ -147,22 +191,22 @@ function ManageGeographicAreasMapRender() {
   }
 
   //Handlres -- LINES
-  //This function was though for complete the polygon
+  //This function finish the new polygon
   const handleClickLine = (e: any): void => {
+    /*
+      If the polygon that is currently being created has
+      3 or more vertices, then we get the coordinate of the last point.
+      
+      After to get the last coordinates we verify that the first and last
+      ones conincide to close the polygon, if it is, we save that
+      coordinates in the polygon, update the state to show the dialog and
+      update the state to finish the mode "creating new polygon".
+    */
     if(line !== undefined){
       if(line.length >= 3) {
         const terminalCoordinate:LatLng = getCoordinate(e);
-        if(line[0].lat === terminalCoordinate.lat && line[0].lng === terminalCoordinate.lng){
+        if(line[0].lat === terminalCoordinate.lat && line[0].lng === terminalCoordinate.lng) {
           line.push(terminalCoordinate)
-          const newPolygon:IGeographicArea = {
-            id_geographic_area: 0,
-            id_geographic_area_belongs: undefined,
-            geographic_area_name: undefined,
-            id_member: undefined,
-            id_strategy: undefined,
-            coordinates: line
-          };
-
           setShowDialog(true)
           setCreateNewPolygon(false);
         }
