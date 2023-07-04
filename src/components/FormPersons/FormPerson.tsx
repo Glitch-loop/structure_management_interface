@@ -161,7 +161,6 @@ const FormPerson = (
         setShowGeographicArea(
           showGeographicAreaInputFunction(strategicInformationPerson.id_strategy, dataResponse))
       })
-      console.log(initialPersonInformation)
     }, [])
 
 
@@ -274,7 +273,6 @@ const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise
         method: 'PUT'
       });
 
-      console.log(response)
       if(response.code !== 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.warning, 
@@ -742,7 +740,7 @@ const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInput
         "idStrategyLevel": avoidNull(strategicInformationPerson.id_strategy, 0)
       }
 
-      try {
+
         if(action==0) {
           await addNewMember(
             basicData, 
@@ -750,7 +748,6 @@ const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInput
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
         } else if(action==1) {
-          console.log("initializing")
           await updateMember(
             basicData, 
             strategicInformationPerson.id_strategy, 
@@ -762,9 +759,7 @@ const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInput
         //Reset variables
         //Basic information
         resetAllStates()
-      } catch (error) {
-        console.log("Err: ", error)
-      }
+
     }
 
     //Auxiliar functions

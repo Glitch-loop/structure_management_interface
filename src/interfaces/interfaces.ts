@@ -37,6 +37,15 @@ export interface IColony {
   postal_code: string;
 }
 
+export interface IColor {
+  target: number;
+  spectrum1: number;
+  spectrum2: number;
+  spectrum3: number;
+  opactity: number;
+}
+
+
 export interface IGeographicArea {
   id_geographic_area?: number;
   id_geographic_area_belongs?: number;

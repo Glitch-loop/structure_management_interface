@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { IStructure, IRequest, IGeographicArea, LatLng, IStrategy, IMember } from '../../interfaces/interfaces';
+import { IStructure, IRequest, IGeographicArea, LatLng, IStrategy, IMember, IColor } from '../../interfaces/interfaces';
 import requester from '../../helpers/Requester';
 import { GoogleMap, PolygonF } from "@react-google-maps/api";
 import { Dialog, DialogTitle, Tooltip, Switch } from "@mui/material"
 import { FiEye } from "react-icons/fi"
+import { randomNumber } from "../../utils/utils"
 
 interface NodeMember {
   data: IStructure;
@@ -146,6 +147,28 @@ class TreeNode {
 
 }
 
+
+function getColorForPolygon(): any {
+  const colorCombination:IColor = {
+    target: 0,
+    spectrum1: randomNumber(254),
+    spectrum2: randomNumber(254),
+    spectrum3: randomNumber(254),
+    opactity: 1
+  }
+
+  const color = `rgb(${colorCombination.spectrum1}, ${colorCombination.spectrum2}, ${colorCombination.spectrum3})`
+
+  const options = {
+    strokeColor: color,
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: color,
+    fillOpacity: 0.35,
+  }
+  return options;
+}
+
 function polygonVisible(
   arrayStrategyLevels: IStrategyShow[], 
   polygon: IGeographicArea):boolean {
@@ -160,7 +183,6 @@ function polygonVisible(
       return true;
 }
 
-
 function findTypeArea(arrayStrategyLevel:IStrategy[], geographicArea:IGeographicArea|undefined):string {
   const strategyLevel:IStrategy|undefined = arrayStrategyLevel.find(strategyLevel => strategyLevel.id_strategy === geographicArea?.id_strategy)
 
@@ -169,8 +191,8 @@ function findTypeArea(arrayStrategyLevel:IStrategy[], geographicArea:IGeographic
   } else return '';
 }
 
-function findManagerGeographicArea(members:IMember[], geographicArea:IGeographicArea|undefined):string {
-  const manager:IMember|undefined = members.find(member => member.id_member === geographicArea?.id_member)
+function findManagerGeographicArea(members:IStructure[], geographicArea:IGeographicArea|undefined):string {
+  const manager:IStructure|undefined = members.find(member => member.id_member === geographicArea?.id_member)
 
   if(manager !== undefined){
     return `${manager.first_name} ${manager.last_name}`
@@ -293,20 +315,34 @@ const VisualizateGeographicArea = () => {
       </div>
     </Dialog>
     <Dialog onClose={handleCloseShowAnalysisGeographicArea} open={showAnalysisGeographicArea}>
-      <DialogTitle>Area geografica</DialogTitle>   
-      <div className="p-5 pb-10 flex flex-col justify-center">
-        <h6>
-          Nombre de area geografica: {geographicArea?.geographic_area_name}
-        </h6>
-        <h6>
-          Tipo de area: {findTypeArea(arrayStrategyLevel, geographicArea)}
-        </h6>
-        <h6>
-          Persona quien lo administra: {findManagerGeographicArea(members, geographicArea)}
-        </h6>
-        <h6>
-          Numero de personas en la estructura: {treeMembers?.countMemberStructure(geographicArea?.id_member)}
-        </h6>
+      <div className='p-5'>
+        <p className='text-xl font-bold text-center mt-2'>Area geografica</p>
+        <div className="p-5 pb-10 flex flex-col justify-center text-lg">
+        <p className='text-center  mt-2'>
+            Miembros de la estructura en el area: 
+            <span className='italic ml-2 font-bold'>
+              {treeMembers?.countMemberStructure(geographicArea?.id_member)}
+            </span>
+          </p>
+          <p className='mt-2'>
+            Persona quien lo administra: 
+            <span className='italic ml-2'>
+              { findManagerGeographicArea(members, geographicArea) }
+            </span>
+          </p>
+          <p className='mt-2'>
+            Nombre de area geografica: 
+            <span className='italic ml-2'>
+              {geographicArea?.geographic_area_name}
+            </span>
+          </p>
+          <p className='mt-2'>
+            Tipo de area: 
+            <span className='italic ml-2'>
+              {findTypeArea(arrayStrategyLevel, geographicArea)}
+            </span>
+          </p>
+        </div>
       </div>
     </Dialog>
       <div className="absolute flex-col w-full h-full justify-center">
@@ -336,6 +372,7 @@ const VisualizateGeographicArea = () => {
                 handleOpenShowAnalysisGeographicArea(e, polygon)
               }}
               path={polygon.coordinates}
+              // options={getColorForPolygon()}
   
             ></PolygonF>
           }

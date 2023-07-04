@@ -2,18 +2,19 @@ import { GoogleMap, PolygonF, Polyline } from "@react-google-maps/api"
 import { useState, useEffect, useRef } from "react"
 import {FiPlus, FiEye } from "react-icons/fi"
 import '../../styles/global.css'
-import { DialogTitle, Tooltip, Switch, responsiveFontSizes } from "@mui/material"
+import { DialogTitle, Tooltip, Switch } from "@mui/material"
 import {Dialog} from "@mui/material"
 import Input from "../UIcomponents/Input"
 import Button from "../UIcomponents/Button"
 import requester from "../../helpers/Requester"
-import { IRequest, LatLng, IGeographicArea, IStrategy } from "../../interfaces/interfaces"
+import { IRequest, LatLng, IGeographicArea, IStrategy, IColor } from "../../interfaces/interfaces"
 import { Autocomplete, TextField } from "@mui/material"
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import { randomNumber } from "../../utils/utils"
 
 const initialGeographicAreaState:IGeographicArea = {
   id_geographic_area: 0,
@@ -28,6 +29,7 @@ const initialGeographicAreaState:IGeographicArea = {
 interface IStrategyShow extends IStrategy {
   show?: boolean
 }
+
 
 function getCoordinate(e: any): LatLng {
   const latitude = e.latLng.lat();
@@ -313,10 +315,11 @@ function ManageGeographicAreasMapRender() {
   //Handlers
   //Handlres of MAP
   const handleClickMap = async (e: any) => {
-    /*
-      If the mode create new polygon is ON, then 
-      each click on the map will be taking account as part 
-      of the new polygon
+    /*      
+      If the mode "create polygon" is ON, then 
+      each click on the map will be taken account as part 
+      of the new polygon (if the user clicks other polygon, 
+      that click isn't going be taken as a part of the polygon).
     */
     if(createNewPolygon) {
       const newCoordinate:LatLng = getCoordinate(e);
@@ -327,19 +330,22 @@ function ManageGeographicAreasMapRender() {
     }
 
     /*
-      This map disable the the mode "editable" for all polygons.
+      This map disable the mode "editable" for all polygons.
+      When editable is false, the user can't modify the polygons.
     */
     const newPolygonsForWorkArray:IGeographicArea[] = polygonsForWork
       .map(polygon => {polygon.edtiable = false; return polygon});
     
     /*
       The result of the map is stored in two states:
-      - polygons: It is used to print in the map, also is the one that save the 
-      user's modification.
+      - polygons state: It is used to print in the map, 
+      also is the one that save the user's modifications.
       
-      - polygonForWork: This state is used to save the polygons
-      before of any modification, at the momento of update it is 
-      used for validate modification.
+      - polygonForWork state: This state is used to save the polygons
+      before of any modification, we can see it as the initial state
+      before modifications.
+      When modifications ends, those modifications are stored in
+      this state
     */
     setPolygons(newPolygonsForWorkArray);
     setPolygonForWork(newPolygonsForWorkArray);
@@ -347,19 +353,25 @@ function ManageGeographicAreasMapRender() {
     /*
       Reset the ref of the polygon that is currently being modified.
       This ref is used to know which polygon is being modified when it
-      is being unmounted.
+      is being "unmounted".
+      Becuase it is complicated to calculate where is the new "vertice"
+      or which vertice is being removed, we use the "object" (Polygon)
+      that returns the event "unmounted", object which returns the 
+      current "state of the polygon"
     */
     refCurrentPolygon.current = undefined;
   }
 
-  const handleOnMouseMoveMap = (e: any): void => {
+  const handleOnMouseMoveMap = (): void => {
     /*
-      First validate if there is being modified a geographic area,
-      if it is, then, we find index polygonsForWorks (array where
+      First, validate if there is being modified a geographic area,
+      if it is, then, we find its index in polygonsForWorks (array where
       we stored the geographic areas modifications).
       Once we get the index, we update in the array, reset the current
       polygon to manage and update in "polygons" to render in the map.
-    
+
+      In short, we constantly are validating (and saving) changes in the 
+      polygons. 
     */
     if(polygonToManage !== undefined) {
       const index:number = polygonsForWork.findIndex(
@@ -371,6 +383,88 @@ function ManageGeographicAreasMapRender() {
   }
 
   //Handlres -- LINES
+  /*
+    This function is the one that enable and disable the mode to "create a new area"
+  */
+  const handleCreateNewArea = (): void => {
+    if(createNewPolygon) {
+      //In this case the "create new area" is being OFF
+      setCreateNewPolygon(false); 
+    } else {
+      //In this case the "create new area" is being ON
+      setCreateNewPolygon(true);
+      setSearchStrategyLevel("");
+      setGeographicArea(initialGeographicAreaState);
+    }
+    setLine([]);
+  }
+  
+  /*
+    This function determines if the user wants to add a new coordinate to the line
+    or, if the user wants to modify an existing coordinate inside the line
+  */
+  const handleMouseDownLine = (e: any): void => {
+    // Get the current coordinates (where the finger downm)
+    const terminalCoordinate:LatLng = getCoordinate(e); 
+
+    if(line!==undefined) {
+      const index: number = line.findIndex((point) => {
+        if(point.lat === terminalCoordinate.lat && point.lng === terminalCoordinate.lng) 
+          return true
+        else return false
+      })
+      
+      /*
+        If "index" different -1 means that the user is going to update an existing node so we stored the
+        index of the coordinate that is being modfied, otherwise a new node is going to be added.
+      
+      */    
+      index !== -1 ? setModifyCoordinateInLine(index) : setModifyCoordinateInLine(undefined)
+    }
+
+  }
+
+  /*
+    This function finishes the procedure began in "handleMouseDownLine" function.
+    This function is when the user up his finger from the mouse.
+    There are two posibilities, either the user is adding a new coordinate or 
+    the user is updating an existing coordinate within the line.
+  */
+  const handleMouseUpLine = (e:any): void => {
+    if(line!==undefined) {
+      const newCoordinate:LatLng = getCoordinate(e); // Get the current coordinate (where the finger up)
+  
+      if(modifyCoordinateInLine !== undefined) {
+        //That means that an existing cordinate is being updated
+        line[modifyCoordinateInLine] = newCoordinate; 
+      } else {      
+        //That means a new coordinate is being added to the line
+        setLastPointAdded(newCoordinate)
+        line.push(newCoordinate)
+      }
+      
+      // Save the line in the state (to render) with the modifcations.
+      setLine(line)
+    }
+  }
+
+  // This function allows to the user to "delete" a point in the line
+  const handleRightClickLine = (e:any):void => {
+    if(line!== undefined) {
+      const coordinateToDelete = getCoordinate(e); //Get the coordinate
+      if(line.length === 1) 
+      setLine([]) // If the line has 1 point, that means that the user delete all the line.
+      else {
+      // Otherwise, we filter all the point that conforms the line, excluding the point that the user deleted
+      setLine(line.filter(point => {
+        if(point.lat !== coordinateToDelete.lat && point.lng !== coordinateToDelete.lng) 
+          return true
+        else return false
+      }))
+    }
+    }
+  }
+
   //This function finish the new polygon
   const handleClickLine = (e: any): void => {
     /*
@@ -378,9 +472,10 @@ function ManageGeographicAreasMapRender() {
       3 or more vertices, then we get the coordinate of the last point.
       
       After to get the last coordinates we verify that the first and last
-      ones conincide to close the polygon, if it is, we save that
-      coordinates in the polygon, update the state to show the dialog and
-      update the state to finish the mode "creating new polygon".
+      ones conincide to close the polygon, if it is:
+      1. Save these coordinates in the polygon.
+      2. Update the state to show the dialog (in this case to open it)
+      3. Update the state to finish (or disable) the mode "creating new polygon".
     */
     if(line !== undefined){
       if(line.length >= 3) {
@@ -394,105 +489,67 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
-  //The user wants to update a point or he wants to add one between the line
-  const handleMouseDownLine = (e: any): void => {
-    const terminalCoordinate:LatLng = getCoordinate(e)
-    if(line!==undefined) {
-      const index: number = line.findIndex((point) => {
-        if(point.lat === terminalCoordinate.lat && point.lng === terminalCoordinate.lng) return true
-        else return false
-      })
-      
-      //index different -1 means that the user is going to update an existing node, otherwise a new node is going to be added
-      index !== -1 ? setModifyCoordinateInLine(index) : setModifyCoordinateInLine(undefined)
-    }
+  /*
+    //TODO fix the alghoritm
+    This is an especial function (you can see it as a monitor) which care that the line is
+    organized has it should be.
 
-  }
-
-  //The finish to update a point or he wants to add one between the line
-  const handleMouseUpLine = (e:any): void => {
-    if(line!==undefined) {
-      const newCoordinate:LatLng = getCoordinate(e);
-  
-      if(modifyCoordinateInLine !== undefined) {
-        line[modifyCoordinateInLine] = newCoordinate;
-      } else {      
-        setLastPointAdded(newCoordinate)
-        line.push(newCoordinate)
-      }
-  
-      setLine(line)
-    }
-  }
-
-  const handleRightClickLine = (e:any):void => {
-    if(line!== undefined) {
-      const coordinateToDelete = getCoordinate(e);
-      if(line.length === 1) {
-        setLine([])
-      } else {
-        setLine(line.filter(point => {
-          if(point.lat !== coordinateToDelete.lat && point.lng !== coordinateToDelete.lng) return true
-          else return false
-        }))
-      }
-    }
-  }
-
+    When a new coordinate is added at the end of the line, there isn't a problem, 
+    but when it is added in the middle of it, we have that the new point that 
+    supposedly must be at the middle of the line, it is in the at end of it 
+    (that because the workflow of the other functions), so it "breaks" the line.
+  */
   const handleMouseMoveLine = (e: any):void => {
     if(line!==undefined) {
-      setLine(line)
-      let vertexInLine:number = e.vertex;
-      if(vertexInLine !== undefined) {
-        if(lastPointAdded !== undefined && line[0] !== undefined) {
-          setLine(line)
-          let swap:LatLng =  line[vertexInLine];
-          
-          line[vertexInLine] = lastPointAdded;
-          vertexInLine++;
-          while(!(lastPointAdded.lat === line[vertexInLine].lat 
-            && lastPointAdded.lng === line[vertexInLine].lng) && vertexInLine <= line.length - 2) {
-              const tempSwap:LatLng = line[vertexInLine];
-              line[vertexInLine] = swap;
-              swap = tempSwap; 
-              vertexInLine++;
-          }
-          
-          line[vertexInLine] = swap;
-          setLastPointAdded(undefined);
-          setLine(line);
-        } else console.log("there isn't necessity to re-order")
-      }
+      let vertexInLine:number = e.vertex; // Get the vertex of the vertex that is being modified       
+      if(lastPointAdded !== undefined && line[0] !== undefined) {
+        /*
+          If the last point added was a modification and there is a line (at least 1 coordinate stored).
+          Sorted the point to conform the line, taking account that the has the vertex must be according
+          to the event says.
+        */
+        let swap:LatLng =  line[vertexInLine];
+        line[vertexInLine] = lastPointAdded;
+        vertexInLine++;
+        while(!(lastPointAdded.lat === line[vertexInLine].lat 
+          && lastPointAdded.lng === line[vertexInLine].lng) && vertexInLine <= line.length - 2) {
+            const tempSwap:LatLng = line[vertexInLine];
+            line[vertexInLine] = swap;
+            swap = tempSwap; 
+            vertexInLine++;
+        }
+        
+        line[vertexInLine] = swap;
+        setLastPointAdded(undefined);
+        setLine(line);
+      } else console.log("there isn't necessity to re-order")
+    
     }
   }
 
-  const handleCreateNewArea = (): void => {
-    if(createNewPolygon) {
-      setLine([]);
-      setCreateNewPolygon(false);
-    } else {
-      setLine([])
-      setCreateNewPolygon(true);
-      setSearchStrategyLevel("");
-      setGeographicArea(initialGeographicAreaState);
-    }
-  }
 
+  //This function is when geographic area has been finished
   const handleOnSubmitAddGeographicArea = async () => {
-    geographicArea.coordinates = line;
+    geographicArea.coordinates = line; //Get the lines
+
+    //Create the geographic area
     const idGeographicAreaAdded:number = await createNewGeographicArea(geographicArea)
 
     if(idGeographicAreaAdded !== 0) {
-      geographicArea.id_geographic_area = idGeographicAreaAdded;
+      geographicArea.id_geographic_area = idGeographicAreaAdded; //Get the ID of the geographic area created
       
+      /*
+        If the geographic area was created successfully and the user set a id_strategy for the area,
+        then we update the type of zone of the area.
+      */
       if(geographicArea.id_geographic_area !== 0 && geographicArea.id_strategy !== 0) 
         if(await updateGeographicAreaStrategyLevel(geographicArea) !== 200) 
           geographicArea.id_strategy = 0
-          
-
-      polygonsForWork.push(geographicArea)
+        
+      polygonsForWork.push(geographicArea); //Save the new area to render.
     }
 
+    //Reset the variables (this for the next time that the user wants to create other. area)
     setShowDialog(false)
     setLine([]);
     setGeographicArea(initialGeographicAreaState);
@@ -647,9 +704,8 @@ function ManageGeographicAreasMapRender() {
 
   // Handlers strategy autocomplete
   const handleSearchStrategyLevel = async (event: any, newInputValue: string | null) => {
-    if (newInputValue !== null) {
+    if (newInputValue !== null) 
       if(newInputValue!=="") setSearchStrategyLevel(newInputValue)
-    }
   }
 
   const handleSelectStrategyLevel = async (event: any, newValue: string | null) => {
@@ -679,6 +735,7 @@ function ManageGeographicAreasMapRender() {
     )
   }
 
+
   return (<>
     <Dialog onClose={handleCloseDialog} open={showDialog}>
       <div className="p-5 pb-10 flex flex-col justify-center">
@@ -704,9 +761,7 @@ function ManageGeographicAreasMapRender() {
             value={
               searchStrategyLevel
             }
-            options={ 
-              arrayStrategyLevel[0]===undefined ? [] :
-              arrayStrategyLevel.map((strategyLevel => strategyLevel.zone_type)) }
+            options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.zone_type)) }
             sx={{ width: 300 }}
             renderInput={(params) => <TextField {...params} label="Tipo de zona" />}
             />
@@ -774,22 +829,24 @@ function ManageGeographicAreasMapRender() {
         center={centerMap} 
         mapContainerClassName="map-container"
         onClick={(e: any) => handleClickMap(e)}
-        onMouseMove={(e: any) => handleOnMouseMoveMap(e)}
+        onMouseMove={() => handleOnMouseMoveMap()}
         >
           {
-            polygons.map((polygon) => 
-            <PolygonF
-              key={polygon.id_geographic_area}
-              visible={polygonVisible(arrayStrategyLevel, polygon)}
-              editable={polygon.edtiable}
-              onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
-              onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
-              onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}
-              onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
-              onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
-              onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
-              path={polygon.coordinates}
-            ></PolygonF>
+            polygons.map((polygon) =>
+            {
+              return <PolygonF
+                key={polygon.id_geographic_area}
+                visible={polygonVisible(arrayStrategyLevel, polygon)}
+                editable={polygon.edtiable}
+                onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
+                onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
+                onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}
+                onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
+                onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
+                onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
+                path={polygon.coordinates}
+              ></PolygonF>
+            } 
             )
           }
           

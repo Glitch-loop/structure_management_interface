@@ -11,7 +11,6 @@ interface IColor {
   spectrum2: number;
   spectrum3: number;
   opactity: number;
-
 }
 
 const options: Options = {
