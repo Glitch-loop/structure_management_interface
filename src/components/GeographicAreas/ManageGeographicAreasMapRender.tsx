@@ -556,63 +556,94 @@ function ManageGeographicAreasMapRender() {
   }
 
   // Handlers -- POLYGON
+  /*
+    This function ensures that the user can modify one polygon at the time.
+  */
   const handleDataClickPolygon = (e: any, polygon: IGeographicArea):void => {
     const idPolygon = polygon.id_geographic_area;
     if(idPolygon!==undefined) {
-      const coordinate:LatLng = getCoordinate(e);
-      
-      //Be secure that there is just one polygon to update
-      const newPolygons = polygons.map(polygon => {polygon.edtiable = false; return polygon})
+
+      //Ensure that there is just one polygon to update
+      const newPolygons = polygons.map(polygon => {polygon.edtiable = false; return polygon});
 
       //Find the polygon's index to update
-      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
+      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon);
 
-      newPolygons[index].edtiable = true;
-      // setPolygons(newPolygons)
+      // Make able to modify the polygon that currently the user is modifed.
+      newPolygons[index].edtiable = true; 
     }
 
+    // Turn off the create new polygon mode
     setLine([]);
     setCreateNewPolygon(false);
   }
 
+  /*
+    This function is to show the dialog where it'll be showed  the current polygon's information,
+    either to modified it or to delete it
+  */
   const handleDbClickPolygon = (e: any, polygon: IGeographicArea): void => {
     if(polygon.id_strategy !== undefined && polygon.id_strategy !== null) {
-      const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy)
-      setSearchStrategyLevel(arrayStrategyLevel[index].zone_type)
-    } else setSearchStrategyLevel("")
+      /*
+        The polygon has a zone type assigned (in short, find the name of the zone type 
+        to be displayed in the dialog)
+      */
+      const index:number = arrayStrategyLevel
+        .findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy);
+      setSearchStrategyLevel(arrayStrategyLevel[index].zone_type);
+    } else setSearchStrategyLevel(""); // The polygon doesn't have a type zone assigned
     
+    // Save the current information of the polygon.
     setGeographicArea({
       ...geographicArea,
       id_geographic_area: polygon.id_geographic_area,
       id_strategy: polygon.id_strategy, 
       geographic_area_name: polygon.geographic_area_name
-    })
+    });
+
+    /*
+      This state makes to know to the system that a polygon may suffer modifications.
+      If the polygon suffer any modification, then the system is going to be stored that modification
+      for "possibly" update it (if the user confirm the update).
+    */
     setCurrentPolygonToUpdate(polygon)
+    // Activate the polygon mange mode
     setManagePolygon(true)
+    // Show the dialog
     setShowDialog(true)
   }
 
+  /*
+    This function to delete a point that conforms the polygon line.
+  */
   const handleRightClickLinePolyline = (e:any, idPolygon: number|undefined):void => {
     if(idPolygon!== undefined) {
-      const coordinateToDelete = getCoordinate(e); // Get coordinate to delete
+      const coordinateToDelete = getCoordinate(e); // Get point (coordinate) to delete 
       
-      //Get index of the area to delete the coordinate
+      //Get index of the geographic area which the user is deleting the point
       const index = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon);
       if(polygons[index].coordinates !== undefined) { 
         
-        //Get new polygon
-        const newPolygon:LatLng[]|undefined = polygons[index].coordinates?.filter(coordinate => {
-          if(coordinate.lat !== coordinateToDelete.lat && 
-            coordinate.lng !== coordinateToDelete.lng) return true
-          else return false
-        })
+        /*
+          Get the geographic area without the point that was deleted.
+          In other words, get all the points of the polygon except that one that the user deleted.
+        */
+        const newPolygon:LatLng[]|undefined = polygons[index]
+          .coordinates?.filter(coordinate => {
+            if(coordinate.lat !== coordinateToDelete.lat && 
+              coordinate.lng !== coordinateToDelete.lng) return true
+            else return false
+          });
 
         //If the polygon is not undefined 
         if(newPolygon !== undefined) {
+          /*
+            If the resulting polygon has 3 or more point, store it, otherwise don't
+          */
           if(newPolygon.length >= 3) {
-            polygons[index].coordinates = newPolygon
-            const newGeographicArea:IGeographicArea[] = polygons
-  
+            polygons[index].coordinates = newPolygon;
+            const newGeographicArea:IGeographicArea[] = polygons;
+
             setPolygons(newGeographicArea)
           } 
         }
@@ -620,51 +651,82 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
+  /*
+    This function is the start of the procedure to modify a polygon (update (an existing point) 
+    or add a point), in this we get the point that the user begin to move 
+    (that it will belong to the polygon) and store it for when the user up the finger from the mouse.
+  */
   const handleMouseDownPolygon = (e:any) => { setCurrentPolygonPoint(getCoordinate(e)) }
 
+  /*
+    This the final of the procedure to add or update a point of the polygon, in this function
+    we determine if the user is updating a point or if he is adding a new one to the polygon.
+  */
   const handleMouseUpPolygon = (e:any, currentPolygon: IGeographicArea): void => {
     const idPolygon = currentPolygon.id_geographic_area;
     const editable =  currentPolygon.edtiable;
-    const coordinates = getCoordinate(e)
+    const coordinates = getCoordinate(e);
     if(idPolygon!==undefined && 
       editable && 
       coordinates.lat !== currentPolygonPoint?.lat &&
       coordinates.lng !== currentPolygonPoint?.lng) {
-      //Find the geographic area to save
-      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
-      refCurrentPolygon.current = polygons[index]; //Save geographic area
+      /*
+        The previous if means:
+        if the polygon exist, if it is editable, and if the coordinates where the user end to drag
+        are different from where he started.
+      */
 
-      //Delete the geographic area
+      //Find the polygon to update
+      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon);
 
-      setPolygons(polygons.filter(polygon => polygon.id_geographic_area !== idPolygon))
+        /*
+        Save it in a ref
+        Actually what it want to know is the polygon itself, being punctual its id_geographic_area,
+        that for when we unmounted the polygon
+      */
+      refCurrentPolygon.current = polygons[index]; 
+
+      /*
+        Delete the polygon to update.
+        This is to provke an unmountin event.
+      */
+      setPolygons(polygons.filter(polygon => polygon.id_geographic_area !== idPolygon));
     } else { 
-      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon)
-      polygons[index].edtiable = false
-      setPolygons(polygons)
+      //Otherwise we simply update the polygon to it doesn't be able to be modifed,
+      const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === idPolygon);
+      polygons[index].edtiable = false;
+      setPolygons(polygons);
     }
   }
 
+  /*
+    We use the unmounting event to have the current polygon's information, otherwise 
+    we would have to calculate the add, update and delete points of the polygon.
+    In short, this is the easiest way to get the current polygon points.
+  */
   const handleUnmountPolygon = async (e:any, idPolygon: number|undefined) => {
     console.log("UNMOUNTING")
     if(idPolygon !== undefined) {
-      //This process is to update the polygon (add, delete, move vertices)
+      //This process is to update the polygon (add, delete, move vertices [points]).
       if(refCurrentPolygon!==undefined) {
         //Get current polygon
         const currentCoordinatesPolygon:any = e.getPath();
-        //If there are coordinates, save the new polygon 
         if(refCurrentPolygon.current?.coordinates != undefined){
+          //If there are coordinates, save the new polygon 
           refCurrentPolygon.current.coordinates = getPolygonCoordinatesInUnmount(currentCoordinatesPolygon);
 
-          //Find the geographic area to save
-          const index:number = polygons.findIndex(polygon => polygon.id_geographic_area === refCurrentPolygon.current?.id_geographic_area)
+          //Find the geographic area in the array to save it
+          const index:number = polygons
+            .findIndex(polygon => polygon.id_geographic_area === refCurrentPolygon.current?.id_geographic_area);
+          
+          //Saving the polygon with new points
           polygons[index].coordinates = refCurrentPolygon.current.coordinates;
           
-          
+          //Save in the state
           setPolygonToManage(polygons[index])
         }
       }
     }
-
   }
 
   const handleOnSubmitUpdateGeographicArea = async (e: any) => {
@@ -723,6 +785,9 @@ function ManageGeographicAreasMapRender() {
     setManagePolygon(false)
   }
   
+  /*
+    This function is to determine which kind of zones the user want to see.
+  */
   const handleSwitchShowZoneType = (e: any, strategyLevelSwitch: IStrategyShow):void => {
     setArrayStrategyLevel(
       arrayStrategyLevel.map(stretegyLevel => {
