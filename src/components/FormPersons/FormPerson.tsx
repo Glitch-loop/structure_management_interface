@@ -235,7 +235,7 @@ const updateMember = async (basicData: any, idStrategy?: number, idLeader?: numb
         method: "PUT",
         data: basicData
       })
-      
+    
       //Update member's strategy level
       idStrategy !== undefined && await updateStrategyLevel(idMember, idStrategy)
   
@@ -274,6 +274,7 @@ const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise
         method: 'PUT'
       });
 
+      console.log(response)
       if(response.code !== 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.warning, 

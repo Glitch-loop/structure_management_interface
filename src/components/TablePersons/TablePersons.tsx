@@ -52,7 +52,7 @@ const TablePersons = () => {
 
 
 
-  //Calls to API
+  //Calls to API ---
   const deleteMember = async (idMember: number):Promise<void> => {
     try {
       const response:IRequest<undefined> = await requester({

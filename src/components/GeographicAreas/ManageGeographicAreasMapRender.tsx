@@ -2,14 +2,18 @@ import { GoogleMap, PolygonF, Polyline } from "@react-google-maps/api"
 import { useState, useEffect, useRef } from "react"
 import {FiPlus, FiEye } from "react-icons/fi"
 import '../../styles/global.css'
-import { DialogTitle, Tooltip, Switch } from "@mui/material"
+import { DialogTitle, Tooltip, Switch, responsiveFontSizes } from "@mui/material"
 import {Dialog} from "@mui/material"
 import Input from "../UIcomponents/Input"
 import Button from "../UIcomponents/Button"
 import requester from "../../helpers/Requester"
 import { IRequest, LatLng, IGeographicArea, IStrategy } from "../../interfaces/interfaces"
 import { Autocomplete, TextField } from "@mui/material"
-
+import { EAlert } from "../../interfaces/enums";
+import { enqueueAlert } from "../../redux/slices/appSlice";
+import { Dispatch, AnyAction } from 'redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../redux/store';
 
 const initialGeographicAreaState:IGeographicArea = {
   id_geographic_area: 0,
@@ -85,50 +89,224 @@ function ManageGeographicAreasMapRender() {
 
   //Logic for forms
   const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategyShow[]>([]);
+  const [geographicArea, setGeographicArea] = useState<IGeographicArea>(initialGeographicAreaState);
   const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>("");
-  const [idStrategy, setIdStrategy] = useState<number|undefined>(undefined);
-  const [geographicAreaName, setGeographicAreaName] = useState<string>("")
   const [showDialog, setShowDialog] = useState<boolean>(false);
-  
+ 
   //Logic areas visualization
   const [showVisualizationForm, setShowVisualizationForm] = useState<boolean>(false)
   
   const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
 
+  //Reducer for alert message
+  const dispatch:Dispatch<AnyAction> = useDispatch();
+  const userData = useSelector((state: RootState) => state.userReducer);
+
   useEffect(() => {
     getAllPolygons()
+    .then((dataResponse:IGeographicArea[]) => {
+      setPolygons(dataResponse)
+      setPolygonForWork(dataResponse)
+    });
     getStrategy()
-  }, [])
-
-  //Use effect functions
-  const getAllPolygons = async () => { 
-    const response:IRequest<IGeographicArea[]> = await requester({
-      url: `/geographicAreas`
-    })
-
-    if(response.data !== undefined) {
-      const polygonsDB = response.data;
-      setPolygons(polygonsDB)
-      setPolygonForWork(polygonsDB)
-
-      console.log("ASK DB: ", polygonsDB)
-    }
-  }
-
-
-  const getStrategy = async() => {
-    const response:IRequest<IStrategy[]> = await requester({
-      url: `/strategyLevels`,
-      method: 'GET'
-    })
-    if(response.data !== undefined) {
-      const strategyLevels:IStrategyShow[] = response.data.filter(level => level.zone_type !== "")
-
-      
+    .then((dataStrategyLevels:IStrategy[]) => {
+      /*
+        Convert from IStrategy to IStrategyShow, this is for order to the map
+        to show just the geographic areas type that area active, otherwise,
+        the geographic areas won't be rendered.
+      */
+      const strategyLevels:IStrategyShow[] = dataStrategyLevels.filter(level => level.zone_type !== "");
       setArrayStrategyLevel(strategyLevels.map(strategyLevel => {
         strategyLevel.show = true;
         return strategyLevel
-      }))
+      }));
+    })
+  }, [])
+
+  //Call to API
+  const getAllPolygons = async ():Promise<IGeographicArea[]> => { 
+    try {
+      const response:IRequest<IGeographicArea[]> = await requester({
+        url: `/geographicAreas`})
+
+      if(response.code === 200)
+        if(response.data !== undefined) 
+          return response.data;
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar obtener las areas geograficas, intente nuevamente"}}));  
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+  const getStrategy = async():Promise<IStrategy[]> => {
+    try {
+      const response:IRequest<IStrategy[]> = await requester({
+        url: `/strategyLevels`,
+        method: 'GET'
+      })
+
+      if(response.code === 200)
+        if(response.data !== undefined) {
+          return response.data;
+        }
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar obtener los niveles de la estrategia, intente nuevamente"}}));  
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+  const createNewGeographicArea = async(geographicArea:IGeographicArea):Promise<number> => {
+    try {
+      const data = {
+        geographicAreaName: geographicArea.geographic_area_name,
+        geographicAreaCoordinates: geographicArea.coordinates
+      }
+      if(data.geographicAreaName !== "") {
+        const response:IRequest<any> = await requester({
+          url: "/geographicAreas",
+          method: "POST",
+          data: data
+        });
+
+        if(response.code === 201)
+          if(response.data !== undefined) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.success, 
+              message: "Se ha agregado exitosamente el area geográfica"}}));  
+            return response.data.id_geographic_area
+          }
+      }
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar crear la nueva area geográfica, intente nuevamente"}}));  
+
+      return 0;
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return 0;
+    }
+  }
+
+  const updateGeographicAreaStrategyLevel = async (geographicArea: IGeographicArea):Promise<number> => {
+    try {
+      const {id_geographic_area, id_strategy} = geographicArea;
+      const response:IRequest<IGeographicArea> = await requester({
+        url: `/geographicAreas/strategicInformation/strategyLevel/${id_geographic_area}/${id_strategy}`,
+        method: "PUT"
+      });
+      
+      if(response.code !== 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Ha habido un problema al intentar asignar el tipo de zona al area geográfica, intente nuevamente"}}));  
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Se ha asignado exitosamente el area el tipo de zona al area geográfica"}}));  
+      }
+
+      return response.code;
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));      
+      return 500;
+    }
+  }
+
+  const updateGeographicAreaName = async (geographicArea: IGeographicArea):Promise<number> => {
+    try {
+      const response:IRequest<undefined> = await requester({
+        url: `/geographicAreas/${geographicArea.id_geographic_area}`,
+        method: 'PUT',
+        data: {geographicAreaName: geographicArea.geographic_area_name}
+      }) 
+      if(response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se actualizado exitosamente el nombre del area geográfica"}}));  
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Ha habido un error al intentar actualizar el nombre del area geográfica, intente nuevamente"}}));  
+        }
+        return response.code;
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+        return 500;
+    }
+  }
+
+  const updateGeographicAreaCoordinates = async (geographicArea: IGeographicArea):Promise<number> => {
+    try {
+      const response:IRequest<undefined> = await requester({
+        url: `/geographicAreas/coordinates/${geographicArea.id_geographic_area}`,
+        method: 'PUT',
+        data: {geographicAreaCoordinates: geographicArea.coordinates}
+      })
+
+      if(response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se actualizado exitosamente las coordenadas del area geográfica"}}));  
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Ha habido un error al intentar actualizar las coordenadas del area geográfica, intente nuevamente"}}));  
+        }
+        return response.code;
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+        return 500;
+    }
+  }
+
+  const deleteGeographicArea = async (geographicArea: IGeographicArea):Promise<number> => {
+    try {
+      const response:IRequest<undefined> = await requester({
+        url: `/geographicAreas/${geographicArea.id_geographic_area}`,
+        method: "DELETE"
+      })
+      
+      if (response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se ha borrado exitosamente el area geográfica"}}));  
+        return response.code;
+      }
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar eliminar la area geográfica, intente nuevamente"}}));  
+
+      return response.code;
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));      
+      return 500;
     }
   }
 
@@ -144,6 +322,8 @@ function ManageGeographicAreasMapRender() {
       const newCoordinate:LatLng = getCoordinate(e);
       setManagePolygon(false);
       if(line!==undefined) setLine([...line, newCoordinate]);
+    } else {
+      setGeographicArea(initialGeographicAreaState)
     }
 
     /*
@@ -294,45 +474,28 @@ function ManageGeographicAreasMapRender() {
       setLine([])
       setCreateNewPolygon(true);
       setSearchStrategyLevel("");
-      setIdStrategy(undefined);
-      setGeographicAreaName("");
+      setGeographicArea(initialGeographicAreaState);
     }
   }
 
   const handleOnSubmitAddGeographicArea = async () => {
-    const geographicArea = {
-      geographicAreaName: geographicAreaName,
-      geographicAreaCoordinates: line
-    }
+    geographicArea.coordinates = line;
+    const idGeographicAreaAdded:number = await createNewGeographicArea(geographicArea)
 
-    const response:IRequest<IGeographicArea> = await requester({
-      url: "/geographicAreas",
-      method: "POST",
-      data: geographicArea
-    })
+    if(idGeographicAreaAdded !== 0) {
+      geographicArea.id_geographic_area = idGeographicAreaAdded;
+      
+      if(geographicArea.id_geographic_area !== 0 && geographicArea.id_strategy !== 0) 
+        if(await updateGeographicAreaStrategyLevel(geographicArea) !== 200) 
+          geographicArea.id_strategy = 0
+          
 
-    if(response.data !== undefined) {
-      const id_geographic_area:number|undefined = response.data.id_geographic_area;
-      const newPolygon:IGeographicArea = {
-        id_geographic_area: id_geographic_area,
-        coordinates: line,
-        geographic_area_name: geographicAreaName
-      }
-
-
-      if(id_geographic_area !== undefined && idStrategy !== undefined) {
-        newPolygon.id_strategy = idStrategy
-        const response:IRequest<IGeographicArea> = await requester({
-          url: `/geographicAreas/strategicInformation/strategyLevel/${id_geographic_area}/${idStrategy}`,
-          method: "PUT"
-        })
-      }
-
-      polygonsForWork.push(newPolygon)
+      polygonsForWork.push(geographicArea)
     }
 
     setShowDialog(false)
     setLine([]);
+    setGeographicArea(initialGeographicAreaState);
   }
 
   // Handlers -- POLYGON
@@ -356,20 +519,20 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleDbClickPolygon = (e: any, polygon: IGeographicArea): void => {
-    setManagePolygon(true)
-    setShowDialog(true)
-    if(polygon.geographic_area_name !== undefined) {
-      setGeographicAreaName(polygon.geographic_area_name)
-    }
     if(polygon.id_strategy !== undefined && polygon.id_strategy !== null) {
       const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy)
-      setIdStrategy(polygon.id_strategy)
       setSearchStrategyLevel(arrayStrategyLevel[index].zone_type)
-    } else {
-      setIdStrategy(undefined)
-      setSearchStrategyLevel("")
-    }
+    } else setSearchStrategyLevel("")
+    
+    setGeographicArea({
+      ...geographicArea,
+      id_geographic_area: polygon.id_geographic_area,
+      id_strategy: polygon.id_strategy, 
+      geographic_area_name: polygon.geographic_area_name
+    })
     setCurrentPolygonToUpdate(polygon)
+    setManagePolygon(true)
+    setShowDialog(true)
   }
 
   const handleRightClickLinePolyline = (e:any, idPolygon: number|undefined):void => {
@@ -400,10 +563,7 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
-  const handleMouseDownPolygon = (e:any) => {
-    const coordinates = getCoordinate(e);
-    setCurrentPolygonPoint(coordinates)
-  }
+  const handleMouseDownPolygon = (e:any) => { setCurrentPolygonPoint(getCoordinate(e)) }
 
   const handleMouseUpPolygon = (e:any, currentPolygon: IGeographicArea): void => {
     const idPolygon = currentPolygon.id_geographic_area;
@@ -451,63 +611,37 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleOnSubmitUpdateGeographicArea = async (e: any) => {
-    try {
-      if(currentPolygonToUpdate!==undefined) {
-        const indexPolygonUpdating:number = polygons.findIndex(
-          polygon => polygon.id_geographic_area === currentPolygonToUpdate.id_geographic_area)
-        
-        if(polygons[indexPolygonUpdating].geographic_area_name !== geographicAreaName) {
-          const responseUpdateGeographicArea:IRequest<undefined> = await requester({
-            url: `/geographicAreas/${currentPolygonToUpdate.id_geographic_area}`,
-            method: 'PUT',
-            data: {geographicAreaName: geographicAreaName}
-          })
-          
-          if(responseUpdateGeographicArea.code === 200) 
-            polygons[indexPolygonUpdating].geographic_area_name = geographicAreaName;
-        }
-        
-        const responseCoordinates:IRequest<undefined> = await requester({
-          url: `/geographicAreas/coordinates/${currentPolygonToUpdate.id_geographic_area}`,
-          method: 'PUT',
-          data: {geographicAreaCoordinates: currentPolygonToUpdate.coordinates}
-        })
-        
-        if(responseCoordinates.code === 200) 
-          polygons[indexPolygonUpdating].coordinates = currentPolygonToUpdate.coordinates;
+    if(currentPolygonToUpdate!==undefined) {
+      const indexPolygonUpdating:number = polygons.findIndex(
+        polygon => polygon.id_geographic_area === currentPolygonToUpdate.id_geographic_area);
       
-        if(idStrategy !== undefined) {
-          if(polygons[indexPolygonUpdating].id_strategy !== idStrategy) {
-            const responseIdStrategyGeographicArea:IRequest<undefined> =await requester({
-              url: `/geographicAreas/strategicInformation/strategyLevel/${currentPolygonToUpdate.id_geographic_area}/${idStrategy}`,
-              method: "PUT"
-            })
-  
-            if(responseIdStrategyGeographicArea.code === 200) 
-              polygons[indexPolygonUpdating].id_strategy = idStrategy;
-          }
-        }
-  
-        setShowDialog(false)
-        setPolygons(polygons)
-      }
-    } catch (error) {
-      console.log(error)
+      if(polygons[indexPolygonUpdating].geographic_area_name !== geographicArea.geographic_area_name)
+        if(await updateGeographicAreaName(geographicArea) === 200) 
+          polygons[indexPolygonUpdating].geographic_area_name = geographicArea.geographic_area_name;
+    
+      if(await updateGeographicAreaCoordinates(geographicArea) === 200) 
+        polygons[indexPolygonUpdating].coordinates = currentPolygonToUpdate.coordinates;
+    
+      if(geographicArea.id_strategy !== 0) 
+        if(polygons[indexPolygonUpdating].id_strategy !== geographicArea.id_strategy) 
+          if(await updateGeographicAreaStrategyLevel(geographicArea) === 200) 
+            polygons[indexPolygonUpdating].id_strategy = geographicArea.id_strategy;
+        
+      setGeographicArea(initialGeographicAreaState);
+      setShowDialog(false);
+      setPolygons(polygons);
     }
   }
 
   const handleOnSubmitDeleteGeographicArea = async (e: any) => {
-    if(currentPolygonToUpdate!==undefined) { 
-      const response:IRequest<undefined> = await requester({
-        url: `/geographicAreas/${currentPolygonToUpdate.id_geographic_area}`,
-        method: "DELETE"
-      })
-
-      if(response.code === 200) {
-        setShowDialog(false)
+    if(geographicArea.id_geographic_area!==0) {
+      if(await deleteGeographicArea(geographicArea) === 200) {
         setPolygonForWork(
-          polygonsForWork.filter(polygon => polygon.id_geographic_area !== currentPolygonToUpdate.id_geographic_area))
+          polygonsForWork
+          .filter(polygon => polygon.id_geographic_area !== geographicArea.id_geographic_area));
       }
+      setGeographicArea(initialGeographicAreaState);
+      setShowDialog(false);
     }
   }
 
@@ -521,9 +655,9 @@ function ManageGeographicAreasMapRender() {
   const handleSelectStrategyLevel = async (event: any, newValue: string | null) => {
     const strategyLevelSelected: IStrategy|undefined = 
     arrayStrategyLevel.find(strategyLevel => strategyLevel.zone_type === newValue)
-    if(strategyLevelSelected===undefined) setIdStrategy(undefined);
+    if(strategyLevelSelected===undefined) setGeographicArea({...geographicArea, id_strategy: 0})
     else { 
-      setIdStrategy(strategyLevelSelected.id_strategy)
+      setGeographicArea({...geographicArea, id_strategy: strategyLevelSelected.id_strategy})
     }
   }
   
@@ -532,18 +666,8 @@ function ManageGeographicAreasMapRender() {
     setShowDialog(!showDialog)
     setManagePolygon(false)
   }
-
-  const handleShowTypeArea = ():void => {
-    setShowVisualizationForm(true)
-  }
-
-  const handleCloseShowTypeArea = ():void => {
-    setShowVisualizationForm(false)
-  }
-
+  
   const handleSwitchShowZoneType = (e: any, strategyLevelSwitch: IStrategyShow):void => {
-    const index:number = arrayStrategyLevel.findIndex(strategyLevel => strategyLevel.id_strategy === strategyLevelSwitch.id_strategy);
-
     setArrayStrategyLevel(
       arrayStrategyLevel.map(stretegyLevel => {
         if(stretegyLevel.id_strategy === strategyLevelSwitch.id_strategy) {
@@ -559,13 +683,15 @@ function ManageGeographicAreasMapRender() {
     <Dialog onClose={handleCloseDialog} open={showDialog}>
       <div className="p-5 pb-10 flex flex-col justify-center">
         <DialogTitle>
-          { managePolygon ? 'Administrar area geografica' : 'Agregar area geografica' }
+          { managePolygon ? 'Administrar area geográfica' : 'Agregar area geográfica' }
         </DialogTitle>
         <Input 
-          onType={setGeographicAreaName} 
-          inputValue={geographicAreaName}
-          inputName="Nombre de area greografica"
-          inputType="text"            
+          onType={setGeographicArea}
+          objectValue={geographicArea} 
+          inputName={"geographic_area_name"}
+          placeholder={'Nombre de area greografica'}
+          inputType={'text'}
+          required={true}
           />
         <div className="mt-3">
           <Autocomplete
@@ -597,13 +723,14 @@ function ManageGeographicAreasMapRender() {
               <Button 
                 label="Eliminar"
                 onClick={handleOnSubmitDeleteGeographicArea}
+                colorButton={1}
               />
             }
         </div>
       </div>
     </Dialog>
     
-    <Dialog onClose={handleCloseShowTypeArea} open={showVisualizationForm}>
+    <Dialog onClose={() => setShowVisualizationForm(false)} open={showVisualizationForm}>
       <DialogTitle>Visualizar areas</DialogTitle>   
       <div className="p-5 pb-10 flex flex-col justify-center">
         {
@@ -634,7 +761,7 @@ function ManageGeographicAreasMapRender() {
     <div className="absolute flex-col w-full h-full justify-center">
       <Tooltip title="Crear nueva area">
         <button
-          onClick={() => handleShowTypeArea()} 
+          onClick={ () => setShowVisualizationForm(true) } 
           className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
           <div className="text-white">
             <FiEye />
