@@ -85,7 +85,6 @@ function ManageGeographicAreasMapRender() {
   const [createNewPolygon, setCreateNewPolygon] = useState<boolean>(false)
   
   const [managePolygon, setManagePolygon] = useState<boolean>(false) //False = line, true = polygon
-  const [currentPolygonToUpdate, setCurrentPolygonToUpdate] = useState<undefined|IGeographicArea>(undefined)
   const [currentPolygonPoint, setCurrentPolygonPoint] = useState<LatLng|undefined>(undefined)
   const [polygonToManage, setPolygonToManage] = useState<IGeographicArea|undefined>(undefined)
 
@@ -213,13 +212,14 @@ function ManageGeographicAreasMapRender() {
         method: "PUT"
       });
       
+      console.log(response);
       if(response.code !== 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.warning, 
           message: "Ha habido un problema al intentar asignar el tipo de zona al area geográfica, intente nuevamente"}}));  
       } else {
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
+          alertType: EAlert.success, 
           message: "Se ha asignado exitosamente el area el tipo de zona al area geográfica"}}));  
       }
 
@@ -239,6 +239,7 @@ function ManageGeographicAreasMapRender() {
         method: 'PUT',
         data: {geographicAreaName: geographicArea.geographic_area_name}
       }) 
+      console.log(response);
       if(response.code === 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.success, 
@@ -265,7 +266,7 @@ function ManageGeographicAreasMapRender() {
         method: 'PUT',
         data: {geographicAreaCoordinates: geographicArea.coordinates}
       })
-
+      console.log(response);
       if(response.code === 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.success, 
@@ -594,19 +595,20 @@ function ManageGeographicAreasMapRender() {
     } else setSearchStrategyLevel(""); // The polygon doesn't have a type zone assigned
     
     // Save the current information of the polygon.
-    setGeographicArea({
-      ...geographicArea,
-      id_geographic_area: polygon.id_geographic_area,
-      id_strategy: polygon.id_strategy, 
-      geographic_area_name: polygon.geographic_area_name
-    });
-
     /*
       This state makes to know to the system that a polygon may suffer modifications.
       If the polygon suffer any modification, then the system is going to be stored that modification
       for "possibly" update it (if the user confirm the update).
     */
-    setCurrentPolygonToUpdate(polygon)
+
+    setGeographicArea({
+      ...geographicArea,
+      id_geographic_area: polygon.id_geographic_area,
+      id_strategy: polygon.id_strategy, 
+      geographic_area_name: polygon.geographic_area_name,
+      coordinates: polygon.coordinates
+    });
+
     // Activate the polygon mange mode
     setManagePolygon(true)
     // Show the dialog
@@ -723,33 +725,32 @@ function ManageGeographicAreasMapRender() {
           polygons[index].coordinates = refCurrentPolygon.current.coordinates;
           
           //Save in the state
-          setPolygonToManage(polygons[index])
+          setPolygonToManage(polygons[index]);
         }
       }
     }
   }
 
   const handleOnSubmitUpdateGeographicArea = async (e: any) => {
-    if(currentPolygonToUpdate!==undefined) {
       const indexPolygonUpdating:number = polygons.findIndex(
-        polygon => polygon.id_geographic_area === currentPolygonToUpdate.id_geographic_area);
-      
-      if(polygons[indexPolygonUpdating].geographic_area_name !== geographicArea.geographic_area_name)
+        polygon => polygon.id_geographic_area === geographicArea.id_geographic_area);
+      const previousePolygon:IGeographicArea = polygons[indexPolygonUpdating];
+
+      if(previousePolygon.geographic_area_name !== geographicArea.geographic_area_name)
         if(await updateGeographicAreaName(geographicArea) === 200) 
           polygons[indexPolygonUpdating].geographic_area_name = geographicArea.geographic_area_name;
-    
-      if(await updateGeographicAreaCoordinates(geographicArea) === 200) 
-        polygons[indexPolygonUpdating].coordinates = currentPolygonToUpdate.coordinates;
-    
+
       if(geographicArea.id_strategy !== 0) 
-        if(polygons[indexPolygonUpdating].id_strategy !== geographicArea.id_strategy) 
+        if(previousePolygon.id_strategy !== geographicArea.id_strategy) 
           if(await updateGeographicAreaStrategyLevel(geographicArea) === 200) 
             polygons[indexPolygonUpdating].id_strategy = geographicArea.id_strategy;
+
+      if(await updateGeographicAreaCoordinates(geographicArea) === 200) 
+        polygons[indexPolygonUpdating].coordinates = geographicArea.coordinates;
         
       setGeographicArea(initialGeographicAreaState);
       setShowDialog(false);
       setPolygons(polygons);
-    }
   }
 
   const handleOnSubmitDeleteGeographicArea = async (e: any) => {

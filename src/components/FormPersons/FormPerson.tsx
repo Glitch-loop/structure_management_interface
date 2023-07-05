@@ -227,25 +227,62 @@ const updateMember = async (basicData: any, idStrategy?: number, idLeader?: numb
   try {
     if(basicData.idMember !== undefined) {
       const idMember:number = basicData.idMember;
+      let response:IRequest<undefined> = {
+        code: 200,
+        message: ""
+      };
 
       //Update basic member's information 
-      const response:IRequest<undefined> = await requester({
-        url: `/members/${idMember}`,
-        method: "PUT",
-        data: basicData
-      })
-    
+      if(
+        basicData.firstName !== initialPersonInformation.first_name ||
+        basicData.lastName !== initialPersonInformation.last_name ||
+        basicData.street !== initialPersonInformation.street ||
+        basicData.extNumber !== initialPersonInformation.ext_number ||
+        basicData.intNumber !== initialPersonInformation.int_number ||
+        basicData.cellphoneNumber !== initialPersonInformation.cell_phone_number ||
+        basicData.idColony !== initialPersonInformation.id_colony
+      ) {
+        console.log("Actualizar informacion basica")
+
+        response = await requester({
+          url: `/members/${idMember}`,
+          method: "PUT",
+          data: basicData
+        })
+        console.log(response)
+      }
+
       //Update member's strategy level
-      idStrategy !== undefined && await updateStrategyLevel(idMember, idStrategy)
+      console.log(initialStrategicInformation)
+      if (idStrategy !== undefined && idStrategy !== 0)
+        if(initialStrategicInformation.id_strategy !== idStrategy)
+        {
+          console.log("level: ", idStrategy)
+          await updateStrategyLevel(idMember, idStrategy)
+
+        }
   
       //Update member's leader
-      idLeader !== undefined && await updateLeader(idMember, idLeader)
+      if (idLeader !== undefined && idLeader !== 0)
+        if(initialStrategicInformation.id_leader !== idLeader)
+        {
+          console.log("leader: ", idLeader)
+
+          await updateLeader(idMember, idLeader)
+        }
   
       //Update member's followers 
-      idFollowers !== undefined && await updateFollowers(idMember, idFollowers)
+      if(idFollowers !== undefined && idFollowers[0] !== undefined) {
+        await updateFollowers(idMember, idFollowers)
+      }
 
       //Update geographic area's manager
-      idGeographicArea !== undefined && await updateGeographicAreaManage(idMember, idGeographicArea);
+      if (idGeographicArea !== undefined && idGeographicArea !== 0)
+        if(initialStrategicInformation.id_geographic_area !== idGeographicArea)
+        {
+          console.log("geographic: ", idGeographicArea)
+          await updateGeographicAreaManage(idMember, idGeographicArea);
+        }
 
       if(response.code === 200) {
         dispatch(enqueueAlert({alertData: {
@@ -272,7 +309,7 @@ const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise
         url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
         method: 'PUT'
       });
-
+      console.log(response)
       if(response.code !== 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.warning, 
