@@ -26,9 +26,11 @@ export interface ICollaborator {
   int_number?: string; //address
   cell_phone_number?: string;
   id_colony?: number;
+  colony_name?: string;
+  postal_code?: string;
   email?: string;
   password?: string;
-  sessionToken?: string;
+  privileges?: [];
 }
 
 export interface IColony {
@@ -44,7 +46,6 @@ export interface IColor {
   spectrum3: number;
   opactity: number;
 }
-
 
 export interface IGeographicArea {
   id_geographic_area?: number;
@@ -88,6 +89,7 @@ export interface IMember {
 export interface IPrivilege {
   id_privilege?: number;
   name_privilege?: string;
+  assigned?: boolean;
 }
 
 export interface IRequest<T> {

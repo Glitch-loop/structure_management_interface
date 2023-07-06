@@ -25,10 +25,10 @@ const Input = (
     const [showAlertTest, setShowAlertTest] = useState(false);
 
     const testFunction = (textCase: string):void => {
-      if(testRegex!=''){
+      if(testRegex!='' && textCase != ''){
         if(!(testRegex.test(textCase))) setShowAlertTest(true)
         else setShowAlertTest(false)
-      }
+      } else setShowAlertTest(false)
     }
 
   return (
@@ -53,7 +53,7 @@ const Input = (
       />
       {(showAlert && required) && 
         <MessageAlert label="El campo no puede estar vacío"/>}
-      {(showAlertTest && required) && 
+      {(showAlertTest) && 
         <MessageAlert label={testMessage}/>}
     </div>
   )

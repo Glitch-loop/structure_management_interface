@@ -7,7 +7,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Searcher from '../UIcomponents/Searcher';
-import { IStructure, IRequest, IMember } from "../../interfaces/interfaces";
+import { IStructure, IRequest, IMember, ICollaborator } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { Tooltip } from "@mui/material";
 import {MdDeleteForever, MdEditDocument} from 'react-icons/md'
@@ -39,7 +39,7 @@ const emptyMember: IMember = {
   postal_code: ""
 }
 
-const TablePersons = () => {
+const TablePersons = ({ action }:{ action:number }) => {
   //States
   const [personsFounded, setPersonsFounded] = useState<IStructure[]>([]);
   const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
@@ -53,7 +53,7 @@ const TablePersons = () => {
 
 
   //Calls to API ---
-  const deleteMember = async (idMember: number):Promise<void> => {
+  const deleteMember = async (idMember: number):Promise<number> => {
     try {
       const response:IRequest<undefined> = await requester({
         url: `/members/${idMember}`,
@@ -62,17 +62,44 @@ const TablePersons = () => {
 
       if(response.code === 200) {
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
+          alertType: EAlert.success, 
           message: "Se ha eliminado exitosamente al miembro"}}));
-        } else {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.warning, 
-            message: "No se ha podido eliminar al miembro, intente nuevamente"}}));
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "No se ha podido eliminar al miembro, intente nuevamente"}}));
       }
+      return response.code;
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
+      return 500;
+    }
+  }
+
+  const deleteCollaborator = async (idCollaborator: number):Promise<number> => {
+    try {
+      const response:IRequest<undefined> = await requester({
+        url: `/collaborators/${idCollaborator}`,
+        method: 'DELETE'
+      })
+
+      if(response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se ha eliminado exitosamente al colaborador"}}));
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "No se ha podido eliminar al colaborador, intente nuevamente"}}));
+      }
+      return response.code;
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return 500;
     }
   }
 
@@ -83,6 +110,30 @@ const TablePersons = () => {
         method: 'GET'
       })
 
+      if(response.code === 200) 
+        if(response.data !== undefined) 
+          return response.data;
+        
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar hacer la busqueda, intente nuevamente"}}));  
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+  const searchCollaborator = async(nameMember: string):Promise<ICollaborator[]> => {
+    try {
+      const response:IRequest<ICollaborator[]> = await requester({
+        url: `/collaborators/name/${nameMember}`,
+        method: 'GET'
+      })
+
+      console.log(response)
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
@@ -184,7 +235,31 @@ const TablePersons = () => {
           return person
       })
     
-      if(personsToShow[0] === undefined) setPersonsFounded(await searchMember(personToSearch));
+      if(personsToShow[0] === undefined) 
+        if(action == 0) {
+          setPersonsFounded(await searchMember(personToSearch));
+        } else {
+          const responseCollaborator:ICollaborator[] = 
+            await searchCollaborator(personToSearch);
+            console.log(responseCollaborator)
+          const arrayConverter:IStructure[] = []
+
+          responseCollaborator.forEach((collaborator) => {
+            if(
+                collaborator.id_collaborator !== undefined &&
+                collaborator.first_name !== undefined &&
+                collaborator.last_name !== undefined
+              ) {
+                arrayConverter.push({
+                  id_member: collaborator.id_collaborator,
+                  ...collaborator
+                })
+              }
+          })
+          
+          console.log(arrayConverter)
+          setPersonsFounded(arrayConverter);
+        }
        else setPersonsFounded(personsToShow)
 
   }
@@ -237,7 +312,15 @@ const TablePersons = () => {
   }  
 
   const handleOnDelete = async (idPerson:number) => {
-    await deleteMember(idPerson)
+    let response = 500;
+    if(action == 0) {
+      response = await deleteMember(idPerson);
+    } else {
+      response = await deleteCollaborator(idPerson);
+    }
+
+    if(response === 200)
+      setPersonsFounded(personsFounded.filter(person => person.id_member !== idPerson))
   }
   
   return (

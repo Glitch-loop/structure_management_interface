@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Input from "../UIcomponents/Input";
 import { Autocomplete, TextField } from "@mui/material";
 import Button from "../UIcomponents/Button";
-import { ICollaborator, IColony, IGeographicArea, IMember, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
+import { IColony, IGeographicArea, IMember, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
 import { EAlert } from "../../interfaces/enums";
@@ -103,8 +103,6 @@ const showGeographicAreaInputFunction = (idStrategy:number|undefined, arrayStrat
   action props
   0 = add member
   1 = update member
-  2 = add collaborator
-  3 = update collaborator
 */
 
 const FormPerson = (
@@ -125,10 +123,6 @@ const FormPerson = (
     //Common fileds
     const [person, setPerson] = useState<IMember>(initialPersonInformation);
     const [strategicInformationPerson, setStrategicInformationPerson] = useState<IStructure>(initialStrategicInformation)
-
-    //Collaborator fields
-    const [email, setEmail] = useState<string>('')
-    const [password, setPassword] = useState<string>('')
 
     //Operational input 
     const [searchFollower, setSearchFollower] = useState<string>('')
@@ -152,332 +146,336 @@ const FormPerson = (
 
     // useEffect procedure ---
     useEffect(() => {
-      getStrategy().then((dataResponse) => {
-        setArrayStrategyLevel(dataResponse)
-        setShowLeaderInput(
-          showLeaderInputFunction(strategicInformationPerson.id_strategy, dataResponse))
-        setShowFollowerInput(
-          showFollowerInputFunction(strategicInformationPerson.id_strategy, dataResponse))
-        setShowGeographicArea(
-          showGeographicAreaInputFunction(strategicInformationPerson.id_strategy, dataResponse))
-      })
+      if(action == 0 || action == 1) {
+        getStrategy().then((dataResponse) => {
+          setArrayStrategyLevel(dataResponse)
+          setShowLeaderInput(
+            showLeaderInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+          setShowFollowerInput(
+            showFollowerInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+          setShowGeographicArea(
+            showGeographicAreaInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+        })
+      }
     }, [])
 
 
-//Calls to API
-const getStrategy = async ():Promise<IStrategy[]> => {
-  try {
-    const strategy: IRequest<IStrategy[]> = await requester({
-      url: `/strategyLevels`,
-      method: 'GET'
-    })
-    
-    if(strategy.code === 200) 
-      if(strategy.data !== undefined) 
-        return strategy.data;
-      
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar los seguidores, intente mas tarde"}})); 
-    return [];
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}})); 
-    return [];
-  }
-}
-
-const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
-  try {
-    const response:IRequest<any> = await requester({
-      url: '/members/', 
-      method: "POST", 
-      data: basicData})
-    
-    if(response.code === 201) {
-      if(response.data !== undefined) {
-        const idMember:number = response.data.idMember
-    
-        //Update member's leader
-        idLeader !== undefined && await updateLeader(idMember, idLeader)
-    
-        //Update member's followers 
-        idFollowers !== undefined && await updateFollowers(idMember, idFollowers)
-    
-        //Update geographic area's manager
-        idGeographicArea !== undefined && idGeographicArea !== undefined && await updateGeographicAreaManage(idMember, idGeographicArea);
-      }
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.success, 
-        message: "Se ha creado el miembro exitosamente"}}));
-    } else {
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.warning, 
-        message: "Hubo un error al intentar crear el nuevo miembro"}}));
-    }
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor"}}));
-  }
-}
-
-const updateMember = async (basicData: any, idStrategy?: number, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
-  try {
-    if(basicData.idMember !== undefined) {
-      const idMember:number = basicData.idMember;
-      let response:IRequest<undefined> = {
-        code: 200,
-        message: ""
-      };
-
-      //Update basic member's information 
-      if(
-        basicData.firstName !== initialPersonInformation.first_name ||
-        basicData.lastName !== initialPersonInformation.last_name ||
-        basicData.street !== initialPersonInformation.street ||
-        basicData.extNumber !== initialPersonInformation.ext_number ||
-        basicData.intNumber !== initialPersonInformation.int_number ||
-        basicData.cellphoneNumber !== initialPersonInformation.cell_phone_number ||
-        basicData.idColony !== initialPersonInformation.id_colony
-      ) {
-        console.log("Actualizar informacion basica")
-
-        response = await requester({
-          url: `/members/${idMember}`,
-          method: "PUT",
-          data: basicData
+    //Calls to API
+    //Enpoint for add and update member
+    const getStrategy = async ():Promise<IStrategy[]> => {
+      try {
+        const strategy: IRequest<IStrategy[]> = await requester({
+          url: `/strategyLevels`,
+          method: 'GET'
         })
-        console.log(response)
-      }
-
-      //Update member's strategy level
-      console.log(initialStrategicInformation)
-      if (idStrategy !== undefined && idStrategy !== 0)
-        if(initialStrategicInformation.id_strategy !== idStrategy)
-        {
-          console.log("level: ", idStrategy)
-          await updateStrategyLevel(idMember, idStrategy)
-
-        }
-  
-      //Update member's leader
-      if (idLeader !== undefined && idLeader !== 0)
-        if(initialStrategicInformation.id_leader !== idLeader)
-        {
-          console.log("leader: ", idLeader)
-
-          await updateLeader(idMember, idLeader)
-        }
-  
-      //Update member's followers 
-      if(idFollowers !== undefined && idFollowers[0] !== undefined) {
-        await updateFollowers(idMember, idFollowers)
-      }
-
-      //Update geographic area's manager
-      if (idGeographicArea !== undefined && idGeographicArea !== 0)
-        if(initialStrategicInformation.id_geographic_area !== idGeographicArea)
-        {
-          console.log("geographic: ", idGeographicArea)
-          await updateGeographicAreaManage(idMember, idGeographicArea);
-        }
-
-      if(response.code === 200) {
+        
+        if(strategy.code === 200) 
+          if(strategy.data !== undefined) 
+            return strategy.data;
+          
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.success, 
-          message: "Se ha actualizado el miembro exitosamente"}}));
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar obtener los niveles de la estrategia, intente mas tarde"}})); 
+        return [];
+      } catch (error) {
+        console.log(error)
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}})); 
+        return [];
+      }
+    }
+
+    const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
+      try {
+        const response:IRequest<any> = await requester({
+          url: '/members/', 
+          method: "POST", 
+          data: basicData})
+        
+        if(response.code === 201) {
+          if(response.data !== undefined) {
+            const idMember:number = response.data.idMember
+        
+            //Update member's leader
+            idLeader !== undefined && await updateLeader(idMember, idLeader)
+        
+            //Update member's followers 
+            idFollowers !== undefined && await updateFollowers(idMember, idFollowers)
+        
+            //Update geographic area's manager
+            idGeographicArea !== undefined && idGeographicArea !== undefined && await updateGeographicAreaManage(idMember, idGeographicArea);
+          }
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha creado el miembro exitosamente"}}));
         } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar crear el nuevo miembro"}}));
+        }
+      } catch (error) {
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
-          message: "Ha habido un error al momento de actualizar el miembro"}}));
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}}));
       }
     }
 
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor"}}));
-  }
-}
+    const updateMember = async (basicData: any, idStrategy?: number, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
+      try {
+        if(basicData.idMember !== undefined) {
+          const idMember:number = basicData.idMember;
+          let response:IRequest<undefined> = {
+            code: 200,
+            message: ""
+          };
 
-const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise<void> => {
-  try {
-    if(idStrategy!== undefined && idStrategy!==null) {
-      const response:IRequest<undefined> = await requester({
-        url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
-        method: 'PUT'
-      });
-      console.log(response)
-      if(response.code !== 200) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
-          message: "Hubo un error al intentar actualizar el nivel jerárquico del miembro"}})); 
-      }
-    } 
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor"}})); 
-  }
-}
+          //Update basic member's information 
+          if(
+            basicData.firstName !== initialPersonInformation.first_name ||
+            basicData.lastName !== initialPersonInformation.last_name ||
+            basicData.street !== initialPersonInformation.street ||
+            basicData.extNumber !== initialPersonInformation.ext_number ||
+            basicData.intNumber !== initialPersonInformation.int_number ||
+            basicData.cellphoneNumber !== initialPersonInformation.cell_phone_number ||
+            basicData.idColony !== initialPersonInformation.id_colony
+          ) {
+            console.log("Actualizar informacion basica")
 
-const updateLeader = async (idMember: number, idLeader: number):Promise<void> => {
-  try {
-    if(idLeader!== undefined && idLeader!==null) {
-      const response:IRequest<undefined> = await requester({
-        url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
-        method: 'PUT'
-      });
-      if(response.code !== 200) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
-          message: "Hubo un error al intentar actualizar el lider del miembro"}})); 
-      }
-    }
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor"}})); 
-  }
-}
+            response = await requester({
+              url: `/members/${idMember}`,
+              method: "PUT",
+              data: basicData
+            })
+            console.log(response)
+          }
 
-const updateFollowers = async (idMember: number, idFollowers: IStructure[]):Promise<void> => {
-  try {
-    if(idFollowers[0] !== undefined) {
-      const followers: number[] = [];
-      idFollowers.forEach(follower => followers.push(follower.id_member));
-      const response:IRequest<undefined> = await requester({
-        url: `/members/strategicInformation/followers/${idMember}`,
-        method: 'PUT',
-        data: { followers }
-      })
-      if(response.code !== 200) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
-          message: "Hubo un error al intentar actualizar a los seguidores del miembro"}})); 
-      }
-    }
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor"}}));  
-  }
-}
+          //Update member's strategy level
+          console.log(initialStrategicInformation)
+          if (idStrategy !== undefined && idStrategy !== 0)
+            if(initialStrategicInformation.id_strategy !== idStrategy)
+            {
+              console.log("level: ", idStrategy)
+              await updateStrategyLevel(idMember, idStrategy)
 
-const updateGeographicAreaManage = async(idMember: number, idGeographicArea: number):Promise<void> => {
-  try {
-    if(idGeographicArea !== undefined && idGeographicArea !== null) {
-      const response:IRequest<undefined> = await requester({
-        url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
-        method: 'PUT'
-      })
-      if(response.code !== 200) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
-          message: "Hubo un error al intentar actualizar el area geografica de administra el miembro"}})); 
-      }
-    }
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar conectar con el servidor"}}));  
-  }
-}
-
-const searchColonies = async (colonyToSearch: string):Promise<IColony[]> => {
-  try {
-    const response: IRequest<IColony[]> = await requester({
-      url: `/colonies/name/${colonyToSearch}`,
-      method: 'GET',
-    })
-    if(response.code === 200) {
-      if(response.data !== undefined) return response.data;
-    } else {
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.error, 
-        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}})); 
-    }
-    return [];
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
-    return [];
-  }
-
-}
-
-const searchLeaderByNameAndStrategyLevel = async (idStrategy: number, leaderName:string):Promise<IStructure[]> => {
-  try {
-    const response: IRequest<IStructure[]> = await requester({
-      url: `/members/strategicInformation/leaders/${idStrategy}/${leaderName}`,
-      method: `GET`
-    }) 
-
-    if(response.code===200) 
-      if(response.data !== undefined) 
-        return response.data;
+            }
       
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar los lideres, intente mas tarde"}}));
+          //Update member's leader
+          if (idLeader !== undefined && idLeader !== 0)
+            if(initialStrategicInformation.id_leader !== idLeader)
+            {
+              console.log("leader: ", idLeader)
 
-    return [];
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar los lideres, intente mas tarde"}})) ;
-    return [];
-  }
-}
+              await updateLeader(idMember, idLeader)
+            }
+      
+          //Update member's followers 
+          if(idFollowers !== undefined && idFollowers[0] !== undefined) {
+            await updateFollowers(idMember, idFollowers)
+          }
 
-const searchGeographicAreasByNameAndStrategyLevel = async (idStrategy: number, geographicAreaName:string):Promise<IGeographicArea[]> => {
-  try {
-    const response: IRequest<IGeographicArea[]> = await requester({
-      url: `/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`,
-      method: `GET`
-    }) 
-    
-    if(response.code===200) 
-      if(response.data !== undefined) 
-        return response.data;
-    
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar las area geograficas, intente mas tarde"}})); 
-    return [];
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar las area geograficas, intente mas tarde"}})); 
-    return [];
-  }
-}
+          //Update geographic area's manager
+          if (idGeographicArea !== undefined && idGeographicArea !== 0)
+            if(initialStrategicInformation.id_geographic_area !== idGeographicArea)
+            {
+              console.log("geographic: ", idGeographicArea)
+              await updateGeographicAreaManage(idMember, idGeographicArea);
+            }
 
-const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInputValue: string):Promise<IStructure[]> => {
-  try {    
-    const response: IRequest<IStructure[]> = await requester({
-      url: `/members/strategicInformation/followers/${idStrategy}/${newInputValue}`,
-      method: `GET`
-    }) 
-  
-    if(response.code === 200) 
-      if(response.data !== undefined) 
-        return response.data;
-    
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar los seguidores, intente mas tarde"}})); 
-    return [];
-  } catch (error) {
-    dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.error, 
-      message: "Hubo un error al intentar buscar los seguidores, intente mas tarde"}})); 
-    return [];
-  }
-}
+          if(response.code === 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.success, 
+              message: "Se ha actualizado el miembro exitosamente"}}));
+            } else {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Ha habido un error al momento de actualizar el miembro"}}));
+          }
+        }
+
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}}));
+      }
+    }
+
+    const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise<void> => {
+      try {
+        if(idStrategy!== undefined && idStrategy!==null) {
+          const response:IRequest<undefined> = await requester({
+            url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
+            method: 'PUT'
+          });
+          console.log(response)
+          if(response.code !== 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar actualizar el nivel jerárquico del miembro"}})); 
+          }
+        } 
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}})); 
+      }
+    }
+
+    const updateLeader = async (idMember: number, idLeader: number):Promise<void> => {
+      try {
+        if(idLeader!== undefined && idLeader!==null) {
+          const response:IRequest<undefined> = await requester({
+            url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
+            method: 'PUT'
+          });
+          if(response.code !== 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar actualizar el lider del miembro"}})); 
+          }
+        }
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}})); 
+      }
+    }
+
+    const updateFollowers = async (idMember: number, idFollowers: IStructure[]):Promise<void> => {
+      try {
+        if(idFollowers[0] !== undefined) {
+          const followers: number[] = [];
+          idFollowers.forEach(follower => followers.push(follower.id_member));
+          const response:IRequest<undefined> = await requester({
+            url: `/members/strategicInformation/followers/${idMember}`,
+            method: 'PUT',
+            data: { followers }
+          })
+          if(response.code !== 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar actualizar a los seguidores del miembro"}})); 
+          }
+        }
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}}));  
+      }
+    }
+
+    const updateGeographicAreaManage = async(idMember: number, idGeographicArea: number):Promise<void> => {
+      try {
+        if(idGeographicArea !== undefined && idGeographicArea !== null) {
+          const response:IRequest<undefined> = await requester({
+            url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
+            method: 'PUT'
+          })
+          if(response.code !== 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar actualizar el area geografica de administra el miembro"}})); 
+          }
+        }
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}}));  
+      }
+    }
+
+    const searchColonies = async (colonyToSearch: string):Promise<IColony[]> => {
+      try {
+        const response: IRequest<IColony[]> = await requester({
+          url: `/colonies/name/${colonyToSearch}`,
+          method: 'GET',
+        })
+        if(response.code === 200) {
+          if(response.data !== undefined) return response.data;
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.error, 
+            message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}})); 
+        }
+        return [];
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+        return [];
+      }
+
+    }
+
+    const searchLeaderByNameAndStrategyLevel = async (idStrategy: number, leaderName:string):Promise<IStructure[]> => {
+      try {
+        const response: IRequest<IStructure[]> = await requester({
+          url: `/members/strategicInformation/leaders/${idStrategy}/${leaderName}`,
+          method: `GET`
+        }) 
+
+        if(response.code===200) 
+          if(response.data !== undefined) 
+            return response.data;
+          
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar los lideres, intente mas tarde"}}));
+
+        return [];
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar los lideres, intente mas tarde"}})) ;
+        return [];
+      }
+    }
+
+    const searchGeographicAreasByNameAndStrategyLevel = async (idStrategy: number, geographicAreaName:string):Promise<IGeographicArea[]> => {
+      try {
+        const response: IRequest<IGeographicArea[]> = await requester({
+          url: `/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`,
+          method: `GET`
+        }) 
+        
+        if(response.code===200) 
+          if(response.data !== undefined) 
+            return response.data;
+        
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las area geograficas, intente mas tarde"}})); 
+        return [];
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las area geograficas, intente mas tarde"}})); 
+        return [];
+      }
+    }
+
+    const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInputValue: string):Promise<IStructure[]> => {
+      try {    
+        const response: IRequest<IStructure[]> = await requester({
+          url: `/members/strategicInformation/followers/${idStrategy}/${newInputValue}`,
+          method: `GET`
+        }) 
+      
+        if(response.code === 200) 
+          if(response.data !== undefined) 
+            return response.data;
+        
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar los seguidores, intente mas tarde"}})); 
+        return [];
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar los seguidores, intente mas tarde"}})); 
+        return [];
+      }
+    }
 
     //Handlers basic information ---
     //Handlers for colony autocomplete
@@ -816,10 +814,6 @@ const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInput
       
       setArrayFollower([])
       setSearchFollower('')
-
-      //Collaborator information states related
-      setEmail('')
-      setPassword('')
     }
 
   return (
@@ -910,27 +904,6 @@ const searchFollowerByNameAndStrategicLevel = async (idStrategy:number, newInput
                 renderInput={(params) => <TextField {...params} label="Colonia" />}
                 />
             </div>
-            {
-              (action === 2 || action === 3) &&
-                <div className="flex flex-row">
-                  <div className="mr-2">
-                    <Input
-                      onType={setEmail}
-                      objectValue={person} 
-                      inputName={"int_number"}
-                      placeholder={'email'}
-                      inputType={'text'}
-                    />
-                  </div>
-                  <Input
-                    onType={setPassword}
-                    objectValue={person} 
-                    inputName={"password"}
-                    placeholder={'Contraseña'}
-                    inputType={'text'}
-                  />
-                </div>
-            }
           </div>
           {
             (action === 0 || action === 1) &&
