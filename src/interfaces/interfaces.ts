@@ -30,7 +30,7 @@ export interface ICollaborator {
   postal_code?: string;
   email?: string;
   password?: string;
-  privileges?: [];
+  privileges?: IPrivilege[];
 }
 
 export interface IColony {
@@ -87,7 +87,7 @@ export interface IMember {
 }
 
 export interface IPrivilege {
-  id_privilege?: number;
+  id_privilege: number;
   name_privilege?: string;
   assigned?: boolean;
 }
@@ -95,7 +95,7 @@ export interface IPrivilege {
 export interface IRequest<T> {
   message: string;
   code: number;
-  data?: T
+  data? : T
 }
 
 export interface IStructure {

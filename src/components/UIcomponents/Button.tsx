@@ -19,6 +19,9 @@ const Button = ({
         case 1:
           buttonColor = 'z-0 mt-5 mx-3 bg-red-200 rounded-full p-3 hover:bg-red-400';
           break;
+        case 2:
+          buttonColor = 'z-0 mt-5 mx-3 bg-green-200 rounded-full p-3 hover:bg-green-400';
+          break;
       }
       return buttonColor;
     }

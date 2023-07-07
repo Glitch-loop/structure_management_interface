@@ -38,9 +38,26 @@ const initialPersonState:ICollaborator = {
   privileges: []
 }
 
+//Response
+const errorResponse:IRequest<undefined> = {
+  message: "Error",
+  code: 500
+}
+
 //Auxiliar functions
 const avoidNull = (data: any, replace: any):any => {
   return data === null ? replace : data;
+}
+
+const getArrPrivilegesSelected = (privileges: IPrivilege[]):number[] => {
+  const data:number[] = [];
+  privileges.forEach(privilege => {
+    if(privilege.assigned === true) {
+      data.push(privilege.id_privilege);
+    }
+  });
+
+  return data;
 }
 
 /*
@@ -82,8 +99,34 @@ const FormCollaborator = (
     useEffect(() => {
       getAllPrivileges().then((privileges) => {
         console.log(privileges)
-        setPrivileges(
-          privileges.map(privilege => {privilege.assigned = false; return privilege}));
+        console.log(person)
+        if(action === 0) {
+          /*
+            If action is 0, that means that the user is adding a new collaborator,
+            so he doesn't have privileges yet.
+          */ 
+          setPrivileges(
+            privileges.map(privilege => {privilege.assigned = false; return privilege}));
+          } else if(action === 1) {
+            /*
+              If action is 1, that means that the user us updating a new collaborator,
+              so we set as cheked those privileges that the collaborator already has.
+            */ 
+            if(person.privileges !== undefined) {
+              const currentPrivileges:IPrivilege[] = person.privileges;
+              setPrivileges(
+                privileges
+                .map(privilege => {
+                  if ((currentPrivileges.find(currentPrivilege => 
+                      currentPrivilege.id_privilege === privilege.id_privilege)) !== undefined) {
+                        privilege.assigned = true; 
+                      } else {
+                        privilege.assigned = false; 
+                      }
+                  return privilege
+                }));
+            }
+        }
       })
     }, [])
 
@@ -99,7 +142,7 @@ const FormCollaborator = (
           if(response.data !== undefined) return response.data;
         } else {
           dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.error, 
+            alertType: EAlert.warning, 
             message: "Hubo un error al intentar obtener los privilegios, intente mas tarde"}})); 
         }
         return [];
@@ -121,7 +164,7 @@ const FormCollaborator = (
           if(response.data !== undefined) return response.data;
         } else {
           dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.error, 
+            alertType: EAlert.warning, 
             message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}})); 
         }
         return [];
@@ -131,10 +174,88 @@ const FormCollaborator = (
           message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
         return [];
       }
-
     }
 
+    const addNewMember = async (collaborator: ICollaborator):Promise<IRequest<any>> => {
+      try {
+        const response: IRequest<any> = await requester({
+          url: `/collaborators`,
+          method: 'POST',
+          data: collaborator
+        })
+        console.log(response)
+        if(response.code === 201) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha agregado exitosamente el nuevo colaborador"}})); 
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar agregar al nuevo colaborador, intente mas tarde"}})); 
+        }
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
+        return errorResponse;
+      }
+    }
 
+    const updateMember = async(idCollaborator: number, collaborator: ICollaborator):Promise<IRequest<any>> => {
+      try {
+        const response: IRequest<any> = await requester({
+          url: `/collaborators/${idCollaborator}`,
+          method: 'PUT',
+          data: collaborator
+        })
+        console.log(response)
+        if(response.code === 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha actualizado exitosamente el colaborador"}})); 
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar actualizar al colaborador, intente mas tarde"}})); 
+        }
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
+        return errorResponse;
+      }
+    }
+
+    const updatePrivileges = async (collaborator: number, privileges: number[]):Promise<IRequest<any>> => {
+      try {
+        const response: IRequest<any> = await requester({
+          url: `/privileges/${collaborator}`,
+          method: 'PUT',
+          data: {privileges: privileges}
+        })
+        if(response.code === 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha actualizado exitosamente los privilegios del colaborador"}})); 
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar actualizar los privilegios del colaborador, intente mas tarde"}})); 
+        }
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
+        return errorResponse;
+      }
+    }
+
+    
+
+    
     //Handlers basic information ---
     //Handlers for colony autocomplete
     const handleSearchColony = async (event: any, newInputValue: string | null) => {
@@ -195,7 +316,8 @@ const FormCollaborator = (
         person.street === '' ||
         person.ext_number === '' ||
         person.cell_phone_number === '' ||
-        person.id_colony === undefined
+        person.id_colony === undefined ||
+        person.password === ''
         ){
           console.log("There can't be empty data")
       }
@@ -210,20 +332,33 @@ const FormCollaborator = (
         "intNumber": avoidNull(person.int_number, ""),
         "email": avoidNull(person.email, ""),
         "idColony": avoidNull(person.id_colony, 0),
-        "cellphoneNumber": avoidNull(person.cell_phone_number, ""),
+        "cellPhoneNumber": avoidNull(person.cell_phone_number, ""),
+        "password": avoidNull(person.password, "")
       }
 
 
-        // if(action==0) {
-
-        // } else if(action==1) {
-
-        //   handleSubmit(true)
-        // }
-        //Reset variables
-        //Basic information
-        resetAllStates()
-
+        if(action==0) {
+          const response:IRequest<any> = await addNewMember(basicData);
+          if(response.code === 201 && response.data !== undefined) {
+            const { idCollaborator } = response.data;
+            if(privileges[0] !== undefined) {
+              const responsePrivilege:IRequest<any> 
+                = await updatePrivileges(idCollaborator, 
+                  getArrPrivilegesSelected(privileges));
+            }
+            resetAllStates();
+          }
+        } else if(action==1) {
+          console.log("Updating: ", basicData)
+          const response:IRequest<any> = await updateMember(basicData.idCollaborator, basicData);
+          const responsePrivilege:IRequest<any> 
+          = await updatePrivileges(basicData.idCollaborator, 
+            getArrPrivilegesSelected(privileges));
+          if(response.code === 200) {
+              resetAllStates();
+              handleSubmit(true)
+          }
+        }
     }
 
     //Auxiliar functions
@@ -232,10 +367,11 @@ const FormCollaborator = (
     const resetAllStates = ():void => {
       //Basic information states related
       setPerson(initialPersonState);
-
+      setConfirmPassword({password: ''});
 
       //Autocomplete store data states related
       setArraySearchColony([])
+      setPrivileges([]);
       
     }
 
@@ -338,6 +474,7 @@ const FormCollaborator = (
                 />
               </div>
             </div>
+            {action == 0 || action === 3 &&
             <div className="flex flex-col flex-center">
               <div className="flex flex-row">
                 <div className="mr-2">
@@ -364,6 +501,7 @@ const FormCollaborator = (
                 <MessageAlert label="Las contraseñas tienen que coincidir" />
               }
             </div>
+            }
           </div>
           <div className="mt-3 ml-3 overflow-scroll max-h-96">
             <div className="max-w-lg">
@@ -385,7 +523,7 @@ const FormCollaborator = (
                     key={privilege.id_privilege} 
                     className="flex flex-row items-center">
                       <Checkbox     
-                        onClick={()=>{handleClick(privilege.id_privilege)}}
+                        onClick={(e:any)=>{handleClick(privilege.id_privilege)}}
                         checked={privilege.assigned}
                       />
                       <p className="text-sm">{privilege.name_privilege}</p>
@@ -529,6 +667,16 @@ const FormCollaborator = (
                 handleSubmit(true)
               }}
               colorButton={1}
+              />
+        }
+        {
+          (action===1) && 
+            <Button 
+              label="Restablecer contraseña" 
+              onClick={() => {
+                handleSubmit(true)
+              }}
+              colorButton={2}
               />
         }
         </div>  

@@ -7,11 +7,12 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Searcher from '../UIcomponents/Searcher';
-import { IStructure, IRequest, IMember, ICollaborator } from "../../interfaces/interfaces";
+import { IStructure, IRequest, IMember, ICollaborator, IPrivilege } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { Tooltip } from "@mui/material";
 import {MdDeleteForever, MdEditDocument} from 'react-icons/md'
 import FormPerson from "../FormPersons/FormPerson";
+import FormCollaborator from "../FormPersons/FormCollaborator";
 import { CircularProgress } from "@mui/material";
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
@@ -39,11 +40,30 @@ const emptyMember: IMember = {
   postal_code: ""
 }
 
+
+const emptyCollaborator: ICollaborator = {
+  id_collaborator: 0,
+  first_name: "",
+  last_name: "",
+  street: "",
+  ext_number: "",
+  int_number: "",
+  cell_phone_number: "",
+  id_colony: 0,
+  colony_name: "",
+  postal_code: "",
+  email: "",
+  password: "",
+  privileges: []
+}
+
 const TablePersons = ({ action }:{ action:number }) => {
   //States
   const [personsFounded, setPersonsFounded] = useState<IStructure[]>([]);
   const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
   const [memberStrategicInfoToUpdate, setMemberStrategicInfoToUpdate] = useState<IStructure>();
+  const [collaboratorBasicInfoToUpdate, setCollaboratorBasicInfoToUpdate] = useState<ICollaborator>();
+  
   const [showForm, setShowForm] = useState<boolean>();
 
   //Reducer for alert message
@@ -219,6 +239,52 @@ const TablePersons = ({ action }:{ action:number }) => {
     }
   }
 
+  const getCollaboratorBasicInformation = async(idCollaborator: number):Promise<ICollaborator> => {
+    try {
+      const response:IRequest<ICollaborator[]> = await requester({
+        url: `/collaborators/${idCollaborator}`
+      })
+      if(response.code === 200)
+        if(response.data !== undefined)
+          return response.data[0]
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Hubo problemas al momento de obtener la informacion colaborador, intente nuevamente"}}));
+      return emptyCollaborator;
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return emptyCollaborator;
+    }
+  }
+
+  const getCollaboratorPrivileges = async (idCollaborator: number):Promise<IPrivilege[]> => {
+    try {
+      const response:IRequest<IPrivilege[]> = await requester({
+        url: `/privileges/collaborator/${idCollaborator}`
+      })
+      if(response.code === 200)
+        if(response.data !== undefined)
+          return response.data
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Hubo problemas al momento de obtener la informacion colaborador, intente nuevamente"}}));
+      return [];
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+
+  // const gerCollaboratorPrivileges = async()
   //Handlers ---
   const handleSearchPerson = async (personToSearch: string) => {
     /*
@@ -273,42 +339,62 @@ const TablePersons = ({ action }:{ action:number }) => {
     setPersonsFounded([])
   }
 
-  const handleOnUpdate = async (idMember:number) => {
+  const handleOnUpdate = async (idPerson:number) => {
     /*
-      This information is to get the member's data after the user found the member that wanted to update 
+      This handler is to get the member's or collaborato's data after the user found the "person" that wanted to update 
     */
     
-    //To updata member case
-    //Get basic member's information  
-    const basicMemberInformation:IMember = await getBasicMemberInformationById(idMember);
+    if(action==0) {
+      //To updata member case
+      //Get basic member's information  
+      const basicMemberInformation:IMember = await getBasicMemberInformationById(idPerson);
+  
+      //Get strategic member's information case
+      if(basicMemberInformation.id_member !== 0 &&
+        basicMemberInformation.id_member !== undefined) {
+        setMemberBasicInfoToUpdate(basicMemberInformation);
+        //Get strategic information
+        const strategicMemberInformation:IStructure 
+          = await getStrategicMemberInformation(basicMemberInformation.id_member)
+          
+        if(strategicMemberInformation.id_member !== 0) {
+          // If the member has a leader        
+          if(strategicMemberInformation.id_leader !== null &&
+            strategicMemberInformation.id_leader !== undefined
+            ) {
+            const leaderData:IMember = await getLeaderOfTheMemberById(strategicMemberInformation.id_leader);
+            strategicMemberInformation.first_name_leader=leaderData.first_name 
+            strategicMemberInformation.last_name_leader = leaderData.last_name  
+          } 
+                
+          if (strategicMemberInformation.first_name_leader === undefined)
+            strategicMemberInformation.first_name_leader = '' 
+          if (strategicMemberInformation.last_name_leader === undefined)
+            strategicMemberInformation.last_name_leader= '' 
+          
+          setMemberStrategicInfoToUpdate(strategicMemberInformation)
+          setShowForm(true)             
+        }
+      } 
+    } else {
+      //Get collaborator's basic information
+      const dataCollaborator:ICollaborator 
+        = await getCollaboratorBasicInformation(idPerson);
+        
+      if(dataCollaborator.id_collaborator !== 0) {
+        //Get collaborator's privilege
+        const dataPrivilege:IPrivilege[] = await getCollaboratorPrivileges(idPerson);
+        
+        //Save the result
+        if(dataPrivilege[0] !== undefined) {
+          dataCollaborator.privileges = dataPrivilege;
+        }
 
-    //Get strategic member's information case
-    if(basicMemberInformation.id_member !== 0 &&
-      basicMemberInformation.id_member !== undefined) {
-      setMemberBasicInfoToUpdate(basicMemberInformation);
-      //Get strategic information
-      const strategicMemberInformation:IStructure 
-        = await getStrategicMemberInformation(basicMemberInformation.id_member)
-        
-      if(strategicMemberInformation.id_member !== 0) {
-        // If the member has a leader        
-        if(strategicMemberInformation.id_leader !== null &&
-          strategicMemberInformation.id_leader !== undefined
-          ) {
-          const leaderData:IMember = await getLeaderOfTheMemberById(strategicMemberInformation.id_leader);
-          strategicMemberInformation.first_name_leader=leaderData.first_name 
-          strategicMemberInformation.last_name_leader = leaderData.last_name  
-        } 
-              
-        if (strategicMemberInformation.first_name_leader === undefined)
-          strategicMemberInformation.first_name_leader = '' 
-        if (strategicMemberInformation.last_name_leader === undefined)
-          strategicMemberInformation.last_name_leader= '' 
-        
-        setMemberStrategicInfoToUpdate(strategicMemberInformation)
-        setShowForm(true)             
+        setCollaboratorBasicInfoToUpdate(dataCollaborator)
+        setShowForm(true)     
       }
-    } 
+    }
+
   }  
 
   const handleOnDelete = async (idPerson:number) => {
@@ -327,14 +413,29 @@ const TablePersons = ({ action }:{ action:number }) => {
     <div className=""> 
       {
         (showForm===true) ?
-        (<FormPerson
-          label="Actualizar miembro"
-          action={1}
-          handleSubmit={handleOnSendData}
+        
+        (
 
-          initialPersonInformation={memberBasicInfoToUpdate}
-          initialStrategicInformation={memberStrategicInfoToUpdate}
-        />) :
+          action === 0 ?
+          (<FormPerson
+            label="Actualizar miembro"
+            action={1}
+            handleSubmit={handleOnSendData}
+  
+            initialPersonInformation={memberBasicInfoToUpdate}
+            initialStrategicInformation={memberStrategicInfoToUpdate}
+          />) :
+          (<FormCollaborator
+            label="Actualizar colaborador"
+            action={1}
+            handleSubmit={handleOnSendData}
+  
+            initialPersonInformation={collaboratorBasicInfoToUpdate}
+          />)
+
+          
+        )
+         :
         (<>
 
           <Searcher handleSearcher={handleSearchPerson}/>
