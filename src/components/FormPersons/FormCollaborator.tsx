@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Input from "../UIcomponents/Input";
-import { Autocomplete, TextField, Checkbox } from "@mui/material";
+import { Autocomplete, TextField, Checkbox, Dialog } from "@mui/material";
 import Button from "../UIcomponents/Button";
 
 //Interfaces for members
@@ -19,7 +19,7 @@ import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import MessageAlert from "../UIcomponents/MessageAlert";
-
+import { CircularProgress } from "@mui/material";
 
 //Initial states
 const initialPersonState:ICollaborator = {
@@ -85,6 +85,7 @@ const FormCollaborator = (
     const [helper, setHelper] = useState<boolean>(false);
     //Operational input 
     const [confirmPassword, setConfirmPassword] = useState<any>({password: ''})
+    const [showDialog, setShowDialog] = useState<boolean>(false)
 
     //States to save the results of the search
     const [arraySearchColony, setArraySearchColony] = useState<IColony[]>([])
@@ -125,8 +126,9 @@ const FormCollaborator = (
                       }
                   return privilege
                 }));
-            }
+            } else setPrivileges(privileges)
         }
+        setHelper(!helper)
       })
     }, [])
 
@@ -253,9 +255,31 @@ const FormCollaborator = (
       }
     }
 
-    
+    const resetPassword = async (idCollaborator: number):Promise<IRequest<any>> => {
+      try {
+        const response: IRequest<any> = await requester({
+          url: `/collaborators/resetPassword/${idCollaborator}`,
+          method: 'PUT'
+        })
+        console.log(response)
+        if(response.code === 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha restaurado la contraseña del colaborador exitosamente"}})); 
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar restaurar la constraseña del colaborador, intente mas tarde"}})); 
+        }
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
+        return errorResponse;
+      }
+    }
 
-    
     //Handlers basic information ---
     //Handlers for colony autocomplete
     const handleSearchColony = async (event: any, newInputValue: string | null) => {
@@ -310,7 +334,6 @@ const FormCollaborator = (
     //Handle password
     const handleOnSubmit = async(e: any) => {
       if(
-        
         person.first_name === '' ||
         person.last_name === '' ||
         person.street === '' ||
@@ -360,10 +383,28 @@ const FormCollaborator = (
           }
         }
     }
+    
+    //This function is to reset the password
+    const handleSubmitResetPassword = async(e:any):Promise<void> => {
+      e.preventDefault();
+      if(person.id_collaborator !== undefined) {
+        const response:IRequest<any> = await resetPassword(person.id_collaborator);
 
+        if(response.code === 200 
+        && response.data !== undefined) {
+          setShowDialog(true);
+          setPerson({...person, password: response.data.password});
+        }
+      }
+    }
+
+    //This function is to close the dialog (the function remove the password)
+    const handleCloseDialog = ():void => {
+      setShowDialog(false)
+      setPerson({...person, password: ''})
+    }
+    
     //Auxiliar functions
-
-
     const resetAllStates = ():void => {
       //Basic information states related
       setPerson(initialPersonState);
@@ -378,6 +419,25 @@ const FormCollaborator = (
 
   return (
     <>
+      <Dialog 
+        onClose={() => handleCloseDialog()}
+        open={showDialog}>
+          <div className="p-5 flex flex-col">
+            <p className="mb-3 text-center text-xl">Nueva contraseña del colaborador</p>
+            <p className="mb-3 ml-4 italic">
+              Contraseña: <span className="text-lg font-bold not-italic">{person.password}</span>
+            </p>
+            <p className="mb-3 font-bold">
+              Es importante que el colaborador entre al perfil 
+              con la nueva contraseña y cambie esta contraseña 
+              por una que el propio colaborador invente.
+            </p>
+            <Button 
+              label="Aceptar"
+              onClick={() => handleCloseDialog()}
+              />
+          </div>
+      </Dialog>
       <div className="text-center text-xl font-bold">
         {label}
       </div>
@@ -503,162 +563,164 @@ const FormCollaborator = (
             </div>
             }
           </div>
-          <div className="mt-3 ml-3 overflow-scroll max-h-96">
-            <div className="max-w-lg">
-              <p className="text-lg font-medium">Privilegios de capturista</p>
-              <div className="flex flex-row flex-wrap">
-                {
-                  privileges.filter(privilege => {
-                    if(
-                      privilege.id_privilege === 1 ||
-                      privilege.id_privilege === 2 ||
-                      privilege.id_privilege === 3 ||
-                      privilege.id_privilege === 14 ||
-                      privilege.id_privilege === 15 ||
-                      privilege.id_privilege === 16
-                      ) return privilege
-                  })
-                  .map(privilege => 
-                    <div 
-                    key={privilege.id_privilege} 
-                    className="flex flex-row items-center">
-                      <Checkbox     
-                        onClick={(e:any)=>{handleClick(privilege.id_privilege)}}
-                        checked={privilege.assigned}
-                      />
-                      <p className="text-sm">{privilege.name_privilege}</p>
-                    </div>
-                    )
-                }
+          {privileges[0] !== undefined &&
+            <div className="mt-3 ml-3 overflow-scroll max-h-96">
+              <div className="max-w-lg">
+                <p className="text-lg font-medium">Privilegios de capturista</p>
+                <div className="flex flex-row flex-wrap">
+                  {
+                    privileges.filter(privilege => {
+                      if(
+                        privilege.id_privilege === 1 ||
+                        privilege.id_privilege === 2 ||
+                        privilege.id_privilege === 3 ||
+                        privilege.id_privilege === 14 ||
+                        privilege.id_privilege === 15 ||
+                        privilege.id_privilege === 16
+                        ) return privilege
+                    })
+                    .map(privilege => 
+                      <div 
+                      key={privilege.id_privilege} 
+                      className="flex flex-row items-center">
+                        <Checkbox     
+                          onClick={(e:any)=>{handleClick(privilege.id_privilege)}}
+                          checked={privilege.assigned}
+                        />
+                        <p className="text-sm">{privilege.name_privilege}</p>
+                      </div>
+                      )
+                  }
+                </div>
+              </div>
+              <div className="max-w-lg">
+                <p className="text-lg font-medium">Privilegios de planificador</p>
+                <div className="flex flex-row flex-wrap">
+                  {
+                    privileges.filter(privilege => {
+                      if(
+                        privilege.id_privilege === 7 ||
+                        privilege.id_privilege === 8 ||
+                        privilege.id_privilege === 17 ||
+                        privilege.id_privilege === 18
+                        ) return privilege
+                    })
+                    .map(privilege => 
+                      <div 
+                      key={privilege.id_privilege} 
+                      className="flex flex-row items-center">
+                        <Checkbox     
+                          onClick={()=>{handleClick(privilege.id_privilege)}}
+                          checked={privilege.assigned}
+                        />
+                        <p className="text-sm">{privilege.name_privilege}</p>
+                      </div>
+                      )
+                  }
+                </div>
+              </div>
+              <div className="max-w-lg">
+              <p className="text-lg font-medium">Privilegios de arquitecto</p>
+                <div className="flex flex-row flex-wrap">
+                  {
+                    privileges.filter(privilege => {
+                      if(
+                        privilege.id_privilege === 4 ||
+                        privilege.id_privilege === 5 ||
+                        privilege.id_privilege === 6
+                        ) return privilege
+                    })
+                    .map(privilege => 
+                      <div 
+                      key={privilege.id_privilege} 
+                      className="flex flex-row items-center">
+                        <Checkbox     
+                          onClick={()=>{handleClick(privilege.id_privilege)}}
+                          checked={privilege.assigned}
+                        />
+                        <p className="text-sm">{privilege.name_privilege}</p>
+                      </div>
+                      )
+                  }
+                </div>
+              </div>
+              <div className="max-w-lg">
+              <p className="text-lg font-medium">Privilegios de analista</p>
+                <div className="flex flex-row flex-wrap">
+                  {
+                    privileges.filter(privilege => {
+                      if(
+                        privilege.id_privilege === 0
+                        ) return privilege
+                    })
+                    .map(privilege => 
+                      <div 
+                      key={privilege.id_privilege} 
+                      className="flex flex-row items-center">
+                        <Checkbox     
+                          onClick={()=>{handleClick(privilege.id_privilege)}}
+                          checked={privilege.assigned}
+                        />
+                        <p className="text-sm">{privilege.name_privilege}</p>
+                      </div>
+                      )
+                  }
+                </div>
+              </div>
+              <div className="max-w-lg">
+              <p className="text-lg font-medium">Privilegios de administrador</p>
+                <div className="flex flex-row flex-wrap">
+                  {
+                    privileges.filter(privilege => {
+                      if(
+                        privilege.id_privilege === 9 ||
+                        privilege.id_privilege === 10 ||
+                        privilege.id_privilege === 11
+                        ) return privilege
+                    })
+                    .map(privilege => 
+                      <div 
+                      key={privilege.id_privilege} 
+                      className="flex flex-row items-center">
+                        <Checkbox     
+                          onClick={()=>{handleClick(privilege.id_privilege)}}
+                          checked={privilege.assigned}
+                        />
+                        <p className="text-sm">{privilege.name_privilege}</p>
+                      </div>
+                      )
+                  }
+                </div>
+              </div>
+              <div className="max-w-lg">
+              <p className="text-lg font-medium">Privilegios de super administrador</p>
+                <div className="flex flex-row flex-wrap">
+                  {
+                    privileges.filter(privilege => {
+                      if(
+                        privilege.id_privilege === 12 ||
+                        privilege.id_privilege === 13
+                        ) return privilege
+                    })
+                    .map(privilege => 
+                      <div 
+                      key={privilege.id_privilege} 
+                      className="flex flex-row items-center">
+                        <Checkbox     
+                          onClick={()=>{handleClick(privilege.id_privilege)}}
+                          checked={privilege.assigned}
+                        />
+                        <p className="text-sm">{privilege.name_privilege}</p>
+                      </div>
+                      )
+                  }
+                </div>
               </div>
             </div>
-            <div className="max-w-lg">
-              <p className="text-lg font-medium">Privilegios de planificador</p>
-              <div className="flex flex-row flex-wrap">
-                {
-                  privileges.filter(privilege => {
-                    if(
-                      privilege.id_privilege === 7 ||
-                      privilege.id_privilege === 8 ||
-                      privilege.id_privilege === 17 ||
-                      privilege.id_privilege === 18
-                      ) return privilege
-                  })
-                  .map(privilege => 
-                    <div 
-                    key={privilege.id_privilege} 
-                    className="flex flex-row items-center">
-                      <Checkbox     
-                        onClick={()=>{handleClick(privilege.id_privilege)}}
-                        checked={privilege.assigned}
-                      />
-                      <p className="text-sm">{privilege.name_privilege}</p>
-                    </div>
-                    )
-                }
-              </div>
-            </div>
-            <div className="max-w-lg">
-            <p className="text-lg font-medium">Privilegios de arquitecto</p>
-              <div className="flex flex-row flex-wrap">
-                {
-                  privileges.filter(privilege => {
-                    if(
-                      privilege.id_privilege === 4 ||
-                      privilege.id_privilege === 5 ||
-                      privilege.id_privilege === 6
-                      ) return privilege
-                  })
-                  .map(privilege => 
-                    <div 
-                    key={privilege.id_privilege} 
-                    className="flex flex-row items-center">
-                      <Checkbox     
-                        onClick={()=>{handleClick(privilege.id_privilege)}}
-                        checked={privilege.assigned}
-                      />
-                      <p className="text-sm">{privilege.name_privilege}</p>
-                    </div>
-                    )
-                }
-              </div>
-            </div>
-            <div className="max-w-lg">
-            <p className="text-lg font-medium">Privilegios de analista</p>
-              <div className="flex flex-row flex-wrap">
-                {
-                  privileges.filter(privilege => {
-                    if(
-                      privilege.id_privilege === 0
-                      ) return privilege
-                  })
-                  .map(privilege => 
-                    <div 
-                    key={privilege.id_privilege} 
-                    className="flex flex-row items-center">
-                      <Checkbox     
-                        onClick={()=>{handleClick(privilege.id_privilege)}}
-                        checked={privilege.assigned}
-                      />
-                      <p className="text-sm">{privilege.name_privilege}</p>
-                    </div>
-                    )
-                }
-              </div>
-            </div>
-            <div className="max-w-lg">
-            <p className="text-lg font-medium">Privilegios de administrador</p>
-              <div className="flex flex-row flex-wrap">
-                {
-                  privileges.filter(privilege => {
-                    if(
-                      privilege.id_privilege === 9 ||
-                      privilege.id_privilege === 10 ||
-                      privilege.id_privilege === 11
-                      ) return privilege
-                  })
-                  .map(privilege => 
-                    <div 
-                    key={privilege.id_privilege} 
-                    className="flex flex-row items-center">
-                      <Checkbox     
-                        onClick={()=>{handleClick(privilege.id_privilege)}}
-                        checked={privilege.assigned}
-                      />
-                      <p className="text-sm">{privilege.name_privilege}</p>
-                    </div>
-                    )
-                }
-              </div>
-            </div>
-            <div className="max-w-lg">
-            <p className="text-lg font-medium">Privilegios de super administrador</p>
-              <div className="flex flex-row flex-wrap">
-                {
-                  privileges.filter(privilege => {
-                    if(
-                      privilege.id_privilege === 12 ||
-                      privilege.id_privilege === 13
-                      ) return privilege
-                  })
-                  .map(privilege => 
-                    <div 
-                    key={privilege.id_privilege} 
-                    className="flex flex-row items-center">
-                      <Checkbox     
-                        onClick={()=>{handleClick(privilege.id_privilege)}}
-                        checked={privilege.assigned}
-                      />
-                      <p className="text-sm">{privilege.name_privilege}</p>
-                    </div>
-                    )
-                }
-              </div>
-            </div>
-          </div>
+          }
         </div>
         <div className="flex flex-row justify-center">
-          <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
+        <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
         {
           (action===1) && 
             <Button 
@@ -673,8 +735,8 @@ const FormCollaborator = (
           (action===1) && 
             <Button 
               label="Restablecer contraseña" 
-              onClick={() => {
-                handleSubmit(true)
+              onClick={(e:any) => {
+                handleSubmitResetPassword(e);
               }}
               colorButton={2}
               />

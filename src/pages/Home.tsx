@@ -8,7 +8,6 @@ const Home = () => {
 
   const handleSubmit = async (e:any) => {
     e.preventDefault()
-    
   }
 
   return (
