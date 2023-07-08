@@ -10,6 +10,7 @@ import { RootState } from '../redux/store';
 import { IRequest, IUser } from "../interfaces/interfaces";
 import requester from "../helpers/Requester";
 import { useNavigate } from "react-router-dom";
+import MessageAlert from "../components/UIcomponents/MessageAlert";
 
 const errorResponse:IRequest<undefined> = {
   message: "Error",
@@ -29,7 +30,9 @@ const initUserData:Ilogin = {
 const Home = () => {
   const navigate = useNavigate();
 
-  const [userData, setUserData] = useState<Ilogin>(initUserData)
+  const [userData, setUserData] = useState<Ilogin>(initUserData);
+  const [showAlert, setShowAlert] = useState<boolean>(false)
+  const [messageAlert, setMessageAlert] = useState<string>("")
   const dispatch:Dispatch<AnyAction> = useDispatch();
 
   //Calls to API
@@ -45,17 +48,19 @@ const Home = () => {
         method: 'POST',
         data: data
       })
-      console.log("This is response: ", response)
-      if(response.code !== 200) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.warning, 
-          message: "Email o contraseña incorrecta"}})); 
-      }
+      
+      //ToastAlert doesn't work
+      // if(response.code === 400) {
+      //   dispatch(enqueueAlert({alertData: {
+      //     alertType: EAlert.warning, 
+      //     message: "Email o contraseña incorrecta"}})); 
+      // }
       return response;
     } catch (error) {
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.error, 
-        message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
+      // ToastAlert doesn't work
+      // dispatch(enqueueAlert({alertData: {
+      //   alertType: EAlert.error, 
+      //   message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
       return errorResponse;
     }
   }   
@@ -66,10 +71,7 @@ const Home = () => {
     if(userData.email !== ""
     && userData.password !== "") {
       const response:IRequest<any> = await login(userData);
-      console.log(response);
       if(response.code === 200 && response.data !== undefined) {
-        console.log("REgister")
-        console.log("HOLA")
         const { token } = response.data;
         const { id_collaborator } = response.data.user;
         
@@ -80,16 +82,20 @@ const Home = () => {
 
         dispatch(setCurrentUser(user));
         navigate('/app/newMember', {replace: true});
+      } else {
+        setShowAlert(true);
+        setMessageAlert("El 'usuario' o la contraseña son erroneas");
+        setUserData({email: "", password: ""});
       }
     } else {
-      dispatch(enqueueAlert({alertData: {
-      alertType: EAlert.warning, 
-        message: "Todos los campos deben de estar lleno"}}));
+      setShowAlert(true);
+      setMessageAlert("Todos los campos deben de estar lleno");
+      // dispatch(enqueueAlert({alertData: {
+      // alertType: EAlert.warning, 
+      //   message: "Todos los campos deben de estar lleno"}}));
     }
   }
   
-
-
   return (
     <div className="w-screen h-screen flex">
       <div className="p-5 bg-blue-100 flex basis-2/3 justify-center items-center">
@@ -111,9 +117,10 @@ const Home = () => {
             objectValue={userData} 
             inputName={"password"}
             placeholder={'Contraseña'}
-            inputType={'text'}
+            inputType={'password'}
             required={true}
           />
+          { showAlert && <MessageAlert label={messageAlert} /> }
           <Button 
             label="Iniciar sesión"
             onClick={(e:any) => {handleSubmit(e)}}
