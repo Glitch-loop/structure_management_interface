@@ -16,6 +16,7 @@ export const userSlice = createSlice({
     },
     setCurrentUser: (state, action: PayloadAction<IUser>) => {
       const { ...protoPayload } = action.payload;
+      console.log("Token: ", action.payload.sessionToken)
       localStorage.setItem('hjN8wY5KBs3NWhGv', action.payload.sessionToken || '');
       return { ...state, ...protoPayload }
     },

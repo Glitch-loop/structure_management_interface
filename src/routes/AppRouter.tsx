@@ -9,6 +9,9 @@ import MapDataView from "../pages/MapDataView";
 import StrategyManagement from "../pages/StrategyManagement";
 import AddCollaborator from "../pages/AddCollaborator";
 import ManageCollaborator from "../pages/ManageCollaborator";
+import Guard from "../helpers/Guard";
+import UpdateProfile from "../pages/UpadateProfile";
+
 const AppRouter = () => {
   return (
     <>
@@ -16,15 +19,18 @@ const AppRouter = () => {
         <Routes>
           <Route path="/home" element={<Home />}/>
           
-          <Route path="/app" element={<Layout />}>
-            <Route path="newMember" element={<AddMember />} />
-            <Route path="manageMember" element={<ManageMember />} />
-            <Route path="newCollaborator" element={<AddCollaborator />} />
-            <Route path="manageCollaborator" element={<ManageCollaborator />} />
-            <Route path="geographicArea" element={<GeographicArea />} />
-            <Route path="geographicAreaData" element={<MapDataView />} />
-            <Route path="strategy" element={<StrategyManagement />} />
-            <Route path="data" element={<DataView />} />
+          <Route element={<Guard />}>
+            <Route path="/app" element={<Layout />}>
+              <Route path="newMember" element={<AddMember />} />
+              <Route path="manageMember" element={<ManageMember />} />
+              <Route path="newCollaborator" element={<AddCollaborator />} />
+              <Route path="manageCollaborator" element={<ManageCollaborator />} />
+              <Route path="geographicArea" element={<GeographicArea />} />
+              <Route path="geographicAreaData" element={<MapDataView />} />
+              <Route path="strategy" element={<StrategyManagement />} />
+              <Route path="data" element={<DataView />} />
+              <Route path="updateProfile" element={<UpdateProfile />} />
+            </Route>
           </Route>
 
           <Route path="/" element={<Navigate replace to = '/home'/>}/>

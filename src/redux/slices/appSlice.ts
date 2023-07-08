@@ -28,5 +28,5 @@ export const appSlice = createSlice({
 
 export const {
   enqueueAlert,
-  resetCurrentAlert
+  resetCurrentAlert,
 } = appSlice.actions;

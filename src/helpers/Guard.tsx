@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {Navigate, Outlet, useLocation } from 'react-router-dom';
-import { IUser } from "../interfaces/interfaces";
+// import { IUser } from "../interfaces/interfaces";
 import { setInitialState } from "../redux/slices/userSlice";
 import { RootState } from "../redux/store";
 import requester from "./Requester";
+import { IRequest } from "../interfaces/interfaces";
 
 
 const Guard = () => {
@@ -14,25 +15,29 @@ const Guard = () => {
 
   const loadUserDataBySecureToken = async() => {
     const sessionToken = localStorage.getItem('hjN8wY5KBs3NWhGv');
+    // console.log("In REDUX: ", userData)
+    // console.log("Actual session: ", sessionToken)
     if(!sessionToken) {
       setIsLoading(false);
       return {};
     }
-
-    const respAuthLoadData = true
+    
     //TODO requester to 'auth logged' 
-    // const respAuthLoadData:Any = await 
-    // requester({
-    //   url: '/login',
-    // })
-
-    if(!respAuthLoadData) {
+    const respAuthLoadData:IRequest<boolean> = await 
+    requester({
+      url: '/logged',
+    })
+    
+    console.log("Validate: ", respAuthLoadData)
+    if(!respAuthLoadData.data) {
       localStorage.removeItem('hjN8wY5KBs3NWhGv');
       setIsLoading(false);
       return {};
     }
 
-    //TODO Rehydrat token
+    //TODO Rehydrat token -- PENDING
+
+    setIsLoading(false);
   }
 
   const path = useLocation().pathname.split('/')[1];
@@ -46,10 +51,10 @@ const Guard = () => {
       <div></div>
     )
   } else {
-    if(userData) {
-      return path === 'home' ? <Navigate replace to='/app/dashboard'/> : <Outlet />
+    if(userData.idUser) {
+      return path === 'home' ? <Navigate replace to='/app/newMember'/> : <Outlet />
     } else {
-      return <Navigate replace to='/login'/>
+      return <Navigate replace to='/home'/>
     }
   }
 }

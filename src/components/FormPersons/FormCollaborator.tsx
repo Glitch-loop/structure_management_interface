@@ -64,6 +64,7 @@ const getArrPrivilegesSelected = (privileges: IPrivilege[]):number[] => {
   action props
   0 = add collaborator
   1 = update collaborator
+  2 = update profile
 */
 
 const FormCollaborator = (
@@ -280,6 +281,32 @@ const FormCollaborator = (
       }
     }
 
+    const updatePassword = async (password: string):Promise<IRequest<any>> => {
+      try {
+        const response: IRequest<any> = await requester({
+          url: `/collaborators/password/change`,
+          method: 'PUT',
+          data: {password: password}
+        })
+        console.log(response)
+        if(response.code === 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha actualizado la contraseña del colaborador exitosamente"}})); 
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar restaurar la constraseña del colaborador, intente nuevamente"}})); 
+        }
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}}));
+        return errorResponse;
+      }
+    }
+
     //Handlers basic information ---
     //Handlers for colony autocomplete
     const handleSearchColony = async (event: any, newInputValue: string | null) => {
@@ -371,7 +398,7 @@ const FormCollaborator = (
             }
             resetAllStates();
           }
-        } else if(action==1) {
+        } else if(action==1 || action==2) {
           console.log("Updating: ", basicData)
           const response:IRequest<any> = await updateMember(basicData.idCollaborator, basicData);
           const responsePrivilege:IRequest<any> 
@@ -387,15 +414,26 @@ const FormCollaborator = (
     //This function is to reset the password
     const handleSubmitResetPassword = async(e:any):Promise<void> => {
       e.preventDefault();
-      if(person.id_collaborator !== undefined) {
-        const response:IRequest<any> = await resetPassword(person.id_collaborator);
-
-        if(response.code === 200 
-        && response.data !== undefined) {
-          setShowDialog(true);
-          setPerson({...person, password: response.data.password});
-        }
+      let response:IRequest<any> = {
+        code: 400,
+        message: ""
+      };
+      if(action === 1) {
+        if(person.id_collaborator !== undefined)
+         response = await resetPassword(person.id_collaborator);
+      } else {
+        if(person.password !== undefined)
+          response = await  updatePassword(person.password)
       }
+         {
+  
+          if(response.code === 200) {
+            setShowDialog(true);
+            action == 1 &&
+              setPerson({...person, password: response.data.password});
+            setConfirmPassword({password: ''})
+          }
+        }
     }
 
     //This function is to close the dialog (the function remove the password)
@@ -427,11 +465,22 @@ const FormCollaborator = (
             <p className="mb-3 ml-4 italic">
               Contraseña: <span className="text-lg font-bold not-italic">{person.password}</span>
             </p>
-            <p className="mb-3 font-bold">
-              Es importante que el colaborador entre al perfil 
-              con la nueva contraseña y cambie esta contraseña 
-              por una que el propio colaborador invente.
-            </p>
+            {
+              action == 1 &&
+              <p className="mb-3 font-bold">
+                Es importante que el colaborador entre al perfil 
+                con la nueva contraseña y cambie esta contraseña 
+                por una que el propio colaborador invente.
+              </p>
+            }
+            {
+              action == 2 &&
+              <p className="mb-3 font-bold">
+                Esta contraseña es privada, no la compartas con nadie, en caso de que 
+                sepas que tu contraseña ha sido comprometida cambiala de inmediatamente o
+                avisa a tu administrador
+              </p>
+            }
             <Button 
               label="Aceptar"
               onClick={() => handleCloseDialog()}
@@ -448,7 +497,6 @@ const FormCollaborator = (
               <div className="mr-2">
                 <Input
                   onType={setPerson}
-
                   objectValue={person} 
                   inputName={"first_name"}
                   placeholder={'Nombre(s)'}
@@ -534,7 +582,7 @@ const FormCollaborator = (
                 />
               </div>
             </div>
-            {action == 0 || action === 3 &&
+            {action == 0 || action === 2 &&
             <div className="flex flex-col flex-center">
               <div className="flex flex-row">
                 <div className="mr-2">
@@ -732,9 +780,9 @@ const FormCollaborator = (
               />
         }
         {
-          (action===1) && 
+          (action===1 || action===2) && 
             <Button 
-              label="Restablecer contraseña" 
+              label={action===1 ? "Restablecer contraseña" : "Actualizar contraseña"}
               onClick={(e:any) => {
                 handleSubmitResetPassword(e);
               }}

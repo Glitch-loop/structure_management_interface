@@ -124,3 +124,8 @@ export interface IStrategy {
   role: string;
   cardinality_level: number;
 }
+
+export interface IUser {
+  idUser?: number;
+  sessionToken?: string;
+}

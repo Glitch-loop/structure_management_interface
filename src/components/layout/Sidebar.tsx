@@ -3,9 +3,14 @@ import ItemSidebar from "./ItemSidebar";
 import { HiUserAdd } from 'react-icons/hi';
 import { FaUserCog, FaMapPin } from 'react-icons/fa'
 import { BsDiagram3Fill, BsGlobe, BsPersonFillGear } from 'react-icons/bs'
-import { IoGolfOutline } from 'react-icons/io5'
+import { IoGolfOutline, IoIdCardOutline } from 'react-icons/io5'
 import { VscGraph } from 'react-icons/vsc'
 import { useLocation, useNavigate } from "react-router-dom";
+import Button from "../UIcomponents/Button";
+import { useDispatch } from 'react-redux';
+import { userLogout } from "../../redux/slices/userSlice";
+import { AnyAction, Dispatch } from 'redux';
+import { IUser } from "../../interfaces/interfaces";
 
 const itemsSideBar = [
   { label: 'Agregar miembro', icon: BsDiagram3Fill, path: 'newMember' },
@@ -15,10 +20,13 @@ const itemsSideBar = [
   { label: 'Areas geograficas', icon: BsGlobe, path: 'geographicArea' },
   { label: 'Visualizar areas geograficas', icon: IoGolfOutline, path: 'geographicAreaData' },
   { label: 'Administrar estrategia', icon: FaMapPin, path: 'strategy' },
-  { label: 'Visualizar datos', icon: VscGraph, path: 'data' }
+  { label: 'Visualizar datos', icon: VscGraph, path: 'data' },
+  { label: 'Perfil', icon: IoIdCardOutline, path: 'updateProfile' },
 ]
 
 const SideBar = () => {
+  const dispatch = useDispatch();
+
   const navigate = useNavigate()
   const currentPath = useLocation().pathname.split('/')[2];
   
@@ -38,6 +46,14 @@ const SideBar = () => {
             />
         )
       }
+      <Button
+        label="logout" 
+        onClick={() => {
+          dispatch(userLogout());
+          navigate('/home', {replace: true});
+        }}
+        />
+
     </div>
   )
 }
