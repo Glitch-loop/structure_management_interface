@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { HiOutlineSearch } from "react-icons/hi";
-const Searcher = ({handleSearcher}: {handleSearcher:any}) => {
+const Searcher = ({handleSearcher, placeholder}: {handleSearcher:any, placeholder:string}) => {
   const [itemToSearch, setItemToSearch] = useState('');
   const handleType = (e:any):void => {
     e.preventDefault();
@@ -16,7 +16,7 @@ const Searcher = ({handleSearcher}: {handleSearcher:any}) => {
         <HiOutlineSearch className='text-gray-500'/>
         <input 
           className='rounded-full pl-1 py-1 appearance-none focus:outline-none bg-transparent flex-1 pr-3'
-          placeholder='Find'
+          placeholder={placeholder}
           value={itemToSearch}
           onChange={(e): void => {setItemToSearch(e.target.value)}}
           onKeyUp={handleType}

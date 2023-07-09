@@ -104,6 +104,8 @@ export interface IStructure {
   id_member: number;
   first_name?: string;
   last_name?: string;
+  cell_phone_number?: string;
+  ine?: string;
 
   id_strategy?: number;
   zone_type?: string;

@@ -59,9 +59,17 @@ const emptyCollaborator: ICollaborator = {
   privileges: []
 }
 
+interface IStructureExtraFields extends IStructure {
+  email?: string;
+}
+
+/*
+  action = 0 Configuration for members
+  action = 1 Configuration for collaborators
+*/
 const TablePersons = ({ action }:{ action:number }) => {
   //States
-  const [personsFounded, setPersonsFounded] = useState<IStructure[]>([]);
+  const [personsFounded, setPersonsFounded] = useState<IStructureExtraFields[]>([]);
   const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
   const [memberStrategicInfoToUpdate, setMemberStrategicInfoToUpdate] = useState<IStructure>();
   const [collaboratorBasicInfoToUpdate, setCollaboratorBasicInfoToUpdate] = useState<ICollaborator>();
@@ -125,13 +133,13 @@ const TablePersons = ({ action }:{ action:number }) => {
     }
   }
 
-  const searchMember = async(nameMember: string):Promise<IStructure[]> => {
+  const searchMember = async(string_to_search: string):Promise<IStructure[]> => {
     try {
       const response:IRequest<IStructure[]> = await requester({
-        url: `/members/name/${nameMember}`,
+        url: `/members/search/${string_to_search}`,
         method: 'GET'
       })
-
+      console.log(response);
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
@@ -148,10 +156,10 @@ const TablePersons = ({ action }:{ action:number }) => {
     }
   }
 
-  const searchCollaborator = async(nameMember: string):Promise<ICollaborator[]> => {
+  const searchCollaborator = async(string_to_search: string):Promise<ICollaborator[]> => {
     try {
       const response:IRequest<ICollaborator[]> = await requester({
-        url: `/collaborators/name/${nameMember}`,
+        url: `/collaborators/search/${string_to_search}`,
         method: 'GET'
       })
 
@@ -439,8 +447,10 @@ const TablePersons = ({ action }:{ action:number }) => {
         )
          :
         (<>
-
-          <Searcher handleSearcher={handleSearchPerson}/>
+          <Searcher 
+            handleSearcher={handleSearchPerson}
+            placeholder={action === 0 ? "Buscar por nombre, telefono ó INE" :
+              "Buscar por nombre, telefono ó e-mail"}/>
           {personsFounded[0] !== undefined &&          
           <Paper sx={{overflow: 'hidden'}}>
             <TableContainer sx={{ maxHeight: 440 }}>
@@ -449,6 +459,10 @@ const TablePersons = ({ action }:{ action:number }) => {
                   <TableRow>
                     <TableCell align="center">ID</TableCell>
                     <TableCell align="center">Nombre</TableCell>
+                    <TableCell align="center">Telefono</TableCell> 
+                    <TableCell align="center">
+                      {action === 0 ? "INE" : "E-mail"}
+                    </TableCell>
                     <TableCell align="center">Modificar</TableCell>
                     <TableCell align="center">Eliminar</TableCell>
                   </TableRow>
@@ -463,6 +477,12 @@ const TablePersons = ({ action }:{ action:number }) => {
                           </TableCell>
                           <TableCell align="center">
                             {person.first_name} {person.last_name}
+                          </TableCell>
+                          <TableCell align="center">
+                            {person.cell_phone_number}
+                          </TableCell>
+                          <TableCell align="center">
+                            {action === 0 ? person.ine : person.email}
                           </TableCell>
                           <TableCell align="center">
                             <Tooltip title="Editar">

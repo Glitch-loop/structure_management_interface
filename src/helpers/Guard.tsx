@@ -30,16 +30,17 @@ const Guard = () => {
       url: '/logged',
     })
     
-    console.log("Validate: ", respAuthLoadData)
     if(!respAuthLoadData.data.status) {
-      console.log("Delete token")
       localStorage.removeItem('hjN8wY5KBs3NWhGv');
       setIsLoading(false);
       return {};
     }
 
     //TODO Rehydrat token -- PENDING
-    
+    /* 
+      I still haven't added becuase, we take the token expiration as a security 
+      mesure.
+    */
     dispatch(setInitialState(
       {
         idUser: respAuthLoadData.data.id_collaborator,

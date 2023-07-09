@@ -922,7 +922,7 @@ const FormPerson = (
                 testMessage={"Tienen que ser 13 numeros exactos"}
                 />
             </div>
-            <div className="flex flex-col mt-1">
+            <div className="flex flex-row mt-1">
               <Input
                 onType={setPerson}
                 objectValue={person} 
