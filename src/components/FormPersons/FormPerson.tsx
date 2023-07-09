@@ -20,6 +20,8 @@ const initialPersonState:IMember = {
   ext_number: "", 
   int_number: "",
   cell_phone_number: "",
+  ine: "",
+  birthday: "",
   id_leader: 0,
   id_follower: [],
   id_colony: 0,
@@ -143,7 +145,6 @@ const FormPerson = (
     //Reducers to alerts
     const dispatch:Dispatch<AnyAction> = useDispatch();
     const userData = useSelector((state: RootState) => state.userReducer)
-
     // useEffect procedure ---
     useEffect(() => {
       if(action == 0 || action == 1) {
@@ -178,7 +179,6 @@ const FormPerson = (
           message: "Hubo un error al intentar obtener los niveles de la estrategia, intente mas tarde"}})); 
         return [];
       } catch (error) {
-        console.log(error)
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar conectar con el servidor, intente mas tarde"}})); 
@@ -192,27 +192,36 @@ const FormPerson = (
           url: '/members/', 
           method: "POST", 
           data: basicData})
-        
+
         if(response.code === 201) {
           if(response.data !== undefined) {
             const idMember:number = response.data.idMember
-        
+            
             //Update member's leader
-            idLeader !== undefined && await updateLeader(idMember, idLeader)
-        
+            if(idLeader !== undefined && idLeader !== 0)  
+              await updateLeader(idMember, idLeader)
+              
             //Update member's followers 
-            idFollowers !== undefined && await updateFollowers(idMember, idFollowers)
-        
+            if(idFollowers !== undefined && idFollowers[0] !== undefined)  
+              await updateFollowers(idMember, idFollowers)
+            
             //Update geographic area's manager
-            idGeographicArea !== undefined && idGeographicArea !== undefined && await updateGeographicAreaManage(idMember, idGeographicArea);
+            if(idGeographicArea !== undefined && idGeographicArea !== 0)  
+              await updateGeographicAreaManage(idMember, idGeographicArea);
           }
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
             message: "Se ha creado el miembro exitosamente"}}));
         } else {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.warning, 
-            message: "Hubo un error al intentar crear el nuevo miembro"}}));
+          if(response.message === 'You are repeating the complete name, the cellphone OR the INE in the DB.') {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "El nombre, celular o INE, del miembro que estas intentando agregar, coincide con el de otros miembro ya existente"}}));
+          } else {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar crear el nuevo miembro"}}));
+          }
         }
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
@@ -240,56 +249,51 @@ const FormPerson = (
             basicData.cellphoneNumber !== initialPersonInformation.cell_phone_number ||
             basicData.idColony !== initialPersonInformation.id_colony
           ) {
-            console.log("Actualizar informacion basica")
-
             response = await requester({
               url: `/members/${idMember}`,
               method: "PUT",
               data: basicData
             })
-            console.log(response)
+
           }
 
           //Update member's strategy level
-          console.log(initialStrategicInformation)
           if (idStrategy !== undefined && idStrategy !== 0)
             if(initialStrategicInformation.id_strategy !== idStrategy)
-            {
-              console.log("level: ", idStrategy)
               await updateStrategyLevel(idMember, idStrategy)
-
-            }
+            
       
           //Update member's leader
           if (idLeader !== undefined && idLeader !== 0)
             if(initialStrategicInformation.id_leader !== idLeader)
-            {
-              console.log("leader: ", idLeader)
-
               await updateLeader(idMember, idLeader)
-            }
+            
       
           //Update member's followers 
-          if(idFollowers !== undefined && idFollowers[0] !== undefined) {
+          if(idFollowers !== undefined && idFollowers[0] !== undefined) 
             await updateFollowers(idMember, idFollowers)
-          }
+          
 
           //Update geographic area's manager
           if (idGeographicArea !== undefined && idGeographicArea !== 0)
             if(initialStrategicInformation.id_geographic_area !== idGeographicArea)
-            {
-              console.log("geographic: ", idGeographicArea)
               await updateGeographicAreaManage(idMember, idGeographicArea);
-            }
+            
 
           if(response.code === 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.success, 
               message: "Se ha actualizado el miembro exitosamente"}}));
             } else {
-            dispatch(enqueueAlert({alertData: {
-              alertType: EAlert.warning, 
-              message: "Ha habido un error al momento de actualizar el miembro"}}));
+              if(response.message === "The data that you are trying to put it is repated with another member (full name, cellphone number or ine)") {
+                dispatch(enqueueAlert({alertData: {
+                  alertType: EAlert.warning, 
+                  message: "Algun dato: 'nombre completo', 'INE' o 'numero de telefono', coincide con el de algun otro miembro de la estructura"}}));
+              } else {
+                dispatch(enqueueAlert({alertData: {
+                  alertType: EAlert.warning, 
+                  message: "Ha habido un error al momento de actualizar el miembro"}}));
+              }
           }
         }
 
@@ -307,7 +311,7 @@ const FormPerson = (
             url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
             method: 'PUT'
           });
-          console.log(response)
+
           if(response.code !== 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
@@ -749,17 +753,30 @@ const FormPerson = (
 
     //Handle to submit ---
     const handleOnSubmit = async(e: any) => {
+      e.preventDefault();
       if(
-        
         person.first_name === '' ||
         person.last_name === '' ||
         person.street === '' ||
         person.ext_number === '' ||
-        person.cell_phone_number === '' ||
-        person.id_colony === undefined ||
-        strategicInformationPerson.id_strategy === undefined
+        person.cell_phone_number === ''
         ){
-          console.log("There can't be empty data")
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Llena todos los campos obligatorios"}}));
+          return;
+      }
+      if(person.id_colony === 0){
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Haz olvidado escoger una colonia para el miembro"}}));
+          return;
+      }
+      if(strategicInformationPerson.id_strategy === 0){
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Haz olvidado esocger un nivel jerarquico para el usuario"}}));
+          return;
       }
 
       e.preventDefault();
@@ -771,10 +788,11 @@ const FormPerson = (
         "extNumber": avoidNull(person.ext_number, ""),
         "intNumber": avoidNull(person.int_number, ""),
         "cellphoneNumber": avoidNull(person.cell_phone_number, ""),
+        "ine": avoidNull(person.ine, ""),
+        "birthday": avoidNull(person.birthday, ""),
         "idColony": avoidNull(person.id_colony, 0),
         "idStrategyLevel": avoidNull(strategicInformationPerson.id_strategy, 0)
       }
-
 
         if(action==0) {
           await addNewMember(
@@ -789,10 +807,9 @@ const FormPerson = (
             strategicInformationPerson.id_leader, 
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
-          handleSubmit(true)
+          // handleSubmit(true)
         }
         //Reset variables
-        //Basic information
         resetAllStates()
 
     }
@@ -867,6 +884,8 @@ const FormPerson = (
                   placeholder={'No. Exterior'}
                   inputType={'text'}
                   required={true}
+                  testRegex={new RegExp(/^.{1,5}$/, 's')}
+                  testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
                 />
               </div>
               <Input
@@ -875,18 +894,42 @@ const FormPerson = (
                 inputName={"int_number"}
                 placeholder={'No. Interno (opcional)'}
                 inputType={'text'}
+                testRegex={new RegExp(/^.{1,5}$/, 's')}
+                testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
               />
             </div>
             <div className="flex flex-row">
+              <div className="mr-2">
+                <Input
+                    onType={setPerson}
+                    objectValue={person} 
+                    inputName={"cell_phone_number"}
+                    placeholder={'Telefono'}
+                    inputType={'text'}
+                    required={true}
+                    testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
+                    testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
+                  />
+              </div>
               <Input
-                  onType={setPerson}
-                  objectValue={person} 
-                  inputName={"cell_phone_number"}
-                  placeholder={'Telefono'}
-                  inputType={'text'}
-                  required={true}
-                  testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
-                  testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
+                onType={setPerson}
+                objectValue={person} 
+                inputName={"ine"}
+                placeholder={'INE'}
+                inputType={'text'}
+                required={true}
+                testRegex={new RegExp(/^\d{13}$/, 's')}
+                testMessage={"Tienen que ser 13 numeros exactos"}
+                />
+            </div>
+            <div className="flex flex-row">
+              <Input
+                onType={setPerson}
+                objectValue={person} 
+                inputName={"birthday"}
+                placeholder={'Fecha de nacimiento'}
+                inputType={'date'}
+                required={true}
                 />
             </div>
             <div className="flex mt-3 justify-center">

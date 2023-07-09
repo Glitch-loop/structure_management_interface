@@ -44,8 +44,6 @@ const Input = (
           // }
           
           onType({...objectValue, [e.target.name]: e.target.value})
-          console.log()
-          
           setShowAlert(e.target.value!=='' ? false : true)
         }}
         onBlur={(e) => { testFunction(e.target.value)} }

@@ -66,7 +66,7 @@ const ToastAlert = ({alertData}: {alertData: IAlert}) => {
   const handleDismiss = () => {
     setTimeout(async() => {
       dispatch(resetCurrentAlert());
-    }, 2000);
+    }, 4000);
   }
 
   useEffect(() => {

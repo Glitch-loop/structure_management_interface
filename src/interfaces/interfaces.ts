@@ -78,6 +78,8 @@ export interface IMember {
   ext_number: string;
   int_number: string; //address
   cell_phone_number: string;
+  ine: string;
+  birthday: string;
   id_leader: number;
   id_follower: number[];
   id_colony: number;
