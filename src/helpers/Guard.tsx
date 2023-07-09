@@ -25,13 +25,13 @@ const Guard = () => {
     }
     
     //TODO requester to 'auth logged' 
-    const respAuthLoadData:IRequest<boolean> = await 
+    const respAuthLoadData:IRequest<any> = await 
     requester({
       url: '/logged',
     })
     
     console.log("Validate: ", respAuthLoadData)
-    if(!respAuthLoadData.data) {
+    if(!respAuthLoadData.data.status) {
       console.log("Delete token")
       localStorage.removeItem('hjN8wY5KBs3NWhGv');
       setIsLoading(false);
@@ -39,7 +39,12 @@ const Guard = () => {
     }
 
     //TODO Rehydrat token -- PENDING
-    console.log("User: ", userData)
+    
+    dispatch(setInitialState(
+      {
+        idUser: respAuthLoadData.data.id_collaborator,
+        sessionToken: respAuthLoadData.data.sessionToken
+      }));
     setIsLoading(false);
   }
 
