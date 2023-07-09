@@ -100,8 +100,7 @@ const FormCollaborator = (
     // useEffect procedure ---
     useEffect(() => {
       getAllPrivileges().then((privileges) => {
-        console.log(privileges)
-        console.log(person)
+
         if(action === 0) {
           /*
             If action is 0, that means that the user is adding a new collaborator,
@@ -186,15 +185,21 @@ const FormCollaborator = (
           method: 'POST',
           data: collaborator
         })
-        console.log(response)
         if(response.code === 201) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
             message: "Se ha agregado exitosamente el nuevo colaborador"}})); 
         } else {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.warning, 
-            message: "Hubo un error al intentar agregar al nuevo colaborador, intente mas tarde"}})); 
+          if(response.message == "You are trying to create a new collaborator with data repeated (full name, email or cellphone number)") {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al momento de crear el colaborador, el correo, nombre completo o numero telefonico se repite con el de otro"}})); 
+              
+            } else {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar agregar al nuevo colaborador, intente mas tarde"}})); 
+          }
         }
         return response;
       } catch (error) {
@@ -212,15 +217,21 @@ const FormCollaborator = (
           method: 'PUT',
           data: collaborator
         })
-        console.log(response)
         if(response.code === 200) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
             message: "Se ha actualizado exitosamente el colaborador"}})); 
         } else {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.warning, 
-            message: "Hubo un error al intentar actualizar al colaborador, intente mas tarde"}})); 
+          if(response.message == "You are trying to create a new collaborator with data repeated (full name, email or cellphone number)") {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al momento de crear el colaborador, el correo, nombre completo o numero telefonico se repite con el de otro"}})); 
+              
+            } else {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar agregar al nuevo colaborador, intente mas tarde"}})); 
+          }
         }
         return response;
       } catch (error) {
@@ -262,7 +273,6 @@ const FormCollaborator = (
           url: `/collaborators/resetPassword/${idCollaborator}`,
           method: 'PUT'
         })
-        console.log(response)
         if(response.code === 200) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
@@ -288,7 +298,6 @@ const FormCollaborator = (
           method: 'PUT',
           data: {password: password}
         })
-        console.log(response)
         if(response.code === 200) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
@@ -346,7 +355,6 @@ const FormCollaborator = (
     //Handlers boxes
     const handleClick = (id_privilege:number|undefined) => {
       if(id_privilege !== undefined) {
-        console.log("privilege")
         const index:number|undefined = privileges
           .findIndex(privilege => privilege.id_privilege === id_privilege)
         
@@ -360,19 +368,22 @@ const FormCollaborator = (
     //Handle to submit ---
     //Handle password
     const handleOnSubmit = async(e: any) => {
+      e.preventDefault();
       if(
         person.first_name === '' ||
         person.last_name === '' ||
         person.street === '' ||
         person.ext_number === '' ||
         person.cell_phone_number === '' ||
-        person.id_colony === undefined ||
-        person.password === ''
+        person.email === '' ||
+        person.id_colony === undefined
         ){
-          console.log("There can't be empty data")
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Llena todos los campos obligatorios"}}));
+          return;
       }
 
-      e.preventDefault();
       const basicData = {
         "idCollaborator": avoidNull(person.id_collaborator, 0),
         "firstName": avoidNull(person.first_name, ""),
@@ -396,10 +407,9 @@ const FormCollaborator = (
                 = await updatePrivileges(idCollaborator, 
                   getArrPrivilegesSelected(privileges));
             }
-            resetAllStates();
+            // resetAllStates();
           }
         } else if(action==1 || action==2) {
-          console.log("Updating: ", basicData)
           const response:IRequest<any> = await updateMember(basicData.idCollaborator, basicData);
           const responsePrivilege:IRequest<any> 
           = await updatePrivileges(basicData.idCollaborator, 
@@ -532,6 +542,8 @@ const FormCollaborator = (
                   placeholder={'No. Exterior'}
                   inputType={'text'}
                   required={true}
+                  testRegex={new RegExp(/^.{1,5}$/, 's')}
+                  testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
                 />
               </div>
               <Input
@@ -540,6 +552,8 @@ const FormCollaborator = (
                 inputName={"int_number"}
                 placeholder={'No. Interno (opcional)'}
                 inputType={'text'}
+                testRegex={new RegExp(/^.{1,5}$/, 's')}
+                testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
               />
             </div>
             <div className="flex flex-row">
@@ -579,10 +593,11 @@ const FormCollaborator = (
                   inputType={'text'}
                   testRegex={new RegExp(/^([a-z]|[A-Z]|[0-9]|\.|\-)+\@([a-z])+.(com)$/, 's')}
                   testMessage={"Formatos validos: ejemplo@gmail.com"}
+                  required={true}
                 />
               </div>
             </div>
-            {action == 0 || action === 2 &&
+            {(action == 0 || action === 2) &&
             <div className="flex flex-col flex-center">
               <div className="flex flex-row">
                 <div className="mr-2">
@@ -592,6 +607,8 @@ const FormCollaborator = (
                     inputName={"password"}
                     placeholder={'Contraseña'}
                     inputType={'text'}
+                    testRegex={new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 's')}
+                    testMessage={"La contraseña debe contener minimo: 8 caracteres (en conjunto debe de cumplir); 1 mayuscula, 1 minuscula, un numero y un caracter especial (@$!%*?&)"}
                   />
                 </div>
                 <Input

@@ -895,7 +895,7 @@ const FormPerson = (
                 placeholder={'No. Interno (opcional)'}
                 inputType={'text'}
                 testRegex={new RegExp(/^.{1,5}$/, 's')}
-                testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
+                testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
               />
             </div>
             <div className="flex flex-row">
@@ -922,7 +922,7 @@ const FormPerson = (
                 testMessage={"Tienen que ser 13 numeros exactos"}
                 />
             </div>
-            <div className="flex flex-row">
+            <div className="flex flex-col mt-1">
               <Input
                 onType={setPerson}
                 objectValue={person} 
