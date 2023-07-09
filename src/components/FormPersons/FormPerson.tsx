@@ -186,6 +186,56 @@ const FormPerson = (
       }
     }
 
+    const deleteLeader = async (idMember: number):Promise<number> => {
+      try {
+        const response:IRequest<undefined> = await requester({
+          url: `/members/strategicInformation/leader/${idMember}`,
+          method: 'DELETE'
+        })
+  
+        if(response.code === 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha eliminado exitosamente el lider del miembro"}}));
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "No se ha podido eliminar el lider del miembro, intente nuevamente"}}));
+        }
+        return response.code;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectarse al servidor"}}));
+        return 500;
+      }
+    }
+
+    const deleteGeographicArea = async (idMember: number):Promise<number> => {
+      try {
+        const response:IRequest<undefined> = await requester({
+          url: `/members/strategicInformation/geographicArea/${idMember}`,
+          method: 'DELETE'
+        })
+  
+        if(response.code === 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha eliminado exitosamente la area geográfica del miembro"}}));
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "No se ha podido eliminar el area geográfica del miembro, intente nuevamente"}}));
+        }
+        return response.code;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectarse al servidor"}}));
+        return 500;
+      }
+    }
+
     const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
       try {
         const response:IRequest<any> = await requester({
@@ -254,19 +304,27 @@ const FormPerson = (
               method: "PUT",
               data: basicData
             })
-
+            console.log("Basic member info to update: ", response)
           }
 
           //Update member's strategy level
+          console.log("idStrategy: ", idStrategy)
+          console.log("initialStrategicInfo: ", initialStrategicInformation.id_strategy)      
           if (idStrategy !== undefined && idStrategy !== 0)
             if(initialStrategicInformation.id_strategy !== idStrategy)
               await updateStrategyLevel(idMember, idStrategy)
             
-      
+          console.log("idLeader: ", idLeader)
+          console.log("initialStrategicInfo: ", initialStrategicInformation.id_leader)      
           //Update member's leader
-          if (idLeader !== undefined && idLeader !== 0)
+          if (idLeader !== undefined && idLeader !== 0) {
+            //Update the current member's leader
             if(initialStrategicInformation.id_leader !== idLeader)
               await updateLeader(idMember, idLeader)
+          } else {
+            //Delete the current leader from the member
+            await deleteLeader(idMember);
+          }
             
       
           //Update member's followers 
@@ -275,9 +333,14 @@ const FormPerson = (
           
 
           //Update geographic area's manager
-          if (idGeographicArea !== undefined && idGeographicArea !== 0)
+          if (idGeographicArea !== undefined && idGeographicArea !== 0) {
+            //Update the current member's geographic area
             if(initialStrategicInformation.id_geographic_area !== idGeographicArea)
               await updateGeographicAreaManage(idMember, idGeographicArea);
+          } else {
+            //Delete the current member's geographic area
+            await deleteGeographicArea(idMember);
+          }
             
 
           if(response.code === 200) {
@@ -311,7 +374,7 @@ const FormPerson = (
             url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
             method: 'PUT'
           });
-
+          console.log("strategy level update: ", response)
           if(response.code !== 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
@@ -332,6 +395,8 @@ const FormPerson = (
             url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
             method: 'PUT'
           });
+
+          console.log("leader update: ", response)
           if(response.code !== 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
@@ -355,6 +420,7 @@ const FormPerson = (
             method: 'PUT',
             data: { followers }
           })
+          console.log("followers update: ", response)
           if(response.code !== 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
@@ -375,6 +441,7 @@ const FormPerson = (
             url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
             method: 'PUT'
           })
+          console.log("Geographic area update: ", response)
           if(response.code !== 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
@@ -623,6 +690,7 @@ const FormPerson = (
     }
 
     const handleSelectLeader = async (event: any, newInputValue: string | null) => {
+      console.log("Selected leader: ", newInputValue)
       /*
         Find by full name the leader in the current data saved in arrayLeader
       */
@@ -632,17 +700,23 @@ const FormPerson = (
       /*
         If the leader wasn't founded, then reset the state, otherwise, save the state
       */
-      if(leaderSelected === undefined || newInputValue === null) 
+      console.log(leaderSelected)
+      if(leaderSelected === undefined || newInputValue === null) {
+        console.log("Data null")
         setStrategicInformationPerson({
           ...strategicInformationPerson, 
           first_name_leader: "",
           id_leader: 0});
+      }
       else 
+      {
+        console.log("Data")
         setStrategicInformationPerson({
           ...strategicInformationPerson, 
           first_name_leader: newInputValue,
           id_leader: leaderSelected.id_member});
       
+      }
       //Reset the array of leader (the leader already was founded)
       setArrayLeader([]);
     }
@@ -801,6 +875,7 @@ const FormPerson = (
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
         } else if(action==1) {
+          console.log("strategicInformationPerson before update: ", strategicInformationPerson)
           await updateMember(
             basicData, 
             strategicInformationPerson.id_strategy, 
@@ -810,7 +885,7 @@ const FormPerson = (
           // handleSubmit(true)
         }
         //Reset variables
-        resetAllStates()
+        // resetAllStates()
 
     }
 

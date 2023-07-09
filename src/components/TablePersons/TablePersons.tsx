@@ -442,8 +442,6 @@ const TablePersons = ({ action }:{ action:number }) => {
   
             initialPersonInformation={collaboratorBasicInfoToUpdate}
           />)
-
-          
         )
          :
         (<>
