@@ -1,6 +1,6 @@
 import { Options, Edge, Node } from "vis-network";
 import { useEffect, useState } from "react";
-import useVisNetwork from "./useVisNetwork"
+import { DataSet } from "vis-data/esnext";
 import requester from "../../helpers/Requester";
 import { IRequest, IStructure } from "../../interfaces/interfaces";
 import Graphos from "./Graphos";
@@ -14,6 +14,9 @@ interface IColor {
 }
 
 const options: Options = {
+  physics: {
+    enabled: false
+  },
   groups: {
     market: {
       shape: "triangleDown"
@@ -24,7 +27,7 @@ const options: Options = {
   },
   interaction: {
     selectable: false,
-    selectConnectedEdges: false
+    selectConnectedEdges: false,
   },
   edges: {
     smooth: {
@@ -38,12 +41,16 @@ const options: Options = {
   },
   nodes: {
     shape: "dot",
-    size: 16
+    margin: {top: 10, right: 30, left: 30, bottom: 10},
+    size: 16,
   },
   layout: {
     hierarchical: {
       enabled: true,
-      levelSeparation: 150
+        levelSeparation: 150,
+      // nodeSpacing: 300,
+      treeSpacing: 200,
+      // blockShifting: true,
     }
   }
 };
@@ -97,8 +104,15 @@ const generateColors = (members: IStructure[]):IColor[] => {
 }
 
 const StructureVisualization = () => {
-  const [nodes, setNodes] = useState<Node[]>([])
-  const [edges, setEdges] = useState<Edge[]>([])
+  /*
+    We can graph a "nodes graph" just using Node and Edges interfaces
+    but use "DataSet" makes able to us to establish options for
+    enhance the behaviour of our nodes. 
+  */
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [dataSetNodes, setDataSetNodes] = useState<any>(undefined);
+  const [dataSetEdges, setDataSetEdges] = useState<any>(undefined);
 
   useEffect(() => {
     getStructure()
@@ -119,10 +133,15 @@ const StructureVisualization = () => {
       const currentNodes: Node[] = [];
       const currentEdges: Edge[] = [];
 
+
       members.forEach(member => {
+        //Find the color of the node according to their heriarchical level
         const index:number = nodesColor.findIndex(nodeColor => nodeColor.target === member.cardinality_level);
+
         const color = `rgb(${nodesColor[index].spectrum1}, ${nodesColor[index].spectrum2}, ${nodesColor[index].spectrum2}, ${nodesColor[index].opactity})`;
         const border = `rgb(${nodesColor[index].spectrum1}, ${nodesColor[index].spectrum2}, ${nodesColor[index].spectrum2}, ${nodesColor[index].opactity+0.5})`;
+
+        //Set the nodes
         currentNodes.push({
           id: member.id_member, 
           label: `${member.first_name} ${member.last_name} \n${member.role}`,
@@ -131,10 +150,13 @@ const StructureVisualization = () => {
             background: color,
             border: "black"
           },
-          borderWidth: 1
+          borderWidth: 1,
+          margin: {top: 10, right: 30, left: 30, bottom: 10}
         })
 
+        //Set the edges
         if( member.id_leader !== undefined &&  member.id_leader !== null) {
+          //This if is to avoid errors in case that the member doesn't have a leader
           currentEdges.push({ 
             from: member.id_member, 
             to: member.id_leader,
@@ -143,10 +165,16 @@ const StructureVisualization = () => {
         }
       })
 
+      //Set the node to display
       setNodes(currentNodes)
       setEdges(currentEdges)
-      // console.log("Nodes: ", currentNodes)
-      // console.log("Edges: ", currentEdges)
+
+      //Create DataSet
+      const dataSetCurrentNodes = new DataSet(currentNodes);
+      const dataSetCurrentEdges = new DataSet(currentEdges);
+
+      setDataSetNodes(dataSetCurrentNodes);
+      setDataSetEdges(dataSetCurrentEdges);
     }
   }
 
@@ -156,6 +184,8 @@ const StructureVisualization = () => {
         <Graphos 
           nodes={nodes}
           edges={edges}
+          dataSetNodes={dataSetNodes}
+          dataSetEdges={dataSetEdges}
           options={options}
         />
       }

@@ -11,6 +11,7 @@ import AddCollaborator from "../pages/AddCollaborator";
 import ManageCollaborator from "../pages/ManageCollaborator";
 import Guard from "../helpers/Guard";
 import UpdateProfile from "../pages/UpadateProfile";
+import OrganizationChartTableVisualization from "../pages/OrganizationChartTableVisualization";
 
 const AppRouter = () => {
   return (
@@ -29,6 +30,7 @@ const AppRouter = () => {
               <Route path="geographicAreaData" element={<MapDataView />} />
               <Route path="strategy" element={<StrategyManagement />} />
               <Route path="data" element={<DataView />} />
+              <Route path="organizationChartTable" element={<OrganizationChartTableVisualization />} />
               <Route path="updateProfile" element={<UpdateProfile />} />
             </Route>
           </Route>

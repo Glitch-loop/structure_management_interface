@@ -124,17 +124,17 @@ const FormPerson = (
     //useState states ---
     //Common fileds
     const [person, setPerson] = useState<IMember>(initialPersonInformation);
-    const [strategicInformationPerson, setStrategicInformationPerson] = useState<IStructure>(initialStrategicInformation)
+    const [strategicInformationPerson, setStrategicInformationPerson] = useState<IStructure>(initialStrategicInformation);
 
     //Operational input 
-    const [searchFollower, setSearchFollower] = useState<string>('')
+    const [searchFollower, setSearchFollower] = useState<string>('');
 
     //States to save the results of the search
-    const [arraySearchColony, setArraySearchColony] = useState<IColony[]>([])
-    const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([])
-    const [arrayLeader, setArrayLeader] = useState<IStructure[]>([])
-    const [arrayFollower, setArrayFollower] = useState<IStructure[]>([])
-    const [arrayGeographicArea, setArrayGeographicArea] = useState<IGeographicArea[]>([])
+    const [arraySearchColony, setArraySearchColony] = useState<IColony[]>([]);
+    const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
+    const [arrayLeader, setArrayLeader] = useState<IStructure[]>([]);
+    const [arrayFollower, setArrayFollower] = useState<IStructure[]>([]);
+    const [arrayGeographicArea, setArrayGeographicArea] = useState<IGeographicArea[]>([]);
 
     
     //Show data
@@ -304,18 +304,14 @@ const FormPerson = (
               method: "PUT",
               data: basicData
             })
-            console.log("Basic member info to update: ", response)
           }
 
           //Update member's strategy level
-          console.log("idStrategy: ", idStrategy)
-          console.log("initialStrategicInfo: ", initialStrategicInformation.id_strategy)      
+
           if (idStrategy !== undefined && idStrategy !== 0)
             if(initialStrategicInformation.id_strategy !== idStrategy)
               await updateStrategyLevel(idMember, idStrategy)
             
-          console.log("idLeader: ", idLeader)
-          console.log("initialStrategicInfo: ", initialStrategicInformation.id_leader)      
           //Update member's leader
           if (idLeader !== undefined && idLeader !== 0) {
             //Update the current member's leader
@@ -702,15 +698,11 @@ const FormPerson = (
       */
       console.log(leaderSelected)
       if(leaderSelected === undefined || newInputValue === null) {
-        console.log("Data null")
         setStrategicInformationPerson({
           ...strategicInformationPerson, 
           first_name_leader: "",
           id_leader: 0});
-      }
-      else 
-      {
-        console.log("Data")
+      } else {
         setStrategicInformationPerson({
           ...strategicInformationPerson, 
           first_name_leader: newInputValue,
@@ -882,10 +874,10 @@ const FormPerson = (
             strategicInformationPerson.id_leader, 
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
-          // handleSubmit(true)
+          handleSubmit(true)
         }
         //Reset variables
-        // resetAllStates()
+        resetAllStates()
 
     }
 

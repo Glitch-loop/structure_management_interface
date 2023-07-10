@@ -3,7 +3,7 @@ import ItemSidebar from "./ItemSidebar";
 import { HiUserAdd } from 'react-icons/hi';
 import { FaUserCog, FaMapPin } from 'react-icons/fa'
 import { BsDiagram3Fill, BsGlobe, BsPersonFillGear } from 'react-icons/bs'
-import { IoGolfOutline, IoIdCardOutline } from 'react-icons/io5'
+import { IoGolfOutline, IoIdCardOutline, IoLayersSharp } from 'react-icons/io5'
 import { VscGraph } from 'react-icons/vsc'
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../UIcomponents/Button";
@@ -18,9 +18,10 @@ const itemsSideBar = [
   { label: 'Agrega colaborador', icon: HiUserAdd, path: 'newCollaborator' },
   { label: 'Administrar colaborador', icon: BsPersonFillGear, path: 'manageCollaborator' },
   { label: 'Areas geograficas', icon: BsGlobe, path: 'geographicArea' },
-  { label: 'Visualizar areas geograficas', icon: IoGolfOutline, path: 'geographicAreaData' },
   { label: 'Administrar estrategia', icon: FaMapPin, path: 'strategy' },
-  { label: 'Visualizar datos', icon: VscGraph, path: 'data' },
+  { label: 'Visualizar areas geograficas', icon: IoGolfOutline, path: 'geographicAreaData' },
+  { label: 'Organigrama', icon: VscGraph, path: 'data' },
+  { label: 'Tablas', icon: IoLayersSharp, path: 'organizationChartTable' },
   { label: 'Perfil', icon: IoIdCardOutline, path: 'updateProfile' },
 ]
 
@@ -33,7 +34,7 @@ const SideBar = () => {
   const handleRedirect = (path: string): void => { navigate(path) } 
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col overflow-scroll max-h-full">
       {
         itemsSideBar.map(itemSidebar => 
           <ItemSidebar 

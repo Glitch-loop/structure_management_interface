@@ -15,11 +15,8 @@ const Guard = () => {
 
   const loadUserDataBySecureToken = async() => {
     const sessionToken = localStorage.getItem('hjN8wY5KBs3NWhGv');
-    // console.log("In REDUX: ", userData)
-    console.log("Actual session: ", sessionToken)
     
     if(!sessionToken) {
-      console.log("!sessionToken")
       setIsLoading(false);
       return {};
     }
@@ -61,10 +58,8 @@ const Guard = () => {
     )
   } else {
     if(userData.idUser) {
-      console.log("current")
       return path === 'home' ? <Navigate replace to='/app/newMember'/> : <Outlet />
     } else {
-      console.log("to home")
       return <Navigate replace to='/home'/>
     }
   }
