@@ -163,7 +163,6 @@ const TablePersons = ({ action }:{ action:number }) => {
         method: 'GET'
       })
 
-      console.log(response)
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
