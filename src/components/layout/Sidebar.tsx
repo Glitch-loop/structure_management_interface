@@ -11,6 +11,7 @@ import { useDispatch } from 'react-redux';
 import { userLogout } from "../../redux/slices/userSlice";
 import { AnyAction, Dispatch } from 'redux';
 import { IUser } from "../../interfaces/interfaces";
+import { HiUserGroup } from "react-icons/hi";
 
 const itemsSideBar = [
   { label: 'Agregar miembro', icon: BsDiagram3Fill, path: 'newMember' },
@@ -20,8 +21,9 @@ const itemsSideBar = [
   { label: 'Areas geograficas', icon: BsGlobe, path: 'geographicArea' },
   { label: 'Administrar estrategia', icon: FaMapPin, path: 'strategy' },
   { label: 'Visualizar areas geograficas', icon: IoGolfOutline, path: 'geographicAreaData' },
-  { label: 'Organigrama', icon: VscGraph, path: 'data' },
-  { label: 'Tablas', icon: IoLayersSharp, path: 'organizationChartTable' },
+  { label: 'Organigrama', icon: BsDiagram3Fill  , path: 'data' },
+  { label: 'Información por lider', icon: HiUserGroup, path: 'organizationChartTable' },
+  { label: 'Información por colonia', icon: IoLayersSharp, path: 'organizationChartTable' },
   { label: 'Perfil', icon: IoIdCardOutline, path: 'updateProfile' },
 ]
 
