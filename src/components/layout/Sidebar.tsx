@@ -23,7 +23,7 @@ const itemsSideBar = [
   { label: 'Visualizar areas geograficas', icon: IoGolfOutline, path: 'geographicAreaData' },
   { label: 'Organigrama', icon: BsDiagram3Fill  , path: 'data' },
   { label: 'Información por lider', icon: HiUserGroup, path: 'organizationChartTable' },
-  { label: 'Información por colonia', icon: IoLayersSharp, path: 'organizationChartTable' },
+  { label: 'Información por colonia', icon: IoLayersSharp, path: 'colonyAnalisysTable' },
   { label: 'Perfil', icon: IoIdCardOutline, path: 'updateProfile' },
 ]
 

@@ -5,7 +5,7 @@ const requester = async <T>(
   {url, method = 'GET', data = {}, params = {}, extraHeaders = {}}: 
   {
     url:string, 
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE', 
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'FETCH' | 'PATCH', 
     data?: unknown, 
     params?: unknown, 
     extraHeaders?: any
