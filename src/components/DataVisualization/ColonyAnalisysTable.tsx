@@ -35,6 +35,7 @@ const ColonyAnalisysTable = () => {
   const [membersByColonyArray, setMemberByColonyArray] = useState<IMember[][]>([]);
   const [leaderConsulted, setLeaderConsulted] = useState<IStructure|undefined>(undefined);
   const [leader, setLeader] = useState<IStructure|undefined>(undefined);
+  
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
   const userData = useSelector((state: RootState) => state.userReducer);
@@ -98,7 +99,6 @@ const ColonyAnalisysTable = () => {
       const data:any = {
         "arrayIdColonies": arrayColonies
       }
-
       const response:IRequest<IMember[][]> = await requester({
         url: `/data/colonies/members`,
         method: 'PATCH',

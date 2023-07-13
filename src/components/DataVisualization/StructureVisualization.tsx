@@ -4,6 +4,14 @@ import { DataSet } from "vis-data/esnext";
 import requester from "../../helpers/Requester";
 import { IRequest, IStructure } from "../../interfaces/interfaces";
 import Graphos from "./Graphos";
+import Searcher from "../UIcomponents/Searcher";
+import { Dispatch, AnyAction } from 'redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../redux/store';
+import { EAlert } from "../../interfaces/enums";
+import { enqueueAlert } from "../../redux/slices/appSlice";
+import { Tooltip } from "@mui/material";
+import { IoAppsSharp } from "react-icons/io5";
 
 interface IColor {
   target: number;
@@ -114,10 +122,20 @@ const StructureVisualization = () => {
   const [dataSetNodes, setDataSetNodes] = useState<any>(undefined);
   const [dataSetEdges, setDataSetEdges] = useState<any>(undefined);
 
+  const [searchMembers, setSearchMembers] = useState<IStructure[]>([]);
+  const [storeResponseSearchMember, setStoreResponseSearchMember] = useState<IStructure[]>([]);
+
+  const [showAllTheStructure, setShowAllTheStructure] = useState<boolean>(false);
+
+  //Reducer for alert message
+  const dispatch:Dispatch<AnyAction> = useDispatch();
+  const userData = useSelector((state: RootState) => state.userReducer);
+
   useEffect(() => {
-    getStructure()
+    // getStructure()
   } ,[])
 
+  //Calls to API
   //The dara is order ascedently taken cardinality level as factor
   //Ej: 1, 2, 3, 4
   const getStructure = async () => {
@@ -125,14 +143,56 @@ const StructureVisualization = () => {
       url: '/data/structure'
     })
 
-    
-    if (actualStructure.data !== undefined) {
-      const members:IStructure[] = getHandlerCardinalityLevelNull(actualStructure.data);
+    if(actualStructure.data !== undefined) {
+      setDataInNode(actualStructure.data)      
+    }
+  }
+
+  const getMemberStructure = async (id_leader:number) => {
+    const actualStructure:IRequest<IStructure[]>  = await requester({
+      url: `/data/structure/strategyLevel/${id_leader}`
+    })
+
+    if(actualStructure.data !== undefined) {
+      setDataInNode(actualStructure.data);
+    }
+  }
+
+
+
+  const searchMember = async(string_to_search: string):Promise<IStructure[]> => {
+    try {
+      const response:IRequest<IStructure[]> = await requester({
+        url: `/members/search/${string_to_search}`,
+        method: 'GET'
+      })
+
+      if(response.code === 200) 
+        if(response.data !== undefined) 
+          return response.data;
+        
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar hacer la busqueda, intente nuevamente"}}));  
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+
+
+  //Handle on select member
+    //Handlers
+    const setDataInNode = (data:IStructure[]):void => {
+      const members:IStructure[] = getHandlerCardinalityLevelNull(data);
       const nodesColor:IColor[] = generateColors(members);
 
       const currentNodes: Node[] = [];
       const currentEdges: Edge[] = [];
-
 
       members.forEach(member => {
         //Find the color of the node according to their heriarchical level
@@ -172,14 +232,85 @@ const StructureVisualization = () => {
       //Create DataSet
       const dataSetCurrentNodes = new DataSet(currentNodes);
       const dataSetCurrentEdges = new DataSet(currentEdges);
-
+    
       setDataSetNodes(dataSetCurrentNodes);
       setDataSetEdges(dataSetCurrentEdges);
+    
     }
-  }
+
+    const onSearchTypeMember = async(stringToSearch: string) => {
+      if(stringToSearch === "") {
+        setStoreResponseSearchMember([]);
+        setSearchMembers([]);
+      } else {
+        if(storeResponseSearchMember[0] !== undefined) {
+          const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
+        
+          const personsToShow:IStructure[] = storeResponseSearchMember.filter(person => {
+              const name = `${person.first_name} ${person.last_name}`;
+              const cell_phone_number = `${person.cell_phone_number}`;
+              const ine = `${person.ine}`;
+              if(
+                  re.test(name.toLocaleLowerCase()) === true ||
+                  re.test(cell_phone_number) === true ||
+                  re.test(ine)
+                ) 
+                return person;
+            })
+          
+          if(personsToShow !== undefined) setSearchMembers(personsToShow);
+          else setSearchMembers([]);  
+        } else {
+          const responseData:IStructure[] = await searchMember(stringToSearch);
+          setStoreResponseSearchMember(responseData);
+          setSearchMembers(responseData);
+        }
+      }
+    }
+  
+    const selectOptionMember = async (idLeader: number) => {
+      setShowAllTheStructure(false);
+      const findDataLeader:undefined|IStructure = storeResponseSearchMember
+        .find(member => member.id_member === idLeader);
+      
+      if(findDataLeader !== undefined)
+        await getMemberStructure(findDataLeader?.id_member);
+
+
+      setSearchMembers([]);
+      setStoreResponseSearchMember([]);
+    }
+
+    const handleShowAllStructure = async():Promise<void> => {
+      setShowAllTheStructure(true)
+      await getStructure();
+    }
 
   return(
     <>
+      <Searcher 
+        placeholder={"Buscar por nombre, numero ó INE"}
+        optionsToShow={searchMembers.map(element => {
+          const option = {
+            id: element.id_member,
+            data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
+          }
+          return option;
+        })}
+        onSelectOption={selectOptionMember}
+        onType={onSearchTypeMember}
+      />
+      <div className="absolute flex-col w-full h-full justify-center">
+        <Tooltip title="Crear nueva area">
+          <button
+            onClick={ () => handleShowAllStructure() } 
+            className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showAllTheStructure ? "bg-lime-800" : "bg-lime-600"}`} >
+            <div className="text-white">
+              <IoAppsSharp />
+            </div>
+          </button>
+        </Tooltip>
+      </div>
       {(nodes[0]!==undefined && edges[0]!==undefined) && 
         <Graphos 
           nodes={nodes}

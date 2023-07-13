@@ -129,7 +129,7 @@ const OrganizationChartTable = () => {
     }
     try {
       const response: IRequest<IMemberStrategyLevel[]> = await requester({
-        url: `/data/structure/strategyLevel/followers`,
+        url: `/data/structure/strategyLevel`,
         method: 'POST',
         data: data
       })
