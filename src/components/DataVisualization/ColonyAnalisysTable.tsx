@@ -88,6 +88,15 @@ const averageYear = (arrayMembers:IMember[]):number => {
   return averageYears;
 }
 
+const getAmountGender = (gender:number, arrayMembers:IMember[]):number =>{
+  let amountGender = 0;
+  arrayMembers.forEach(member => {
+    if(member.gender === gender)
+      amountGender++;
+  })
+
+  return amountGender;
+}
 
 const ColonyAnalisysTable = () => {
   const [searchMembers, setSearchMembers] = useState<IStructure[]>([]);
@@ -436,6 +445,14 @@ const ColonyAnalisysTable = () => {
                             Rango de edad: { getYoungestYear(colony) } - {getOldestYear(colony)}
                           </Typography>  
                         }
+                      </div>
+                      <div className='ml-5 flex flex-col'>
+                      <Typography>
+                        Mujeres: {getAmountGender(1, colony)}
+                      </Typography>
+                      <Typography>
+                        Hombres: {getAmountGender(0, colony)}
+                      </Typography>  
                       </div>
                     </div>
                     </AccordionSummary>

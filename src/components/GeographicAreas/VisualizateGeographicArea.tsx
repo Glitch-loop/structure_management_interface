@@ -15,9 +15,9 @@ interface IStrategyShow extends IStrategy {
 function getColorForPolygon(): any {
   const colorCombination:IColor = {
     target: 0,
-    spectrum1: randomNumber(254),
-    spectrum2: randomNumber(254),
-    spectrum3: randomNumber(254),
+    spectrum1: randomNumber(100),
+    spectrum2: randomNumber(50),
+    spectrum3: randomNumber(100),
     opactity: 1
   }
 
@@ -30,6 +30,14 @@ function getColorForPolygon(): any {
     fillColor: color,
     fillOpacity: 0.35,
   }
+  return options;
+}
+
+function getPolygonColor(arrayColor:any[], id_strategy:number|undefined):any {
+  let options:any = {};
+  if(id_strategy === undefined) return options;
+  const color = arrayColor.find(color => color.id_strategy === id_strategy);
+  if(color !== undefined) options = color.options
   return options;
 }
 
@@ -82,6 +90,9 @@ const VisualizateGeographicArea = () => {
   const [showAnalysisGeographicArea, setShowAnalysisGeographicArea] = useState<boolean>(false);
 
   const [geographicArea, setGeographicArea] = useState<IGeographicArea|undefined>()
+
+  const [polygonColor, setPolygonColor] = useState<any[]>([]);
+
     //Use effect functions
     const getAllPolygons = async () => { 
       const response:IRequest<IGeographicArea[]> = await requester({
@@ -100,7 +111,8 @@ const VisualizateGeographicArea = () => {
       method: 'GET',
       url: `/members`
     })
-  
+    
+    console.log(response.data)
     if(response.data !== undefined) {
       const members = response.data;
       const tree = new TreeNode()
@@ -114,6 +126,7 @@ const VisualizateGeographicArea = () => {
   }
 
   const getStrategy = async() => {
+    console.log("ASKING STRATEGY")
     const response:IRequest<IStrategy[]> = await requester({
       url: `/strategyLevels`,
       method: 'GET'
@@ -121,7 +134,17 @@ const VisualizateGeographicArea = () => {
     if(response.data !== undefined) {
       const strategyLevels:IStrategyShow[] = response.data.filter(level => level.zone_type !== "")
 
+      const definePolygonColor:any[] = [];
+      strategyLevels.forEach(level => {
+        definePolygonColor.push({
+          id_strategy: level.id_strategy,
+          options: getColorForPolygon()
+        })
+      }) 
       
+      setPolygonColor(definePolygonColor);
+      
+
       setArrayStrategyLevel(strategyLevels.map(strategyLevel => {
         strategyLevel.show = true;
         return strategyLevel
@@ -236,8 +259,8 @@ const VisualizateGeographicArea = () => {
                 handleOpenShowAnalysisGeographicArea(e, polygon)
               }}
               path={polygon.coordinates}
-              // options={getColorForPolygon()}
-  
+              options={getPolygonColor(polygonColor, polygon.id_strategy)}
+
             ></PolygonF>
           }
           )

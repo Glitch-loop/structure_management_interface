@@ -30,6 +30,34 @@ interface IStrategyShow extends IStrategy {
   show?: boolean
 }
 
+function getColorForPolygon(): any {
+  const colorCombination:IColor = {
+    target: 0,
+    spectrum1: randomNumber(100),
+    spectrum2: randomNumber(50),
+    spectrum3: randomNumber(100),
+    opactity: 1
+  }
+
+  const color = `rgb(${colorCombination.spectrum1}, ${colorCombination.spectrum2}, ${colorCombination.spectrum3})`
+
+  const options = {
+    strokeColor: color,
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: color,
+    fillOpacity: 0.35,
+  }
+  return options;
+}
+
+function getPolygonColor(arrayColor:any[], id_strategy:number|undefined):any {
+  let options:any = {};
+  if(id_strategy === undefined) return options;
+  const color = arrayColor.find(color => color.id_strategy === id_strategy);
+  if(color !== undefined) options = color.options
+  return options;
+}
 
 function getCoordinate(e: any): LatLng {
   const latitude = e.latLng.lat();
@@ -99,6 +127,8 @@ function ManageGeographicAreasMapRender() {
   
   const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
 
+  const [polygonColor, setPolygonColor] = useState<any[]>([]);
+
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
   const userData = useSelector((state: RootState) => state.userReducer);
@@ -121,6 +151,16 @@ function ManageGeographicAreasMapRender() {
         strategyLevel.show = true;
         return strategyLevel
       }));
+
+      const definePolygonColor:any[] = [];
+      strategyLevels.forEach(level => {
+        definePolygonColor.push({
+          id_strategy: level.id_strategy,
+          options: getColorForPolygon()
+        })
+      })
+
+      setPolygonColor(definePolygonColor);
     })
   }, [])
 
@@ -911,6 +951,7 @@ function ManageGeographicAreasMapRender() {
                 onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
                 onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
                 path={polygon.coordinates}
+                options={getPolygonColor(polygonColor, polygon.id_strategy)}
               ></PolygonF>
             } 
             )
