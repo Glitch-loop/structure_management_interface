@@ -58,7 +58,7 @@ const Guard = () => {
     )
   } else {
     if(userData.idUser) {
-      return path === 'home' ? <Navigate replace to='/app/newMember'/> : <Outlet />
+      return path === 'home' ? <Navigate replace to='/app/mainMenu'/> : <Outlet />
     } else {
       return <Navigate replace to='/home'/>
     }

@@ -43,6 +43,7 @@ const initialMemberStrategyLevel:IMemberStrategyLevel = {
   cell_phone_number: "",
   ine: "",
   birthday: "",
+  gender: 0,
   id_leader: 0,
   id_follower: [],
   id_colony: 0,
@@ -67,6 +68,7 @@ const emptyMember: IMember = {
   id_colony: 0,
   birthday: "",
   ine: "",
+  gender: 0,
   id_strategy: 0,
   colony_name: "",
   postal_code: ""
@@ -262,6 +264,7 @@ const OrganizationChartTable = () => {
           cell_phone_number: leaderBasicInformation.cell_phone_number,
           ine: leaderBasicInformation.ine,
           birthday: leaderBasicInformation.birthday,
+          gender: 0,
           id_leader: leaderStrategicInformation.id_leader !== undefined ? leaderStrategicInformation.id_leader : 0,
           id_follower: [],
           id_colony: 0,

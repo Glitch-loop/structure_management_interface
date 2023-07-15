@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Input from "../UIcomponents/Input";
-import { Autocomplete, TextField } from "@mui/material";
+import { Autocomplete, TextField, Switch } from "@mui/material";
 import Button from "../UIcomponents/Button";
 import { IColony, IGeographicArea, IMember, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
@@ -10,6 +10,8 @@ import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import moment from 'moment';
+import MessageAlert from "../UIcomponents/MessageAlert";
 
 //Initial states
 const initialPersonState:IMember = {
@@ -22,6 +24,7 @@ const initialPersonState:IMember = {
   cell_phone_number: "",
   ine: "",
   birthday: "",
+  gender: 0,
   id_leader: 0,
   id_follower: [],
   id_colony: 0,
@@ -65,6 +68,11 @@ const filterSelectedFollowers = (arrayTofilter: IStructure[], currentFollowersSe
   
     return filterFollowersSelected;
   } else return arrayTofilter;
+}
+
+const validBirthDay = (date:string):boolean => {
+  if(moment().diff(moment(date)) > 0 || date === "") return true;
+    else return false;
 }
 
 //Auxiliar functions to show inputs
@@ -242,7 +250,7 @@ const FormPerson = (
           url: '/members/', 
           method: "POST", 
           data: basicData})
-
+        console.log(response)
         if(response.code === 201) {
           if(response.data !== undefined) {
             const idMember:number = response.data.idMember
@@ -307,7 +315,7 @@ const FormPerson = (
           }
 
           //Update member's strategy level
-
+          console.log(response)
           if (idStrategy !== undefined && idStrategy !== 0)
             if(initialStrategicInformation.id_strategy !== idStrategy)
               await updateStrategyLevel(idMember, idStrategy)
@@ -580,6 +588,11 @@ const FormPerson = (
           colony_name: colonySelected.name_colony});
     }
 
+    const handleChangeGender = (e:any) => {
+      if(person.gender == 0) setPerson({...person, gender: 1})
+      else setPerson({...person, gender: 0})
+    }
+
     //Handlers strategic information --- 
     //Handlers for strategic level autocomplete
     const handleSearchStrategyLevel = async (event: any, newInputValue: string | null) => {
@@ -652,12 +665,6 @@ const FormPerson = (
           showGeographicAreaInputFunction(strategyLevelSelected.id_strategy, arrayStrategyLevel));
 
       }
-
-      //Pending
-      /*
-        If the user change of strategic level, it's necessary to delete the current 
-        member's strategic information
-      */
     }
 
     //Handlers for leader autocomplete
@@ -856,6 +863,7 @@ const FormPerson = (
         "cellphoneNumber": avoidNull(person.cell_phone_number, ""),
         "ine": avoidNull(person.ine, ""),
         "birthday": avoidNull(person.birthday, ""),
+        "gender": person.gender,
         "idColony": avoidNull(person.id_colony, 0),
         "idStrategyLevel": avoidNull(strategicInformationPerson.id_strategy, 0)
       }
@@ -990,6 +998,8 @@ const FormPerson = (
                 />
             </div>
             <div className="flex flex-row mt-1">
+              <div className="mr-2 flex flex-col basis-1/2">
+
               <Input
                 onType={setPerson}
                 objectValue={person} 
@@ -998,6 +1008,17 @@ const FormPerson = (
                 inputType={'date'}
                 required={true}
                 />
+                {validBirthDay(person.birthday) === false && 
+                  <MessageAlert label="Fecha de nacimiento invalida" />
+                }
+              </div>
+              <div className="mt-5 flex basis-1/2 items-center justify-center">
+                <p>Genero: </p>
+                <Switch 
+                  checked={person.gender === 0 ? false : true}
+                  onChange={handleChangeGender}/>
+                <p>{person.gender === 0 ? "Hombre" : "Mujer"}</p>
+              </div>
             </div>
             <div className="flex mt-3 justify-center">
               <Autocomplete

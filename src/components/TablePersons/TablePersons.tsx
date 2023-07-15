@@ -37,6 +37,7 @@ const emptyMember: IMember = {
   id_colony: 0,
   birthday: "",
   ine: "",
+  gender: 0,
   id_strategy: 0,
   colony_name: "",
   postal_code: ""

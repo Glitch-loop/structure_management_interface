@@ -13,6 +13,7 @@ import Guard from "../helpers/Guard";
 import UpdateProfile from "../pages/UpadateProfile";
 import OrganizationChartTableVisualization from "../pages/OrganizationChartTableVisualization";
 import ColonyAnalisysTableVisualization from "../pages/ColonyAnalisysTableVisualization";
+import MainMenu from "../pages/MainMenu";
 
 const AppRouter = () => {
   return (
@@ -23,6 +24,7 @@ const AppRouter = () => {
           
           <Route element={<Guard />}>
             <Route path="/app" element={<Layout />}>
+              <Route path="mainMenu" element={<MainMenu />} />
               <Route path="newMember" element={<AddMember />} />
               <Route path="manageMember" element={<ManageMember />} />
               <Route path="newCollaborator" element={<AddCollaborator />} />

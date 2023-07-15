@@ -80,6 +80,7 @@ export interface IMember {
   cell_phone_number: string;
   ine: string;
   birthday: string;
+  gender: number;
   id_leader: number;
   id_follower: number[];
   id_colony: number;

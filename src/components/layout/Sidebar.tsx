@@ -3,7 +3,7 @@ import ItemSidebar from "./ItemSidebar";
 import { HiUserAdd } from 'react-icons/hi';
 import { FaUserCog, FaMapPin } from 'react-icons/fa'
 import { BsDiagram3Fill, BsGlobe, BsPersonFillGear } from 'react-icons/bs'
-import { IoGolfOutline, IoIdCardOutline, IoLayersSharp } from 'react-icons/io5'
+import { IoGolfOutline, IoIdCardOutline, IoLayersSharp, IoDesktopOutline, IoAccessibility } from 'react-icons/io5'
 import { VscGraph } from 'react-icons/vsc'
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../UIcomponents/Button";
@@ -14,7 +14,8 @@ import { IUser } from "../../interfaces/interfaces";
 import { HiUserGroup } from "react-icons/hi";
 
 const itemsSideBar = [
-  { label: 'Agregar miembro', icon: BsDiagram3Fill, path: 'newMember' },
+  { label: 'Menu principal', icon: IoDesktopOutline, path: 'mainMenu' },
+  { label: 'Agregar miembro', icon: IoAccessibility, path: 'newMember' },
   { label: 'Administrar miembro', icon: FaUserCog, path: 'manageMember' },
   { label: 'Agrega colaborador', icon: HiUserAdd, path: 'newCollaborator' },
   { label: 'Administrar colaborador', icon: BsPersonFillGear, path: 'manageCollaborator' },

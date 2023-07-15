@@ -22,6 +22,71 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { useState } from "react";
 import Button from '../UIcomponents/Button';
+import moment from 'moment';
+
+//Auxiliar functions
+const getOldestYear = (arrayMembers:IMember[]):number => {
+  let oldestYear = 0;
+  if(arrayMembers.length > 0) {
+    let birthAge = moment(arrayMembers[0].birthday).format("YYYY");
+  
+    for(let i = 1; i < arrayMembers.length; i++) {
+      const actualAge = moment(arrayMembers[i].birthday).format("YYYY")
+      if(birthAge !== undefined && actualAge !== undefined) {
+        const compareBirthAge = JSON.parse(birthAge);
+        const compareActualAge = JSON.parse(actualAge);
+        if(compareActualAge < compareBirthAge) birthAge = actualAge;
+      }
+    }
+
+    const actualYear = moment().format("YYYY");
+    if(birthAge !== undefined && actualYear !== undefined) {
+      oldestYear = JSON.parse(actualYear) - JSON.parse(birthAge);
+    }   
+  }
+
+  return oldestYear;  
+}
+
+const getYoungestYear = (arrayMembers:IMember[]):number => {
+  let youngestYear = 0;
+  if(arrayMembers.length > 0) {
+    let birthAge = moment(arrayMembers[0].birthday).format("YYYY");
+  
+    for(let i = 1; i < arrayMembers.length; i++) {
+      const actualAge = moment(arrayMembers[i].birthday).format("YYYY")
+      if(birthAge !== undefined && actualAge !== undefined) {
+        const compareBirthAge = JSON.parse(birthAge);
+        const compareActualAge = JSON.parse(actualAge);
+        if(compareActualAge > compareBirthAge) birthAge = actualAge;
+      }
+    }
+
+    const actualYear = moment().format("YYYY");
+    if(birthAge !== undefined && actualYear !== undefined) {
+      youngestYear = JSON.parse(actualYear) - JSON.parse(birthAge);
+    }   
+  }
+
+  return youngestYear;
+}
+
+const averageYear = (arrayMembers:IMember[]):number => {
+  let averageYears = 0;
+  let yearAcomulation = 0;
+  for(let i = 0; i < arrayMembers.length; i++) {
+    const birthAge = moment(arrayMembers[i].birthday).format("YYYY");
+    const actualYear = moment().format("YYYY");
+    if(birthAge !== undefined && actualYear !== undefined) {
+      yearAcomulation = yearAcomulation + JSON.parse(actualYear) - JSON.parse(birthAge);
+    }
+  }
+
+  if(arrayMembers.length > 0) 
+    averageYears = Math.floor(yearAcomulation / arrayMembers.length);
+
+  return averageYears;
+}
 
 
 const ColonyAnalisysTable = () => {
@@ -358,11 +423,21 @@ const ColonyAnalisysTable = () => {
                       aria-controls="panel1a-content"
                       id="panel1a-header"
                     >
+                    <div className='flex flex-row'>
                       <div className='flex flex-col'>
                         <Typography>{colony[0].colony_name} - C.P: {colony[0].postal_code}</Typography>
                         <Typography>No. miembros: {colony.length}</Typography>
-                      </div>
 
+                      </div>
+                      <div className='ml-5 flex flex-col'>
+                      <Typography>Edad promedio: {averageYear(colony)}</Typography>
+                        {colony.length > 1 &&
+                          <Typography>
+                            Rango de edad: { getYoungestYear(colony) } - {getOldestYear(colony)}
+                          </Typography>  
+                        }
+                      </div>
+                    </div>
                     </AccordionSummary>
                     <AccordionDetails>
                       <Paper sx={{overflow: 'hidden'}}>
