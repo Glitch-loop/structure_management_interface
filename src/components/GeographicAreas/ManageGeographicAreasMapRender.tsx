@@ -14,7 +14,10 @@ import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
-import { randomNumber } from "../../utils/utils"
+import { randomNumber } from "../../utils/utils";
+import { IoAppsSharp } from "react-icons/io5";
+import Searcher from "../UIcomponents/Searcher";
+
 
 const initialGeographicAreaState:IGeographicArea = {
   id_geographic_area: 0,
@@ -126,12 +129,19 @@ function ManageGeographicAreasMapRender() {
   const [searchGeographicAreaBelongsTo, setSearchGeographicAreaBelongsTo] = useState<string>("");
   const [arraySearchGeographicAreaBelongsTo, setArraySearchGeographicAreaBelongsTo] = useState<IStructure[]>([]);
 
+  //State for geographic area visualization
+  const [showAllGeographicAreas, setShowAllGeographicAreas] = useState<boolean>(false);
+
   // Form
   const [showDialog, setShowDialog] = useState<boolean>(false);
  
   //Logic areas visualization
   const [showVisualizationForm, setShowVisualizationForm] = useState<boolean>(false)
   
+  //States for searcher
+  const [searchGeographicAreas, setSearchGeographicAreas] = useState<IStructure[]>([]);
+  const [storeResponseSearchGeographicAreas, setStoreResponseSearchGeographicAreas] = useState<IStructure[]>([]);
+
   const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
 
   const [polygonColor, setPolygonColor] = useState<any[]>([]);
@@ -141,11 +151,6 @@ function ManageGeographicAreasMapRender() {
   const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
-    getAllPolygons()
-    .then((dataResponse:IGeographicArea[]) => {
-      setPolygons(dataResponse)
-      setPolygonForWork(dataResponse)
-    });
     getStrategy()
     .then((dataStrategyLevels:IStrategy[]) => {
       /*
@@ -429,6 +434,51 @@ function ManageGeographicAreasMapRender() {
       return [initialGeographicAreaState];
     }
   }
+
+  const searchGeographicArea = async(stringToSearch: string):Promise<IStructure[]> =>{
+    try {
+      const response: IRequest<IStructure[]> = await requester({
+        url: `/geographicAreas/search/${stringToSearch}`,
+        method: 'GET',
+      })
+      if(response.code === 200) {
+        if(response.data !== undefined) return response.data;
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las areas geograficas, intente mas tarde"}})); 
+      }
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+      return [];
+    }
+  }
+
+  const getGeographicAreasInside = async(idGeographicArea: number):Promise<IStructure[]> =>{
+    try {
+      const response: IRequest<IStructure[]> = await requester({
+        url: `/geographicAreas/inside/${idGeographicArea}`,
+        method: 'GET',
+      })
+      if(response.code === 200) {
+        if(response.data !== undefined) return response.data;
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar el area geográfica, intente mas tarde"}})); 
+      }
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+      return [];
+    }
+  }
+
   //Handlers
   //Handlres of MAP
   const handleClickMap = async (e: any) => {
@@ -497,6 +547,14 @@ function ManageGeographicAreasMapRender() {
       setPolygonToManage(undefined)
     }
     setPolygons(polygonsForWork)
+  }
+
+  //Handler to visualizate geographic areas
+  const handleVisualizateAllGeographicArea = async ():Promise<void> => {
+    const dataResponse:IGeographicArea[] = await getAllPolygons();
+    setPolygons(dataResponse);
+    setPolygonForWork(dataResponse);
+    setShowAllGeographicAreas(true);
   }
 
   //Handlres -- LINES
@@ -717,11 +775,16 @@ function ManageGeographicAreasMapRender() {
        && polygon.id_geographic_area_belongs !== undefined
        && polygon.id_geographic_area_belongs !== null) {
         const geographicAreaThatBelongs = await getGeographicAreaByID(polygon.id_geographic_area_belongs)
-
+        
         if(geographicAreaThatBelongs[0].geographic_area_name !== undefined
           && geographicAreaThatBelongs[0].geographic_area_name !== null)
-          setSearchGeographicAreaBelongsTo(geographicAreaThatBelongs[0].geographic_area_name)
-      } 
+          setSearchGeographicAreaBelongsTo(
+            geographicAreaThatBelongs[0].geographic_area_name);
+          
+      } else {
+        setSearchGeographicAreaBelongsTo("");
+        setArraySearchGeographicAreaBelongsTo([]);
+      }
     } else {
       setSearchStrategyLevel(""); // The polygon doesn't have a type zone assigned
     } 
@@ -732,12 +795,14 @@ function ManageGeographicAreasMapRender() {
       If the polygon suffer any modification, then the system is going to be stored that modification
       for "possibly" update it (if the user confirm the update).
     */
-
+    console.log(polygon)
     setGeographicArea({
       ...geographicArea,
       id_geographic_area: polygon.id_geographic_area,
       id_strategy: polygon.id_strategy, 
-      id_geographic_area_belongs: polygon.id_geographic_area_belongs,
+      id_geographic_area_belongs: 
+        (polygon.id_geographic_area_belongs !== 0 ? 
+            polygon.id_geographic_area_belongs: 0),
       geographic_area_name: polygon.geographic_area_name,
       coordinates: polygon.coordinates
     });
@@ -971,6 +1036,57 @@ function ManageGeographicAreasMapRender() {
     )
   }
 
+  //Handlers for searcher
+  const onSearchTypeGeographicArea = async(stringToSearch: string) => {
+    if(stringToSearch === "") {
+      setStoreResponseSearchGeographicAreas([]);
+      setSearchGeographicAreas([]);
+    } else {
+      if(storeResponseSearchGeographicAreas[0] !== undefined) {
+        const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
+      
+        const geographicAreaToShow:IStructure[] = storeResponseSearchGeographicAreas.filter(geographicArea => {
+            const name = `${geographicArea.first_name} ${geographicArea.last_name}`;
+            const geographic_area_name = `${geographicArea.geographic_area_name}`;
+            
+            if(
+                re.test(name.toLocaleLowerCase()) === true ||
+                re.test(geographic_area_name.toLocaleLowerCase()) === true
+              ) 
+              return geographicArea;
+          })
+        
+        if(geographicAreaToShow !== undefined) setSearchGeographicAreas(geographicAreaToShow);
+        else setSearchGeographicAreas([]);  
+      } else {
+        const responseData:IStructure[] = await searchGeographicArea(stringToSearch);
+        setStoreResponseSearchGeographicAreas(responseData);
+        setSearchGeographicAreas(responseData);
+      }
+    }
+  }
+
+  const selectOptionMember = async (idGeographicArea: number) => {
+    const findGeographicArea:undefined|IStructure = storeResponseSearchGeographicAreas
+      .find(geographicArea => geographicArea.id_geographic_area === idGeographicArea);
+
+    //Ask the geographic area
+    if(findGeographicArea !== undefined) 
+      if(findGeographicArea.id_geographic_area !== undefined) {
+        const dataResponse:IGeographicArea[] = 
+          await getGeographicAreasInside(findGeographicArea.id_geographic_area);
+        console.log(dataResponse)
+
+        setPolygons(dataResponse);
+        setPolygonForWork(dataResponse);
+        setShowAllGeographicAreas(false);
+      }
+
+
+    setSearchGeographicAreas([]);
+    setStoreResponseSearchGeographicAreas([]);
+  }
+
   // Auxiliar functions
   const resetStates = ():void => {
     setGeographicArea(initialGeographicAreaState);
@@ -1063,7 +1179,7 @@ function ManageGeographicAreasMapRender() {
       <div className="p-5 pb-10 flex flex-col justify-center">
         {
           arrayStrategyLevel.map(strategyLevel => {
-            return <div className="flex row justify-between">
+            return <div key={strategyLevel.id_strategy} className="flex row justify-between">
               <p className="text-lg">{strategyLevel.zone_type}</p>
               <Switch 
                 checked={strategyLevel.show}
@@ -1074,7 +1190,41 @@ function ManageGeographicAreasMapRender() {
         }
       </div>
     </Dialog>
-
+    <div className="absolute flex-col w-full h-full justify-center">
+      <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
+        <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
+          <div className="mt-1 "></div>
+          <Searcher 
+            placeholder="Buscar por nombre de area geografica o administrador"
+            optionsToShow={searchGeographicAreas.map(element => {
+              const option = {
+                id: element.id_geographic_area !== undefined ? 
+                  element.id_geographic_area : 0,
+                data: `${element.geographic_area_name} | ${
+                  element.zone_type===null ? "No tiene tipo de zona" : element.zone_type
+                } - ${
+                  (element.first_name === null && element.last_name === null) ? "No tiene administrador" : `${element.first_name} ${element.last_name}`
+                }`
+              }
+              return option;
+            })}
+            onSelectOption={selectOptionMember}
+            onType={onSearchTypeGeographicArea}
+            />
+        </div>
+      </div>
+    </div>
+    <div className="absolute flex-col w-full h-full justify-center">
+      <Tooltip title="Visualizar todas las areas geográficas">
+        <button
+          onClick={() => handleVisualizateAllGeographicArea()} 
+          className={`z-10 absolute p-5 rounded-full hover:bg-orange-800 bottom-0 left-0 mb-44 ml-3 ${showAllGeographicAreas ? "bg-orange-800" : "bg-orange-600"}`} >
+          <div className="text-white">
+            <IoAppsSharp />
+          </div>
+        </button>
+      </Tooltip>
+    </div>
     <div className="absolute flex-col w-full h-full justify-center">
       <Tooltip title="Crear nueva area">
         <button
@@ -1107,6 +1257,7 @@ function ManageGeographicAreasMapRender() {
           {
             polygons.map((polygon) =>
             {
+              console.log("OK")
               return <PolygonF
                 key={polygon.id_geographic_area}
                 visible={polygonVisible(arrayStrategyLevel, polygon)}

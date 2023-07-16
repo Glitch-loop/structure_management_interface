@@ -158,8 +158,6 @@ const StructureVisualization = () => {
     }
   }
 
-
-
   const searchMember = async(string_to_search: string):Promise<IStructure[]> => {
     try {
       const response:IRequest<IStructure[]> = await requester({

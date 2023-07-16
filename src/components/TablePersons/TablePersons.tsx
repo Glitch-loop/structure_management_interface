@@ -13,7 +13,6 @@ import { Tooltip } from "@mui/material";
 import {MdDeleteForever, MdEditDocument} from 'react-icons/md'
 import FormPerson from "../FormPersons/FormPerson";
 import FormCollaborator from "../FormPersons/FormCollaborator";
-import { CircularProgress } from "@mui/material";
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
