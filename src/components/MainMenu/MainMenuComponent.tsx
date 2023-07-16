@@ -5,7 +5,7 @@ import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import requester from "../../helpers/Requester";
-import { IMember, IRequest, IStructure } from "../../interfaces/interfaces";
+import { IGeographicArea, IMember, IRequest, IStructure } from "../../interfaces/interfaces";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -71,7 +71,10 @@ const histogramOptions = {
   },
 };
 
-
+interface IGeographicAreaManage extends IGeographicArea {
+  first_name: string;
+  last_name: string;
+}  
 
 const emptyMemberStrategicInformation:IStructure = {
   id_member: 0
@@ -89,6 +92,7 @@ interface IMemberRankingStructure extends IMember {
 const MainMenuComponent = () => {
 
   const [incompleteMembersProfile, setIncompleteMembersProfile] = useState<IMemberProfileIncomplete[]>([]);
+  const [incompleteGeographicAreasInformation, setIncompleteGeographicAreasInformation] = useState<IGeographicAreaManage[]>([]);
 
   const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
   const [memberStrategicInfoToUpdate, setMemberStrategicInfoToUpdate] = useState<IStructure>();
@@ -115,10 +119,14 @@ const MainMenuComponent = () => {
       .then(response => {
         setIncompleteMembersProfile(response);
       });
+    getGeographicAreasWithoutCompleteInformation()
+      .then(response => {
+        setIncompleteGeographicAreasInformation(response);
+      });
     getCountAllStructure()
       .then(response => {
         setTotalAmountDataChart([response.amount_male, response.amount_female])
-      })
+      });
     getAgeHistogram()
       .then(response => {
         if(response !== undefined) {
@@ -159,12 +167,12 @@ const MainMenuComponent = () => {
             }]
           })
         }
-      })
+      });
     getStrategy()
       .then((dataStrategyLevels:IStrategy[]) => {
         dataStrategyLevels.pop();
         setArrayStrategyLevel(dataStrategyLevels);
-      })
+      });
   }, [])
 
   //Request to API
@@ -181,7 +189,30 @@ const MainMenuComponent = () => {
 
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
-        message: "Hubo un error al intentar obtener los niveles de la estrategia"}}));
+        message: "Hubo un error al intentar los miembros con información completa"}}));
+      return [];
+        
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectar con el servidor"}}));
+      return [];
+    }
+  }
+  const getGeographicAreasWithoutCompleteInformation = async():Promise<IGeographicAreaManage[]> => {
+    try {
+      const response:IRequest<IGeographicAreaManage[]> = await requester({
+        url: `/geographicAreas/information/incomplete`,
+        method: 'GET'
+      })
+
+      if(response.code === 200)
+        if(response.data !== undefined)
+          return response.data;
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar obtener las areas geográficas con informacion incompleta"}}));
       return [];
         
     } catch (error) {
@@ -513,7 +544,7 @@ const MainMenuComponent = () => {
                             {person.ine}
                           </TableCell>
                           <TableCell align="center">
-                            <div className="text-lg flex flex-row justify-center">
+                            <div className="text-xl flex flex-row justify-center">
                               {person.id_colony === null ?  
                                 <div className="text-orange-400">
                                   <MdErrorOutline />
@@ -526,7 +557,7 @@ const MainMenuComponent = () => {
                             </div>
                         </TableCell>
                           <TableCell align="center">
-                            <div className="text-lg flex flex-row justify-center">
+                            <div className="text-xl flex flex-row justify-center">
                               {person.id_strategy === null ?  
                                 <div className="text-orange-400">
                                   <MdErrorOutline />
@@ -583,6 +614,83 @@ const MainMenuComponent = () => {
             </TableContainer>
           </Paper>
         </>
+      }
+      {(incompleteGeographicAreasInformation[0] !== undefined) &&
+        <div className="mt-5">
+          <p className="text-center mb-3 text-xl font-bold">
+            Areas geográficas con información incompleta
+          </p>
+          <Paper sx={{overflow: 'hidden'}}>
+            <TableContainer sx={{ maxHeight: 440 }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="center">ID</TableCell>
+                    <TableCell align="center">Area geográfica</TableCell>
+                    <TableCell align="center">Nivel jerarquico</TableCell>
+                    <TableCell align="center">Pertenece a una area geografica</TableCell>
+                    <TableCell align="center">Tiene un administrador</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {
+                    incompleteGeographicAreasInformation.map(geographicArea => {
+                      return (
+                        <TableRow key={geographicArea.id_geographic_area}>
+                          <TableCell align="center">
+                            {geographicArea.id_geographic_area}
+                          </TableCell>
+                          <TableCell align="center">
+                            {geographicArea.geographic_area_name}
+                          </TableCell>
+                          <TableCell align="center">
+                            <div className="text-xl flex flex-row justify-center">
+                              {geographicArea.id_strategy === null ?  
+                                <div className="text-orange-400">
+                                  <MdErrorOutline />
+                                </div>
+                                :
+                                <div className="text-green-400">
+                                  <BsCheckCircle />
+                                </div>
+                                }
+                            </div>
+                        </TableCell>
+                          <TableCell align="center">
+                            <div className="text-xl flex flex-row justify-center">
+                              {geographicArea.id_geographic_area_belongs === null ?  
+                                <div className="text-orange-400">
+                                  <MdErrorOutline />
+                                </div>
+                                :
+                                <div className="text-green-400">
+                                  <BsCheckCircle />
+                                </div>
+                                }
+                            </div>
+                          </TableCell>
+                          <TableCell align="center">
+                            <div className="text-xl flex flex-row justify-center">
+                              {geographicArea.id_member === null ?  
+                                <div className="text-orange-400">
+                                  <MdErrorOutline />
+                                </div>
+                                :
+                                <div className="text-sm">
+                                  {geographicArea.first_name} {geographicArea.last_name}
+                                </div>
+                                }
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  }
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </div>
       }
       <div className="flex flex-row mx-2 mt-5 ">
         <div className="flex flex-col basis-1/3">

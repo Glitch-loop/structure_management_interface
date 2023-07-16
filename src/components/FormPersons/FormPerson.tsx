@@ -152,7 +152,8 @@ const FormPerson = (
 
     //Reducers to alerts
     const dispatch:Dispatch<AnyAction> = useDispatch();
-    const userData = useSelector((state: RootState) => state.userReducer)
+    const userData = useSelector((state: RootState) => state.userReducer);
+
     // useEffect procedure ---
     useEffect(() => {
       if(action == 0 || action == 1) {
@@ -511,7 +512,8 @@ const FormPerson = (
           url: `/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`,
           method: `GET`
         }) 
-        
+        console.log(`/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`)
+        console.log(response)
         if(response.code===200) 
           if(response.data !== undefined) 
             return response.data;
@@ -775,6 +777,7 @@ const FormPerson = (
 
     //Handlers for geographic area autocomplete
     const handleSearchGeographicArea = async (event: any, newInputValue: string | null) => {
+
       if(newInputValue !== null) {
         //Save the current user's search 
         setStrategicInformationPerson({
@@ -787,8 +790,9 @@ const FormPerson = (
            There isn't what the user is try to find
           */
           if(newInputValue==='') setArrayGeographicArea([]);
-          // If the leader's array is empty and the user's input is different to empty, request data to API
+          // If the geographic's array is empty and the user's input is different to empty, request data to API
           if(arrayGeographicArea[0] === undefined && newInputValue !== '') {
+            
              setArrayGeographicArea(
               await searchGeographicAreasByNameAndStrategyLevel(
                 strategicInformationPerson.id_strategy, newInputValue));
@@ -888,8 +892,6 @@ const FormPerson = (
     }
 
     //Auxiliar functions
-
-
     const resetAllStates = ():void => {
       //Basic information states related
       setPerson(initialPersonState);
@@ -1122,8 +1124,10 @@ const FormPerson = (
                       onChange={(event: any, newValue: string | null) => {
                         handleSelectGeographicArea(event, newValue)
                       }}
-                      options={arrayGeographicArea.map(geographicArea => 
-                        `${geographicArea.geographic_area_name}-${geographicArea.id_geographic_area}`)}
+                      options={
+                        arrayGeographicArea.map(geographicArea => 
+                          `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}`)
+                      }
                       value={strategicInformationPerson.geographic_area_name}
                       sx={{ width: 300 }}
                       renderInput={(params) => <TextField {...params} label="Area geografica" />}

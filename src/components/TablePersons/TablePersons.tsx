@@ -378,9 +378,16 @@ const TablePersons = ({ action }:{ action:number }) => {
           } 
                 
           if (strategicMemberInformation.first_name_leader === undefined)
-            strategicMemberInformation.first_name_leader = '' 
+            strategicMemberInformation.first_name_leader = ''
+              console.log(strategicMemberInformation.first_name_leader)
           if (strategicMemberInformation.last_name_leader === undefined)
             strategicMemberInformation.last_name_leader= '' 
+          
+          /* 
+            We do this because for the select leader "input" we use only 
+            "first_name_leader" field
+          */
+          strategicMemberInformation.first_name_leader = `${strategicMemberInformation.first_name_leader} ${strategicMemberInformation.last_name_leader} `
           
           setMemberStrategicInfoToUpdate(strategicMemberInformation)
           setShowForm(true)             

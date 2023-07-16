@@ -125,7 +125,7 @@ function ManageGeographicAreasMapRender() {
   //Geographic area belongs to
   const [searchGeographicAreaBelongsTo, setSearchGeographicAreaBelongsTo] = useState<string>("");
   const [arraySearchGeographicAreaBelongsTo, setArraySearchGeographicAreaBelongsTo] = useState<IStructure[]>([]);
-  
+
   // Form
   const [showDialog, setShowDialog] = useState<boolean>(false);
  
@@ -389,7 +389,7 @@ function ManageGeographicAreasMapRender() {
   const getGeographicAreaBelongsTo = async(geographicAreaName: string, idStrategy:number):Promise<IStructure[]> =>{
     try {
       const response: IRequest<IStructure[]> = await requester({
-        url: `/geographicAreas/strategicInformation/${geographicAreaName}/${idStrategy}`,
+        url: `/geographicAreas/strategicInformation/belongs/${geographicAreaName}/${idStrategy}`,
         method: 'GET',
       })
       if(response.code === 200) {
