@@ -479,7 +479,6 @@ const FormPerson = (
           message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
         return [];
       }
-
     }
 
     const searchLeaderByNameAndStrategyLevel = async (idStrategy: number, leaderName:string):Promise<IStructure[]> => {
@@ -566,8 +565,7 @@ const FormPerson = (
           make a request to backend to search what the user is searching.
         */
         if(arraySearchColony[0] === undefined && newInputValue !== '') 
-          setArraySearchColony(await searchColonies(newInputValue))
-        
+          setArraySearchColony(await searchColonies(newInputValue))        
       }
     }
 

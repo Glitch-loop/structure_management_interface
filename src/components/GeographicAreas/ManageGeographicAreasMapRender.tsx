@@ -7,7 +7,7 @@ import {Dialog} from "@mui/material"
 import Input from "../UIcomponents/Input"
 import Button from "../UIcomponents/Button"
 import requester from "../../helpers/Requester"
-import { IRequest, LatLng, IGeographicArea, IStrategy, IColor } from "../../interfaces/interfaces"
+import { IRequest, LatLng, IGeographicArea, IStrategy, IColor, IStructure } from "../../interfaces/interfaces"
 import { Autocomplete, TextField } from "@mui/material"
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
@@ -33,9 +33,9 @@ interface IStrategyShow extends IStrategy {
 function getColorForPolygon(): any {
   const colorCombination:IColor = {
     target: 0,
-    spectrum1: randomNumber(100),
+    spectrum1: randomNumber(50),
     spectrum2: randomNumber(50),
-    spectrum3: randomNumber(100),
+    spectrum3: randomNumber(50),
     opactity: 1
   }
 
@@ -117,9 +117,16 @@ function ManageGeographicAreasMapRender() {
   const [polygonToManage, setPolygonToManage] = useState<IGeographicArea|undefined>(undefined)
 
   //Logic for forms
+  //Geographic area's strategy level 
   const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategyShow[]>([]);
   const [geographicArea, setGeographicArea] = useState<IGeographicArea>(initialGeographicAreaState);
   const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>("");
+  
+  //Geographic area belongs to
+  const [searchGeographicAreaBelongsTo, setSearchGeographicAreaBelongsTo] = useState<string>("");
+  const [arraySearchGeographicAreaBelongsTo, setArraySearchGeographicAreaBelongsTo] = useState<IStructure[]>([]);
+  
+  // Form
   const [showDialog, setShowDialog] = useState<boolean>(false);
  
   //Logic areas visualization
@@ -326,6 +333,32 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
+  const updateGeographicAreaBelongsTo = async (geographicArea: IGeographicArea):Promise<number> => {
+    try {
+      const response:IRequest<undefined> = await requester({
+        url: `/geographicAreas/strategicInformation/areaBelongs/${geographicArea.id_geographic_area}/${geographicArea.id_geographic_area_belongs}`,
+        method: 'PUT'
+      })
+      console.log(response);
+      if(response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se actualizado exitosamente el area geográfica donde pertenece"}}));  
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Ha habido un error al intentar actualizar el area geográfica a la que pertenece, intente nuevamente"}}));  
+        }
+        return response.code;
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+        return 500;
+    }
+  }
+
   const deleteGeographicArea = async (geographicArea: IGeographicArea):Promise<number> => {
     try {
       const response:IRequest<undefined> = await requester({
@@ -353,6 +386,49 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
+  const getGeographicAreaBelongsTo = async(geographicAreaName: string, idStrategy:number):Promise<IStructure[]> =>{
+    try {
+      const response: IRequest<IStructure[]> = await requester({
+        url: `/geographicAreas/strategicInformation/${geographicAreaName}/${idStrategy}`,
+        method: 'GET',
+      })
+      if(response.code === 200) {
+        if(response.data !== undefined) return response.data;
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las areas geograficas, intente mas tarde"}})); 
+      }
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+      return [];
+    }
+  }
+
+  const getGeographicAreaByID = async(idGeographicArea: number):Promise<IGeographicArea[]> => {
+    try {
+      const response: IRequest<IGeographicArea[]> = await requester({
+        url: `/geographicAreas/${idGeographicArea}`,
+        method: 'GET',
+      })
+      if(response.code === 200) {
+        if(response.data !== undefined) return response.data;
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las areas geograficas, intente mas tarde"}})); 
+      }
+      return [ initialGeographicAreaState ];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+      return [initialGeographicAreaState];
+    }
+  }
   //Handlers
   //Handlres of MAP
   const handleClickMap = async (e: any) => {
@@ -367,7 +443,7 @@ function ManageGeographicAreasMapRender() {
       setManagePolygon(false);
       if(line!==undefined) setLine([...line, newCoordinate]);
     } else {
-      setGeographicArea(initialGeographicAreaState)
+      resetStates();
     }
 
     /*
@@ -593,7 +669,7 @@ function ManageGeographicAreasMapRender() {
     //Reset the variables (this for the next time that the user wants to create other. area)
     setShowDialog(false)
     setLine([]);
-    setGeographicArea(initialGeographicAreaState);
+    resetStates();
   }
 
   // Handlers -- POLYGON
@@ -623,7 +699,7 @@ function ManageGeographicAreasMapRender() {
     This function is to show the dialog where it'll be showed  the current polygon's information,
     either to modified it or to delete it
   */
-  const handleDbClickPolygon = (e: any, polygon: IGeographicArea): void => {
+  const handleDbClickPolygon = async(e: any, polygon: IGeographicArea):Promise<void> => {
     if(polygon.id_strategy !== undefined && polygon.id_strategy !== null) {
       /*
         The polygon has a zone type assigned (in short, find the name of the zone type 
@@ -632,7 +708,23 @@ function ManageGeographicAreasMapRender() {
       const index:number = arrayStrategyLevel
         .findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy);
       setSearchStrategyLevel(arrayStrategyLevel[index].zone_type);
-    } else setSearchStrategyLevel(""); // The polygon doesn't have a type zone assigned
+      
+      /*
+        Get geographic area that belongs the polygon (if the polygon belongs, we going to set in the geographic area belongs display )
+      */
+      
+      if (polygon.id_geographic_area_belongs !== 0 
+       && polygon.id_geographic_area_belongs !== undefined
+       && polygon.id_geographic_area_belongs !== null) {
+        const geographicAreaThatBelongs = await getGeographicAreaByID(polygon.id_geographic_area_belongs)
+
+        if(geographicAreaThatBelongs[0].geographic_area_name !== undefined
+          && geographicAreaThatBelongs[0].geographic_area_name !== null)
+          setSearchGeographicAreaBelongsTo(geographicAreaThatBelongs[0].geographic_area_name)
+      } 
+    } else {
+      setSearchStrategyLevel(""); // The polygon doesn't have a type zone assigned
+    } 
     
     // Save the current information of the polygon.
     /*
@@ -645,6 +737,7 @@ function ManageGeographicAreasMapRender() {
       ...geographicArea,
       id_geographic_area: polygon.id_geographic_area,
       id_strategy: polygon.id_strategy, 
+      id_geographic_area_belongs: polygon.id_geographic_area_belongs,
       geographic_area_name: polygon.geographic_area_name,
       coordinates: polygon.coordinates
     });
@@ -772,25 +865,29 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleOnSubmitUpdateGeographicArea = async (e: any) => {
-      const indexPolygonUpdating:number = polygons.findIndex(
-        polygon => polygon.id_geographic_area === geographicArea.id_geographic_area);
-      const previousePolygon:IGeographicArea = polygons[indexPolygonUpdating];
+    console.log(geographicArea)    
+    const indexPolygonUpdating:number = polygons.findIndex(
+      polygon => polygon.id_geographic_area === geographicArea.id_geographic_area);
+    const previousePolygon:IGeographicArea = polygons[indexPolygonUpdating];
 
-      if(previousePolygon.geographic_area_name !== geographicArea.geographic_area_name)
-        if(await updateGeographicAreaName(geographicArea) === 200) 
-          polygons[indexPolygonUpdating].geographic_area_name = geographicArea.geographic_area_name;
+    if(previousePolygon.geographic_area_name !== geographicArea.geographic_area_name)
+      if(await updateGeographicAreaName(geographicArea) === 200) 
+        polygons[indexPolygonUpdating].geographic_area_name = geographicArea.geographic_area_name;
 
-      if(geographicArea.id_strategy !== 0) 
-        if(previousePolygon.id_strategy !== geographicArea.id_strategy) 
-          if(await updateGeographicAreaStrategyLevel(geographicArea) === 200) 
-            polygons[indexPolygonUpdating].id_strategy = geographicArea.id_strategy;
+    if(geographicArea.id_strategy !== 0) 
+      if(previousePolygon.id_strategy !== geographicArea.id_strategy) 
+        if(await updateGeographicAreaStrategyLevel(geographicArea) === 200) 
+          polygons[indexPolygonUpdating].id_strategy = geographicArea.id_strategy;
 
-      if(await updateGeographicAreaCoordinates(geographicArea) === 200) 
-        polygons[indexPolygonUpdating].coordinates = geographicArea.coordinates;
-        
-      setGeographicArea(initialGeographicAreaState);
-      setShowDialog(false);
-      setPolygons(polygons);
+    if(await updateGeographicAreaCoordinates(geographicArea) === 200) 
+      polygons[indexPolygonUpdating].coordinates = geographicArea.coordinates;
+
+    if(await updateGeographicAreaBelongsTo(geographicArea) === 200) 
+      polygons[indexPolygonUpdating].id_geographic_area_belongs = geographicArea.id_geographic_area_belongs;
+
+    resetStates();
+    setShowDialog(false);
+    setPolygons(polygons);
   }
 
   const handleOnSubmitDeleteGeographicArea = async (e: any) => {
@@ -820,6 +917,39 @@ function ManageGeographicAreasMapRender() {
     }
   }
   
+  // Handler geographic area autocomplete
+  const handleSearchGeographicAreaBelongsTo = async (event: any, newInputValue: string | null) => {
+    if(newInputValue !== null) {
+      //Save the current user's search
+      setSearchGeographicAreaBelongsTo(newInputValue) 
+      //If the user doesn't search anything, delete the current results 
+      if(newInputValue==='') setArraySearchGeographicAreaBelongsTo([]) 
+
+      /*
+        If the array of results is empty and the user is searcher something, 
+        make a request to backend to search what the user is searching.
+      */
+      if(arraySearchGeographicAreaBelongsTo[0] === undefined 
+        && newInputValue !== ''
+        && geographicArea.id_strategy !== 0
+        && geographicArea.id_strategy !== undefined)
+          setArraySearchGeographicAreaBelongsTo(
+            await getGeographicAreaBelongsTo(newInputValue, geographicArea.id_strategy))
+    }
+  }
+
+  const handleSelectGeographicAreaBelongsTo = async (event: any, newValue: string | null|undefined) => {
+    const geographicAreaSelected: IStructure|undefined = 
+    arraySearchGeographicAreaBelongsTo
+      .find(strategyLevel => strategyLevel.geographic_area_name === newValue)
+    if(geographicAreaSelected===undefined) 
+      setGeographicArea({...geographicArea, id_geographic_area_belongs: 0})
+    else { 
+      setGeographicArea({...geographicArea, 
+        id_geographic_area_belongs: geographicAreaSelected.id_geographic_area})
+    }
+  }
+
   // Other handlers
   const handleCloseDialog = ():void => {
     setShowDialog(!showDialog)
@@ -841,6 +971,24 @@ function ManageGeographicAreasMapRender() {
     )
   }
 
+  // Auxiliar functions
+  const resetStates = ():void => {
+    setGeographicArea(initialGeographicAreaState);
+    setArraySearchGeographicAreaBelongsTo([]);
+    setSearchGeographicAreaBelongsTo("");
+  }
+
+  const showGeographicAreaBelongsTo = (geographicArea: IGeographicArea):boolean => {
+    if(geographicArea.id_strategy !== undefined) {
+      const strategyLevel:IStrategy|undefined = arrayStrategyLevel
+        .find(level => level.id_strategy === geographicArea.id_strategy);
+      
+      if(strategyLevel !== undefined) 
+        if(strategyLevel.cardinality_level > 1)
+          return true; 
+    }
+    return false
+  }
 
   return (<>
     <Dialog onClose={handleCloseDialog} open={showDialog}>
@@ -872,6 +1020,25 @@ function ManageGeographicAreasMapRender() {
             renderInput={(params) => <TextField {...params} label="Tipo de zona" />}
             />
         </div>
+        {
+          showGeographicAreaBelongsTo(geographicArea) &&
+          <div className="mt-3">
+            <Autocomplete
+              disablePortal
+              id="input-strategy"
+              onInputChange={(event: any, newInputValue: string | null) => 
+                { handleSearchGeographicAreaBelongsTo(event, newInputValue) }}
+              onChange={(event: any, newValue: string | null | undefined) => 
+                handleSelectGeographicAreaBelongsTo(event, newValue) }
+              value={
+                searchGeographicAreaBelongsTo
+              }
+              options={ arraySearchGeographicAreaBelongsTo.map((strategyLevel => strategyLevel.geographic_area_name)) }
+              sx={{ width: 300 }}
+              renderInput={(params) => <TextField {...params} label="Dentro de" />}
+              />
+          </div>
+        }
         <div className="flex flex-row justify-center">
           <Button 
             label={managePolygon ? "Actualizar" : "Agregar"}
