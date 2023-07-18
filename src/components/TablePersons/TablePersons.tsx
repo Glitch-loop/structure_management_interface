@@ -378,18 +378,14 @@ const TablePersons = ({ action }:{ action:number }) => {
             strategicMemberInformation.first_name_leader=leaderData.first_name 
             strategicMemberInformation.last_name_leader = leaderData.last_name  
           } 
-                
-          if (strategicMemberInformation.first_name_leader === undefined)
-            strategicMemberInformation.first_name_leader = ''
-              console.log(strategicMemberInformation.first_name_leader)
-          if (strategicMemberInformation.last_name_leader === undefined)
-            strategicMemberInformation.last_name_leader= '' 
-          
+
           /* 
             We do this because for the select leader "input" we use only 
             "first_name_leader" field
           */
-          strategicMemberInformation.first_name_leader = `${strategicMemberInformation.first_name_leader} ${strategicMemberInformation.last_name_leader}`
+         if(strategicMemberInformation.first_name_leader !== undefined && 
+          strategicMemberInformation.last_name_leader === undefined)
+            strategicMemberInformation.first_name_leader = `${strategicMemberInformation.first_name_leader} ${strategicMemberInformation.last_name_leader}`
           
           /*
             Also, we do this with geographic area, in this case for differenciate in the case

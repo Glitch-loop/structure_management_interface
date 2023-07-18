@@ -82,9 +82,10 @@ const validBirthDay = (date:string):boolean => {
     let birthAge = moment(date).format("YYYY");
     if(birthAge !== undefined && actualYear !== undefined) {
       age = JSON.parse(actualYear) - JSON.parse(birthAge)
-      console.log(age)
       if(age >= 18) return true;
     }
+  } else {
+    return true;
   }
   
   return false;
