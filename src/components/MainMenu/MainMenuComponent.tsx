@@ -441,7 +441,7 @@ const MainMenuComponent = () => {
             const leaderData:IMember = await getLeaderOfTheMemberById(strategicMemberInformation.id_leader);
             strategicMemberInformation.first_name_leader=leaderData.first_name 
             strategicMemberInformation.last_name_leader = leaderData.last_name  
-          } 
+          }
                 
           if (strategicMemberInformation.first_name_leader === undefined)
             strategicMemberInformation.first_name_leader = '' 
@@ -494,382 +494,386 @@ const MainMenuComponent = () => {
   }
 
   return (
-    <div className="flex flex-col font-bold text-bg text-center">
+    <>
       {showForm &&
-        <FormPerson
-        label="Actualizar miembro"
-        action={1}
-        handleSubmit={handleOnSendData}
+          <FormPerson
+          label="Actualizar miembro"
+          action={1}
+          handleSubmit={handleOnSendData}
 
-        initialPersonInformation={memberBasicInfoToUpdate}
-        initialStrategicInformation={memberStrategicInfoToUpdate}
-      />
+          initialPersonInformation={memberBasicInfoToUpdate}
+          initialStrategicInformation={memberStrategicInfoToUpdate}
+        />
       }
-      {(incompleteMembersProfile[0] !== undefined && showForm === false) &&
-        <>
-          <p className="text-center mb-3 text-xl font-bold">
-            Miembros de la estructura con información incompleta
-          </p>
-          <Paper sx={{overflow: 'hidden'}}>
-            <TableContainer sx={{ maxHeight: 440 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="center">ID</TableCell>
-                    <TableCell align="center">Nombre</TableCell>
-                    <TableCell align="center">Telefono</TableCell> 
-                    <TableCell align="center">INE</TableCell> 
-                    <TableCell align="center">Colonia</TableCell>
-                    <TableCell align="center">Nivel jerarquico</TableCell>
-                    <TableCell align="center">Lider</TableCell>
-                    <TableCell align="center">Area geografica</TableCell>
-                    <TableCell align="center">Editar</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {
-                    incompleteMembersProfile.map(person => {
-                      return (
-                        <TableRow key={person.id_member}>
-                          <TableCell align="center">
-                            {person.id_member}
-                          </TableCell>
-                          <TableCell align="center">
-                            {person.last_name} {person.first_name}
-                          </TableCell>
-                          <TableCell align="center">
-                            {person.cell_phone_number}
-                          </TableCell>
-                          <TableCell align="center">
-                            {person.ine}
-                          </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {person.id_colony === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-green-400">
-                                  <BsCheckCircle />
-                                </div>
-                                }
-                            </div>
-                        </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {person.id_strategy === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-green-400">
-                                  <BsCheckCircle />
-                                </div>
-                                }
-                            </div>
-                          </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {person.id_leader === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-green-400">
-                                  <BsCheckCircle />
-                                </div>
-                                }
-                            </div>
-                          </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {person.id_geographic_area === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-green-400">
-                                  <BsCheckCircle />
-                                </div>
-                                }
-                            </div>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Tooltip title="Editar">
-                              <button
-                              onClick={() => 
-                                {handleOnUpdate(person.id_member)}}
-                              className="text-sky-600 text-2xl">
-                                <MdEditDocument />
-                              </button>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  }
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </>
-      }
-      {(incompleteGeographicAreasInformation[0] !== undefined) &&
-        <div className="mt-5">
-          <p className="text-center mb-3 text-xl font-bold">
-            Areas geográficas con información incompleta
-          </p>
-          <Paper sx={{overflow: 'hidden'}}>
-            <TableContainer sx={{ maxHeight: 440 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="center">ID</TableCell>
-                    <TableCell align="center">Area geográfica</TableCell>
-                    <TableCell align="center">Nivel jerarquico</TableCell>
-                    <TableCell align="center">Pertenece a una area geografica</TableCell>
-                    <TableCell align="center">Tiene un administrador</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {
-                    incompleteGeographicAreasInformation.map(geographicArea => {
-                      return (
-                        <TableRow key={geographicArea.id_geographic_area}>
-                          <TableCell align="center">
-                            {geographicArea.id_geographic_area}
-                          </TableCell>
-                          <TableCell align="center">
-                            {geographicArea.geographic_area_name}
-                          </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {geographicArea.id_strategy === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-green-400">
-                                  <BsCheckCircle />
-                                </div>
-                                }
-                            </div>
-                        </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {geographicArea.id_geographic_area_belongs === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-green-400">
-                                  <BsCheckCircle />
-                                </div>
-                                }
-                            </div>
-                          </TableCell>
-                          <TableCell align="center">
-                            <div className="text-xl flex flex-row justify-center">
-                              {geographicArea.id_member === null ?  
-                                <div className="text-orange-400">
-                                  <MdErrorOutline />
-                                </div>
-                                :
-                                <div className="text-sm">
-                                  {geographicArea.first_name} {geographicArea.last_name}
-                                </div>
-                                }
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  }
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </div>
-      }
-      <div className="flex flex-row mx-2 mt-5 ">
-        <div className="flex flex-col basis-1/3">
-          <p className="">
-            Numero total de miembros que conforman la estructura
-          </p>
-          { totalAmountDataChart[0] !== undefined &&
+      { (showForm === false) &&
+        <div className="flex flex-col font-bold text-bg text-center"> 
+          {(incompleteMembersProfile[0] !== undefined) &&
             <>
-              <p className="font-normal">
-                Total de miembros: {totalAmountDataChart[0] + totalAmountDataChart[1]}
+              <p className="text-center mb-3 text-xl font-bold">
+                Miembros de la estructura con información incompleta
               </p>
-              <Pie data={
-                {
-                  labels: ['Hombres', 'Mujeres'],
-                  datasets: [
-                    {
-                      label: `# miembros`,
-                      data: totalAmountDataChart,
-                      backgroundColor: [
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(255, 99, 132, 0.2)',
-                      ],
-                      borderColor: [
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 99, 132, 1)',
-                      ],
-                      borderWidth: 1,
-                    },
-                  ],
-                }
-              }/>
+              <Paper sx={{overflow: 'hidden'}}>
+                <TableContainer sx={{ maxHeight: 440 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell align="center">ID</TableCell>
+                        <TableCell align="center">Nombre</TableCell>
+                        <TableCell align="center">Telefono</TableCell> 
+                        <TableCell align="center">INE</TableCell> 
+                        <TableCell align="center">Colonia</TableCell>
+                        <TableCell align="center">Nivel jerarquico</TableCell>
+                        <TableCell align="center">Lider</TableCell>
+                        <TableCell align="center">Area geografica</TableCell>
+                        <TableCell align="center">Editar</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {
+                        incompleteMembersProfile.map(person => {
+                          return (
+                            <TableRow key={person.id_member}>
+                              <TableCell align="center">
+                                {person.id_member}
+                              </TableCell>
+                              <TableCell align="center">
+                                {person.last_name} {person.first_name}
+                              </TableCell>
+                              <TableCell align="center">
+                                {person.cell_phone_number}
+                              </TableCell>
+                              <TableCell align="center">
+                                {person.ine}
+                              </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {person.id_colony === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-green-400">
+                                      <BsCheckCircle />
+                                    </div>
+                                    }
+                                </div>
+                            </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {person.id_strategy === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-green-400">
+                                      <BsCheckCircle />
+                                    </div>
+                                    }
+                                </div>
+                              </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {person.id_leader === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-green-400">
+                                      <BsCheckCircle />
+                                    </div>
+                                    }
+                                </div>
+                              </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {person.id_geographic_area === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-green-400">
+                                      <BsCheckCircle />
+                                    </div>
+                                    }
+                                </div>
+                              </TableCell>
+                              <TableCell align="center">
+                                <Tooltip title="Editar">
+                                  <button
+                                  onClick={() => 
+                                    {handleOnUpdate(person.id_member)}}
+                                  className="text-sky-600 text-2xl">
+                                    <MdEditDocument />
+                                  </button>
+                                </Tooltip>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      }
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
             </>
           }
-        </div>
-        <div className="flex flex-col basis-2/3">
-          <p  className="">
-            Histograma de edades de la estructura
-          </p>
-          {extraDataHistogram !== undefined &&
-            <>
-              <p  className="font-normal text-md">
-                Miembro mas joven: {extraDataHistogram.youngestAge} años
+          {(incompleteGeographicAreasInformation[0] !== undefined ) &&
+            <div className="mt-5">
+              <p className="text-center mb-3 text-xl font-bold">
+                Areas geográficas con información incompleta
               </p>
-              <p  className="font-normal text-md">
-                Miembro mas mayor: {extraDataHistogram.oldestAge} años
-              </p>
-            </>
-          }
-          { membersAgeDataHistogram !== undefined &&
-            <div className="flex justify-center items-center ">
-              <Bar options={histogramOptions} data={membersAgeDataHistogram} />
+              <Paper sx={{overflow: 'hidden'}}>
+                <TableContainer sx={{ maxHeight: 440 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell align="center">ID</TableCell>
+                        <TableCell align="center">Area geográfica</TableCell>
+                        <TableCell align="center">Nivel jerarquico</TableCell>
+                        <TableCell align="center">Pertenece a una area geografica</TableCell>
+                        <TableCell align="center">Tiene un administrador</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {
+                        incompleteGeographicAreasInformation.map(geographicArea => {
+                          return (
+                            <TableRow key={geographicArea.id_geographic_area}>
+                              <TableCell align="center">
+                                {geographicArea.id_geographic_area}
+                              </TableCell>
+                              <TableCell align="center">
+                                {geographicArea.geographic_area_name}
+                              </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {geographicArea.id_strategy === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-green-400">
+                                      <BsCheckCircle />
+                                    </div>
+                                    }
+                                </div>
+                            </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {geographicArea.id_geographic_area_belongs === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-green-400">
+                                      <BsCheckCircle />
+                                    </div>
+                                    }
+                                </div>
+                              </TableCell>
+                              <TableCell align="center">
+                                <div className="text-xl flex flex-row justify-center">
+                                  {geographicArea.id_member === null ?  
+                                    <div className="text-orange-400">
+                                      <MdErrorOutline />
+                                    </div>
+                                    :
+                                    <div className="text-sm">
+                                      {geographicArea.first_name} {geographicArea.last_name}
+                                    </div>
+                                    }
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      }
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
             </div>
           }
-        </div>
-      </div>
-      <div className="flex flex-col mt-5 mx-36">
-        <p  className="mb-3">
-          Ranking colonias con mas miembros
-        </p>
-        <div className="flex justify-center mb-3">
-          <Autocomplete
-              disablePortal
-              id="input-strategy"
-              onInputChange={(event: any, newInputValue: string | null) => 
-                { handleSearchStrategyLevelColony(event, newInputValue) }}
-              onChange={(event: any, newValue: string | null) => 
-                handleSelectStrategyLevelColony(event, newValue) }
-              value={
-                searchStrategyLevelColony
+          <div className="flex flex-row mx-2 mt-5 ">
+            <div className="flex flex-col basis-1/3">
+              <p className="">
+                Numero total de miembros que conforman la estructura
+              </p>
+              { totalAmountDataChart[0] !== undefined &&
+                <>
+                  <p className="font-normal">
+                    Total de miembros: {totalAmountDataChart[0] + totalAmountDataChart[1]}
+                  </p>
+                  <Pie data={
+                    {
+                      labels: ['Hombres', 'Mujeres'],
+                      datasets: [
+                        {
+                          label: `# miembros`,
+                          data: totalAmountDataChart,
+                          backgroundColor: [
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 99, 132, 0.2)',
+                          ],
+                          borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                          ],
+                          borderWidth: 1,
+                        },
+                      ],
+                    }
+                  }/>
+                </>
               }
-              options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-              sx={{ width: 300 }}
-              renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
-            />
-        </div>
-        <Paper sx={{overflow: 'hidden'}}>
-          <TableContainer sx={{ maxHeight: 440 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell align="center">ID</TableCell>
-                  <TableCell align="center">Nombre</TableCell>
-                  <TableCell align="center">Codigo postal</TableCell> 
-                  <TableCell align="center">Cantidad de miembros</TableCell> 
-                  <TableCell align="center">Lider principal</TableCell> 
-                  <TableCell align="center">Seguidores</TableCell> 
-                </TableRow>
-              </TableHead>
-              <TableBody>
-              {
-                rankingColonies[0] !== undefined &&
-                  rankingColonies.map(colony => {
-                    return (
-                      <TableRow key={colony.id_colony}>
-                        <TableCell align="center">
-                          {colony.id_colony}
-                        </TableCell>
-                        <TableCell align="center">
-                          {colony.name_colony}
-                        </TableCell>
-                        <TableCell align="center">
-                          {colony.postal_code}
-                        </TableCell>
-                        <TableCell align="center">
-                          {colony.amount_members}
-                        </TableCell>
-                        <TableCell align="center">
-                          {
-                            colony.main_leader_name === "" ? 
-                            "No se encontro ningún líder" :
-                            colony.main_leader_name
-                          }
-                        </TableCell>
-                        <TableCell align="center">
-                          {colony.leader_followers}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
+            </div>
+            <div className="flex flex-col basis-2/3">
+              <p  className="">
+                Histograma de edades de la estructura
+              </p>
+              {extraDataHistogram !== undefined &&
+                <>
+                  <p  className="font-normal text-md">
+                    Miembro mas joven: {extraDataHistogram.youngestAge} años
+                  </p>
+                  <p  className="font-normal text-md">
+                    Miembro mas mayor: {extraDataHistogram.oldestAge} años
+                  </p>
+                </>
               }
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </div>
-      <div className="flex flex-col mt-5 mx-36">
-        <p  className="mb-3">
-          Ranking lideres con mas seguidores
-        </p>
-        <div className="flex justify-center mb-3">
-          <Autocomplete
-            disablePortal
-            id="input-strategy"
-            onInputChange={(event: any, newInputValue: string | null) => 
-              { handleSearchStrategyLevelStructure(event, newInputValue) }}
-            onChange={(event: any, newValue: string | null) => 
-              handleSelectStrategyLevelStructure(event, newValue) }
-            value={
-              searchStrategyLevelStructure
-            }
-            options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-            sx={{ width: 300 }}
-            renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
-          />
-        </div>
-        <Paper sx={{overflow: 'hidden'}}>
-          <TableContainer sx={{ maxHeight: 440 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell align="center">ID</TableCell>
-                  <TableCell align="center">Nombre</TableCell>
-                  <TableCell align="center">No. Seguidores</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {
-                  rankingMemberStructure.map(member => {
-                    return (
-                      <TableRow key={member.id_member}>
-                        <TableCell align="center">
-                          {member.id_member}
-                        </TableCell>
-                        <TableCell align="center">
-                          {member.first_name} {member.last_name}
-                        </TableCell>
-                        <TableCell align="center">
-                          {member.followers - 1}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
+              { membersAgeDataHistogram !== undefined &&
+                <div className="flex justify-center items-center ">
+                  <Bar options={histogramOptions} data={membersAgeDataHistogram} />
+                </div>
+              }
+            </div>
+          </div>
+          <div className="flex flex-col mt-5 mx-36">
+            <p  className="mb-3">
+              Ranking colonias con mas miembros
+            </p>
+            <div className="flex justify-center mb-3">
+              <Autocomplete
+                  disablePortal
+                  id="input-strategy"
+                  onInputChange={(event: any, newInputValue: string | null) => 
+                    { handleSearchStrategyLevelColony(event, newInputValue) }}
+                  onChange={(event: any, newValue: string | null) => 
+                    handleSelectStrategyLevelColony(event, newValue) }
+                  value={
+                    searchStrategyLevelColony
+                  }
+                  options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                  sx={{ width: 300 }}
+                  renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
+                />
+            </div>
+            <Paper sx={{overflow: 'hidden'}}>
+              <TableContainer sx={{ maxHeight: 440 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="center">ID</TableCell>
+                      <TableCell align="center">Nombre</TableCell>
+                      <TableCell align="center">Codigo postal</TableCell> 
+                      <TableCell align="center">Cantidad de miembros</TableCell> 
+                      <TableCell align="center">Lider principal</TableCell> 
+                      <TableCell align="center">Seguidores</TableCell> 
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                  {
+                    rankingColonies[0] !== undefined &&
+                      rankingColonies.map(colony => {
+                        return (
+                          <TableRow key={colony.id_colony}>
+                            <TableCell align="center">
+                              {colony.id_colony}
+                            </TableCell>
+                            <TableCell align="center">
+                              {colony.name_colony}
+                            </TableCell>
+                            <TableCell align="center">
+                              {colony.postal_code}
+                            </TableCell>
+                            <TableCell align="center">
+                              {colony.amount_members}
+                            </TableCell>
+                            <TableCell align="center">
+                              {
+                                colony.main_leader_name === "" ? 
+                                "No se encontro ningún líder" :
+                                colony.main_leader_name
+                              }
+                            </TableCell>
+                            <TableCell align="center">
+                              {colony.leader_followers}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                  }
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          </div>
+          <div className="flex flex-col mt-5 mx-36">
+            <p  className="mb-3">
+              Ranking lideres con mas seguidores
+            </p>
+            <div className="flex justify-center mb-3">
+              <Autocomplete
+                disablePortal
+                id="input-strategy"
+                onInputChange={(event: any, newInputValue: string | null) => 
+                  { handleSearchStrategyLevelStructure(event, newInputValue) }}
+                onChange={(event: any, newValue: string | null) => 
+                  handleSelectStrategyLevelStructure(event, newValue) }
+                value={
+                  searchStrategyLevelStructure
                 }
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </div>
-    </div>
+                options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                sx={{ width: 300 }}
+                renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
+              />
+            </div>
+            <Paper sx={{overflow: 'hidden'}}>
+              <TableContainer sx={{ maxHeight: 440 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="center">ID</TableCell>
+                      <TableCell align="center">Nombre</TableCell>
+                      <TableCell align="center">No. Seguidores</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {
+                      rankingMemberStructure.map(member => {
+                        return (
+                          <TableRow key={member.id_member}>
+                            <TableCell align="center">
+                              {member.id_member}
+                            </TableCell>
+                            <TableCell align="center">
+                              {member.first_name} {member.last_name}
+                            </TableCell>
+                            <TableCell align="center">
+                              {member.followers - 1}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    }
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          </div> 
+        </div>
+      }
+    </>
   )
 }
 

@@ -386,7 +386,14 @@ const TablePersons = ({ action }:{ action:number }) => {
             We do this because for the select leader "input" we use only 
             "first_name_leader" field
           */
-          strategicMemberInformation.first_name_leader = `${strategicMemberInformation.first_name_leader} ${strategicMemberInformation.last_name_leader} `
+          strategicMemberInformation.first_name_leader = `${strategicMemberInformation.first_name_leader} ${strategicMemberInformation.last_name_leader}`
+          
+          /*
+            Also, we do this with geographic area, in this case for differenciate in the case
+            that two geographic areas have the same tane
+          */
+          if(strategicMemberInformation.geographic_area_name !== null && strategicMemberInformation.id_geographic_area !== null)
+            strategicMemberInformation.geographic_area_name = `${strategicMemberInformation.geographic_area_name} - ${strategicMemberInformation.id_geographic_area}`
           
           setMemberStrategicInfoToUpdate(strategicMemberInformation)
           setShowForm(true)             

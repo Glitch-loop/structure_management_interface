@@ -139,7 +139,6 @@ const VisualizateGeographicArea = () => {
       url: `/members`
     })
     
-    console.log(response.data)
     if(response.data !== undefined) {
       const members = response.data;
       const tree = new TreeNode()

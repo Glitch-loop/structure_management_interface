@@ -5,7 +5,6 @@ import VisualizateGeographicArea from "./VisualizateGeographicArea"
 
 
 const Map = ({typeMap}:{typeMap:number}) => {
-  console.log(import.meta.env.VITE_PUBLIC_GOOGLE_MAPS_API_KEY)
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_PUBLIC_GOOGLE_MAPS_API_KEY
   })

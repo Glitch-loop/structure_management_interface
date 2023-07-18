@@ -807,8 +807,9 @@ const FormPerson = (
         in the current data saved in arrayLeader
       */
       const geographicAreaSelected: IGeographicArea|undefined = 
-      arrayGeographicArea.find(geographicArea => `${geographicArea.geographic_area_name}-${geographicArea.id_geographic_area}` === newInputValue);
-
+      arrayGeographicArea.find(geographicArea => `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}` === newInputValue);
+      console.log("User select: ", newInputValue)
+      console.log("User select: ", geographicAreaSelected)
       /*
         If the geographic are wasn't founded, then reset the state, otherwise, save the state
       */
@@ -1096,21 +1097,24 @@ const FormPerson = (
                         renderInput={(params) => <TextField {...params} label="Seguidores" />}
                         />
                     </div>
-                    <div className=" flex justify-center">
-                      <div className="w-52 mt-3 flex flex-wrap justify-center">
-                          {
-                            strategicInformationPerson.followers !== undefined &&
-                              strategicInformationPerson.followers.map((follower) => 
-                                <div key={follower.id_member} className="m-1">
-                                  <Chip 
-                                    label={`${follower.first_name} ${follower.last_name}`} 
-                                    onDelete={() => handleDeleteFollower(follower)}
-                                    />
-                                </div>
-                              )
-                          }
-                      </div>
-                    </div>
+                    {
+                      strategicInformationPerson.followers !== undefined  &&
+                        strategicInformationPerson.followers[0] !== undefined &&
+                          <div className="my-2 overflow-y-auto max-h-32 flex justify-center outline outline-2">
+                            <div className="w-52 py-1 flex flex-wrap justify-center">
+                              {
+                                strategicInformationPerson.followers.map((follower) => 
+                                  <div key={follower.id_member} className="my-1">
+                                    <Chip 
+                                      label={`${follower.first_name} ${follower.last_name}`} 
+                                      onDelete={() => handleDeleteFollower(follower)}
+                                      />
+                                  </div>
+                                )
+                              }                          
+                            </div>
+                          </div>
+                    }
                   </>
                 }
                 {
@@ -1128,7 +1132,9 @@ const FormPerson = (
                         arrayGeographicArea.map(geographicArea => 
                           `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}`)
                       }
-                      value={strategicInformationPerson.geographic_area_name}
+                      value={
+                        strategicInformationPerson.geographic_area_name
+                      }
                       sx={{ width: 300 }}
                       renderInput={(params) => <TextField {...params} label="Area geografica" />}
                       />
