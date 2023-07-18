@@ -317,19 +317,22 @@ const FormPerson = (
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.success, 
               message: "Se ha actualizado el miembro exitosamente"}}));
-          }
+          } 
 
-          if(response.message === "The data that you are trying to put it is repated with another member (full name, cellphone number or ine)") {
-            console.log("B")
+          let genericError = true;
+          if(response.message === "The data that you are trying to put it is repated with another member (full name, cellphone number or ine)" && response.code === 400) {
+            genericError = false;
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
               message: "Algun dato: 'nombre completo', 'INE' o 'numero de telefono', coincide con el de algun otro miembro de la estructura"}}));
-          } else {
-            console.log("A")
+          } 
+          
+          if(response.code === 400 && genericError){
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
               message: "Ha habido un error al momento de actualizar el miembro"}}));
           }
+          console.log(response)
 
           //Update member's strategy level
           if (idStrategy !== undefined && idStrategy !== 0)
