@@ -81,7 +81,7 @@ const Home = () => {
         }
 
         dispatch(setCurrentUser(user));
-        navigate('/app/newMember', {replace: true});
+        navigate('/app/mainMenu', {replace: true});
       } else {
         setShowAlert(true);
         setMessageAlert("El 'usuario' o la contraseña son erroneas");

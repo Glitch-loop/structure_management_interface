@@ -49,6 +49,11 @@ const initialStrategicInformationState:IStructure = {
   geographic_area_name: ""  
 }
 
+const responseError:IRequest<undefined> = {
+  message: "Internal error",
+  data: undefined,
+  code: 500
+}
 
 //Auxiliar functions
 const avoidNull = (data: any, replace: any):any => {
@@ -71,8 +76,18 @@ const filterSelectedFollowers = (arrayTofilter: IStructure[], currentFollowersSe
 }
 
 const validBirthDay = (date:string):boolean => {
-  if(moment().diff(moment(date)) > 0 || date === "") return true;
-    else return false;
+  if(date !== "") {
+    let age = 0;
+    const actualYear = moment().format("YYYY");
+    let birthAge = moment(date).format("YYYY");
+    if(birthAge !== undefined && actualYear !== undefined) {
+      age = JSON.parse(actualYear) - JSON.parse(birthAge)
+      console.log(age)
+      if(age >= 18) return true;
+    }
+  }
+  
+  return false;
 }
 
 //Auxiliar functions to show inputs
@@ -195,105 +210,86 @@ const FormPerson = (
       }
     }
 
-    const deleteLeader = async (idMember: number):Promise<number> => {
-      try {
-        const response:IRequest<undefined> = await requester({
-          url: `/members/strategicInformation/leader/${idMember}`,
-          method: 'DELETE'
-        })
-  
-        if(response.code === 200) {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.success, 
-            message: "Se ha eliminado exitosamente el lider del miembro"}}));
-        } else {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.warning, 
-            message: "No se ha podido eliminar el lider del miembro, intente nuevamente"}}));
-        }
-        return response.code;
-      } catch (error) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
-          message: "Hubo un error al intentar conectarse al servidor"}}));
-        return 500;
-      }
-    }
-
-    const deleteGeographicArea = async (idMember: number):Promise<number> => {
-      try {
-        const response:IRequest<undefined> = await requester({
-          url: `/members/strategicInformation/geographicArea/${idMember}`,
-          method: 'DELETE'
-        })
-  
-        if(response.code === 200) {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.success, 
-            message: "Se ha eliminado exitosamente la area geográfica del miembro"}}));
-        } else {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.warning, 
-            message: "No se ha podido eliminar el area geográfica del miembro, intente nuevamente"}}));
-        }
-        return response.code;
-      } catch (error) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
-          message: "Hubo un error al intentar conectarse al servidor"}}));
-        return 500;
-      }
-    }
-
-    const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
+    const addNewMember = async (basicData: any, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<IRequest<any>> => {
       try {
         const response:IRequest<any> = await requester({
           url: '/members/', 
           method: "POST", 
           data: basicData})
-        console.log(response)
+          
+        let responseStrategicInformation:IRequest<any> = response;
+          
         if(response.code === 201) {
+
+          /*Show a message that the user has been created successfully*/
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.success, 
+            message: "Se ha creado el miembro exitosamente"}}));
+
           if(response.data !== undefined) {
             const idMember:number = response.data.idMember
             
             //Update member's leader
-            if(idLeader !== undefined && idLeader !== 0)  
-              await updateLeader(idMember, idLeader)
+            if(idLeader !== undefined && idLeader !== 0) {
+              const responseLeader:IRequest<any> = await updateLeader(idMember, idLeader);
+              responseStrategicInformation.code = responseLeader.code;
+            }
               
             //Update member's followers 
-            if(idFollowers !== undefined && idFollowers[0] !== undefined)  
-              await updateFollowers(idMember, idFollowers)
+            if(idFollowers !== undefined && idFollowers[0] !== undefined) {
+              const responseFollower:IRequest<any> = await updateFollowers(idMember, idFollowers);
+              responseStrategicInformation.code = responseFollower.code;
+            }
             
             //Update geographic area's manager
-            if(idGeographicArea !== undefined && idGeographicArea !== 0)  
-              await updateGeographicAreaManage(idMember, idGeographicArea);
+            if(idGeographicArea !== undefined && idGeographicArea !== 0) {
+              const responseGeographicArea:IRequest<any> = await updateGeographicAreaManage(idMember, idGeographicArea);
+              responseStrategicInformation.code = responseGeographicArea.code;
+            }
           }
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.success, 
-            message: "Se ha creado el miembro exitosamente"}}));
+
+          /* Show this message in case that the strategic information has been set successfully */
+          if(responseStrategicInformation.code === 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.success, 
+              message: "Se ha registrado la información estrategica del miembro"}}));
+          }
+
         } else {
           if(response.message === 'You are repeating the complete name, the cellphone OR the INE in the DB.') {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
-              message: "El nombre, celular o INE, del miembro que estas intentando agregar, coincide con el de otros miembro ya existente"}}));
+              message: "El nombre, celular o INE, del miembro que estas intentando agregar, coincide con el de otros miembro ya existentes"}}));
           } else {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
               message: "Hubo un error al intentar crear el nuevo miembro"}}));
           }
         }
+
+        if(responseStrategicInformation.code !== 200)
+          response.code = responseStrategicInformation.code;
+
+        return response;
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar conectar con el servidor"}}));
+        return responseError;
       }
     }
 
-    const updateMember = async (basicData: any, idStrategy?: number, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<void> => {
+    const updateMember = async (basicData: any, idStrategy?: number, idLeader?: number, idFollowers?: IStructure[], idGeographicArea?: number):Promise<IRequest<any>> => {
       try {
+        let response:IRequest<undefined> = responseError;
+        let responseStrategicInformation:IRequest<undefined> = {
+          code: 200,
+          message: ""
+        };
         if(basicData.idMember !== undefined) {
+
           const idMember:number = basicData.idMember;
-          let response:IRequest<undefined> = {
+          response = {
             code: 200,
             message: ""
           };
@@ -315,148 +311,211 @@ const FormPerson = (
             })
           }
 
+          /* Answers for the responses for basic information */
+          if(response.code === 200) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.success, 
+              message: "Se ha actualizado el miembro exitosamente"}}));
+          }
+
+          if(response.message === "The data that you are trying to put it is repated with another member (full name, cellphone number or ine)") {
+            console.log("B")
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Algun dato: 'nombre completo', 'INE' o 'numero de telefono', coincide con el de algun otro miembro de la estructura"}}));
+          } else {
+            console.log("A")
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Ha habido un error al momento de actualizar el miembro"}}));
+          }
+
           //Update member's strategy level
-          console.log(response)
           if (idStrategy !== undefined && idStrategy !== 0)
             if(initialStrategicInformation.id_strategy !== idStrategy)
-              await updateStrategyLevel(idMember, idStrategy)
+            responseStrategicInformation = await updateStrategyLevel(idMember, idStrategy)
             
           //Update member's leader
           if (idLeader !== undefined && idLeader !== 0) {
             //Update the current member's leader
             if(initialStrategicInformation.id_leader !== idLeader)
-              await updateLeader(idMember, idLeader)
+            responseStrategicInformation = await updateLeader(idMember, idLeader)
           } else {
             //Delete the current leader from the member
-            await deleteLeader(idMember);
+            responseStrategicInformation = await deleteLeader(idMember);
           }
             
       
           //Update member's followers 
           if(idFollowers !== undefined && idFollowers[0] !== undefined) 
-            await updateFollowers(idMember, idFollowers)
+            responseStrategicInformation = await updateFollowers(idMember, idFollowers)
           
 
           //Update geographic area's manager
           if (idGeographicArea !== undefined && idGeographicArea !== 0) {
             //Update the current member's geographic area
             if(initialStrategicInformation.id_geographic_area !== idGeographicArea)
-              await updateGeographicAreaManage(idMember, idGeographicArea);
+            responseStrategicInformation = await updateGeographicAreaManage(idMember, idGeographicArea);
           } else {
             //Delete the current member's geographic area
-            await deleteGeographicArea(idMember);
+            responseStrategicInformation = await deleteGeographicArea(idMember);
           }
-            
-
-          if(response.code === 200) {
+          
+          /* Massage in case for everything fine in strategic information */
+          if(responseStrategicInformation.code === 200) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.success, 
-              message: "Se ha actualizado el miembro exitosamente"}}));
-            } else {
-              if(response.message === "The data that you are trying to put it is repated with another member (full name, cellphone number or ine)") {
-                dispatch(enqueueAlert({alertData: {
-                  alertType: EAlert.warning, 
-                  message: "Algun dato: 'nombre completo', 'INE' o 'numero de telefono', coincide con el de algun otro miembro de la estructura"}}));
-              } else {
-                dispatch(enqueueAlert({alertData: {
-                  alertType: EAlert.warning, 
-                  message: "Ha habido un error al momento de actualizar el miembro"}}));
-              }
+              message: "Se ha actualizado la información del miembro"}}));
           }
         }
 
+        if(responseStrategicInformation.code !== 200) {
+          response = responseStrategicInformation;
+        }
+
+        return response 
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar conectar con el servidor"}}));
+        return responseError;
       }
     }
 
-    const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise<void> => {
+    const updateStrategyLevel = async (idMember: number, idStrategy: number):Promise<IRequest<any>> => {
       try {
-        if(idStrategy!== undefined && idStrategy!==null) {
-          const response:IRequest<undefined> = await requester({
-            url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
-            method: 'PUT'
-          });
-          console.log("strategy level update: ", response)
-          if(response.code !== 200) {
-            dispatch(enqueueAlert({alertData: {
-              alertType: EAlert.warning, 
-              message: "Hubo un error al intentar actualizar el nivel jerárquico del miembro"}})); 
-          }
-        } 
-      } catch (error) {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
-          message: "Hubo un error al intentar conectar con el servidor"}})); 
-      }
-    }
+        const response:IRequest<undefined> = await requester({
+          url: `/members/strategicInformation/strategyLevel/${idMember}/${idStrategy}`,
+          method: 'PUT'
+        });
 
-    const updateLeader = async (idMember: number, idLeader: number):Promise<void> => {
-      try {
-        if(idLeader!== undefined && idLeader!==null) {
-          const response:IRequest<undefined> = await requester({
-            url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
-            method: 'PUT'
-          });
-
-          console.log("leader update: ", response)
-          if(response.code !== 200) {
-            dispatch(enqueueAlert({alertData: {
-              alertType: EAlert.warning, 
-              message: "Hubo un error al intentar actualizar el lider del miembro"}})); 
-          }
+        if(response.code !== 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar actualizar el nivel jerárquico del miembro"}})); 
         }
+        
+        return response;
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar conectar con el servidor"}})); 
+        return responseError
       }
     }
 
-    const updateFollowers = async (idMember: number, idFollowers: IStructure[]):Promise<void> => {
+    const updateLeader = async (idMember: number, idLeader: number):Promise<IRequest<any>> => {
       try {
+        const response:IRequest<any> = await requester({
+          url: `/members/strategicInformation/leader/${idMember}/${idLeader}`,
+          method: 'PUT'
+        });
+
+        if(response.code !== 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar actualizar el lider del miembro"}})); 
+        }
+
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectar con el servidor"}}));         
+        return responseError;
+      }
+    }
+
+    const updateFollowers = async (idMember: number, idFollowers: IStructure[]):Promise<IRequest<any>> => {
+      try {
+        let response:IRequest<any> = responseError;
         if(idFollowers[0] !== undefined) {
           const followers: number[] = [];
           idFollowers.forEach(follower => followers.push(follower.id_member));
-          const response:IRequest<undefined> = await requester({
+          response = await requester({
             url: `/members/strategicInformation/followers/${idMember}`,
             method: 'PUT',
             data: { followers }
           })
-          console.log("followers update: ", response)
-          if(response.code !== 200) {
+
+          if(response.code !== 200 ) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
               message: "Hubo un error al intentar actualizar a los seguidores del miembro"}})); 
           }
         }
+
+        return response
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar conectar con el servidor"}}));  
+        return responseError;
       }
     }
 
-    const updateGeographicAreaManage = async(idMember: number, idGeographicArea: number):Promise<void> => {
+    const updateGeographicAreaManage = async(idMember: number, idGeographicArea: number):Promise<IRequest<any>> => {
       try {
-        if(idGeographicArea !== undefined && idGeographicArea !== null) {
-          const response:IRequest<undefined> = await requester({
-            url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
-            method: 'PUT'
-          })
-          console.log("Geographic area update: ", response)
-          if(response.code !== 200) {
-            dispatch(enqueueAlert({alertData: {
-              alertType: EAlert.warning, 
-              message: "Hubo un error al intentar actualizar el area geografica de administra el miembro"}})); 
-          }
+        const response:IRequest<undefined> = await requester({
+          url: `/geographicAreas/strategicInformation/manager/${idGeographicArea}/${idMember}`,
+          method: 'PUT'
+        })
+        if(response.code !== 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Hubo un error al intentar actualizar el area geografica de administra el miembro"}})); 
         }
+      
+        return response;
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.error, 
           message: "Hubo un error al intentar conectar con el servidor"}}));  
+        return responseError;
+      }
+    }
+
+    const deleteLeader = async (idMember: number):Promise<IRequest<any>> => {
+      try {
+        const response:IRequest<any> = await requester({
+          url: `/members/strategicInformation/leader/${idMember}`,
+          method: 'DELETE'
+        })
+  
+        if(response.code !== 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "No se ha podido eliminar el lider del miembro, intente nuevamente"}}));
+        }
+
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectarse al servidor"}}));
+        return responseError;
+      }
+    }
+
+    const deleteGeographicArea = async (idMember: number):Promise<IRequest<any>> => {
+      try {
+        const response:IRequest<any> = await requester({
+          url: `/members/strategicInformation/geographicArea/${idMember}`,
+          method: 'DELETE'
+        })
+  
+        if(response.code !== 200) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "No se ha podido eliminar el area geográfica del miembro, intente nuevamente"}}));
+        }
+
+        return response;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectarse al servidor"}}));
+        return responseError;
       }
     }
 
@@ -512,8 +571,6 @@ const FormPerson = (
           url: `/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`,
           method: `GET`
         }) 
-        console.log(`/geographicAreas/strategicInformation/${idStrategy}/${geographicAreaName}`)
-        console.log(response)
         if(response.code===200) 
           if(response.data !== undefined) 
             return response.data;
@@ -693,7 +750,6 @@ const FormPerson = (
     }
 
     const handleSelectLeader = async (event: any, newInputValue: string | null) => {
-      console.log("Selected leader: ", newInputValue)
       /*
         Find by full name the leader in the current data saved in arrayLeader
       */
@@ -703,7 +759,6 @@ const FormPerson = (
       /*
         If the leader wasn't founded, then reset the state, otherwise, save the state
       */
-      console.log(leaderSelected)
       if(leaderSelected === undefined || newInputValue === null) {
         setStrategicInformationPerson({
           ...strategicInformationPerson, 
@@ -808,8 +863,6 @@ const FormPerson = (
       */
       const geographicAreaSelected: IGeographicArea|undefined = 
       arrayGeographicArea.find(geographicArea => `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}` === newInputValue);
-      console.log("User select: ", newInputValue)
-      console.log("User select: ", geographicAreaSelected)
       /*
         If the geographic are wasn't founded, then reset the state, otherwise, save the state
       */
@@ -821,7 +874,7 @@ const FormPerson = (
       else 
         setStrategicInformationPerson({
           ...strategicInformationPerson, 
-          geographic_area_name: geographicAreaSelected.geographic_area_name,
+          geographic_area_name: `${geographicAreaSelected.geographic_area_name} - ${geographicAreaSelected.id_geographic_area}`,
           id_geographic_area: geographicAreaSelected.id_geographic_area})
       
       setArrayGeographicArea([]);
@@ -845,13 +898,13 @@ const FormPerson = (
       if(person.id_colony === 0){
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
-            message: "Haz olvidado escoger una colonia para el miembro"}}));
+            message: "Haz olvidado escoger la colonia donde vive el miembro miembro"}}));
           return;
       }
       if(strategicInformationPerson.id_strategy === 0){
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
-            message: "Haz olvidado esocger un nivel jerarquico para el usuario"}}));
+            message: "Haz olvidado esocger un nivel jerarquico para el miembro"}}));
           return;
       }
 
@@ -871,25 +924,27 @@ const FormPerson = (
         "idStrategyLevel": avoidNull(strategicInformationPerson.id_strategy, 0)
       }
 
+        let response:IRequest<any> = responseError;
         if(action==0) {
-          await addNewMember(
+          response = await addNewMember(
             basicData, 
             strategicInformationPerson.id_leader, 
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
         } else if(action==1) {
-          console.log("strategicInformationPerson before update: ", strategicInformationPerson)
-          await updateMember(
+          response = await updateMember(
             basicData, 
             strategicInformationPerson.id_strategy, 
             strategicInformationPerson.id_leader, 
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
-          handleSubmit(true)
         }
-        //Reset variables
-        resetAllStates()
 
+         if(response.code === 201 || response.code === 200){
+          //Reset variables
+          handleSubmit(true)
+          resetAllStates()
+        }
     }
 
     //Auxiliar functions
@@ -1000,7 +1055,6 @@ const FormPerson = (
             </div>
             <div className="flex flex-row mt-1">
               <div className="mr-2 flex flex-col basis-1/2">
-
               <Input
                 onType={setPerson}
                 objectValue={person} 
@@ -1010,7 +1064,7 @@ const FormPerson = (
                 required={true}
                 />
                 {validBirthDay(person.birthday) === false && 
-                  <MessageAlert label="Fecha de nacimiento invalida" />
+                  <MessageAlert label="Fecha de nacimiento invalida, el miembro debe de ser mayor de edad" />
                 }
               </div>
               <div className="mt-5 flex basis-1/2 items-center justify-center">

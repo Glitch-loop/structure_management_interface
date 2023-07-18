@@ -361,6 +361,9 @@ const TablePersons = ({ action }:{ action:number }) => {
       //Get strategic member's information case
       if(basicMemberInformation.id_member !== 0 &&
         basicMemberInformation.id_member !== undefined) {
+          if(basicMemberInformation.int_number === null) 
+            basicMemberInformation.int_number = ""
+
         setMemberBasicInfoToUpdate(basicMemberInformation);
         //Get strategic information
         const strategicMemberInformation:IStructure 
