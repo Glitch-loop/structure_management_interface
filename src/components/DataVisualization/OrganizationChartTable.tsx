@@ -6,7 +6,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Autocomplete, TextField } from '@mui/material';
+import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import { Tooltip } from '@mui/material';
 import Button from '../UIcomponents/Button';
 import { IStrategy, IRequest, IMember, IStructure } from '../../interfaces/interfaces';
@@ -358,6 +358,14 @@ const OrganizationChartTable = () => {
     }
   }
 
+  const handleCancelSearching = async():Promise<void> => {
+    setMemberCurrentLevel( await searchStrategyLevelsFollowers(arrayStrategyLevel[0].id_strategy, 0, ""));
+    setMemberSearched("");
+    setCurrentLeader(initialMemberStrategyLevel);
+    setCurrentLevel(arrayStrategyLevel[0]);
+    setStrategyLevelToSearch(initialStrategy);
+
+  }   
   //Auxiliar functions
   const strategyLevelAutocompleteOptions = ():string[] => {
     const lastElementArray = arrayStrategyLevel.length - 1;
@@ -368,10 +376,13 @@ const OrganizationChartTable = () => {
   
   return (
     <div className='flex flex-col'>
-      <div className='flex flex-row '>
-        <Searcher 
-          handleSearcher={handleSearchPerson}
-          placeholder={"Buscar por nombre, telefono ó INE"}/>          
+      <div className='flex flex-row justify-between'>
+        <div className='flex basis-1/2 mx-3'>
+          <Searcher 
+            handleSearcher={handleSearchPerson}
+            placeholder={"Buscar por nombre, telefono ó INE"}/>          
+        </div>
+        <div className='flex basis-1/2 justify-center mx-3'>
           <Autocomplete
             disablePortal
             id="input-strategy"
@@ -384,13 +395,24 @@ const OrganizationChartTable = () => {
             sx={{ width: 300 }}
             renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
             />
+        </div>
       </div>
       {showMessageAlert && <MessageAlert label='Necesitas seleccionar un nivel jerarquico para poder hacer la busqueda'/> }
       {memberSearched !== "" && 
-        <p>
-          Resultados encontrados para: <span>{memberSearched}</span>
-        </p>
+        <div className='flex flex-row items-center justify-between'>
+          <p>
+            Resultados encontrados para: <span>{memberSearched}</span>
+          </p>
+          <div className='mx-3'>
+            <Button 
+                label='Cancelar busqueda'
+                colorButton={1}
+                onClick={() => { handleCancelSearching() }}
+                />
+          </div>
+        </div>
       }
+
       <div className='flex flex-row mb-3 justify-between'>
         <div className='flex flex-col'>
           {
@@ -402,7 +424,7 @@ const OrganizationChartTable = () => {
             arrayStrategyLevel[0] !== undefined &&
               (
                 currentLevel.id_strategy !== arrayStrategyLevel[0].id_strategy &&
-                memberSearched === ""
+                memberSearched === "" && currentLeader.id_strategy !== 0
               ) && 
               <>
                 <p>Lider: 
@@ -456,72 +478,81 @@ const OrganizationChartTable = () => {
           }
         </div>
       </div>
-      <Paper sx={{overflow: 'hidden'}}>
-        <TableContainer sx={{ maxHeight: 440 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell align="center">ID</TableCell>
-                <TableCell align="center">Nombre</TableCell>
-                <TableCell align="center">Telefono</TableCell> 
-                <TableCell align="center">INE</TableCell> 
-                <TableCell align="center">Area geográfica</TableCell>
-                <TableCell align="center">Cantidad total de seguidores</TableCell>
-                <TableCell align="center">Seguidores directos</TableCell>
-                <TableCell align="center">Ver</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {
-                membersCurrentLevel.map(person => {
-                  return (
-                    <TableRow key={person.id_member}>
-                      <TableCell align="center">
-                        {person.id_member}
-                      </TableCell>
-                      <TableCell align="center">
-                        {person.first_name} {person.last_name}
-                      </TableCell>
-                      <TableCell align="center">
-                        {person.cell_phone_number}
-                      </TableCell>
-                      <TableCell align="center">
-                        {person.ine}
-                      </TableCell>
-                      <TableCell align="center">
-                        {person.geographic_area_name === null ?
-                        "No administra ninguna" : person.geographic_area_name}
-                      </TableCell>
-                      <TableCell align="center">
-                        { person.number_followers_structure - 1 }
-                      </TableCell>
-                      <TableCell align="center">
-                        {person.number_follower === null ? 
-                          0 : person.number_follower}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title="Editar">
-                          {/* Add validation when the user doesn't have followers */}
-                          <button
-                          onClick={() => {
-                            if( person.number_follower !== null) 
-                              handleConsultFollowers(person);                            
+      { membersCurrentLevel[0] === undefined ?
+        <div className='flex justify-center my-5'>
+          { memberSearched === "" ?
+            <CircularProgress /> : 
+            <p>No se encontraron coincidencias para tu busqueda</p>
+          }
+        </div>
+        :
+        <Paper sx={{overflow: 'hidden'}}>
+          <TableContainer sx={{ maxHeight: 440 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="center">ID</TableCell>
+                  <TableCell align="center">Nombre</TableCell>
+                  <TableCell align="center">Telefono</TableCell> 
+                  <TableCell align="center">INE</TableCell> 
+                  <TableCell align="center">Area geográfica</TableCell>
+                  <TableCell align="center">Cantidad total de seguidores</TableCell>
+                  <TableCell align="center">Seguidores directos</TableCell>
+                  <TableCell align="center">Ver</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                { 
+                  membersCurrentLevel.map(person => {
+                    return (
+                      <TableRow key={person.id_member}>
+                        <TableCell align="center">
+                          {person.id_member}
+                        </TableCell>
+                        <TableCell align="center">
+                          {person.first_name} {person.last_name}
+                        </TableCell>
+                        <TableCell align="center">
+                          {person.cell_phone_number}
+                        </TableCell>
+                        <TableCell align="center">
+                          {person.ine}
+                        </TableCell>
+                        <TableCell align="center">
+                          {person.geographic_area_name === null ?
+                          "No administra ninguna" : person.geographic_area_name}
+                        </TableCell>
+                        <TableCell align="center">
+                          { person.number_followers_structure - 1 }
+                        </TableCell>
+                        <TableCell align="center">
+                          {person.number_follower === null ? 
+                            0 : person.number_follower}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title="Editar">
+                            {/* Add validation when the user doesn't have followers */}
+                            <button
+                            onClick={() => {
+                              if( person.number_follower !== null) 
+                                handleConsultFollowers(person);                            
+                              }
                             }
-                          }
-                          className={
-                            person.number_follower === null ? "text-2xl opacity-50" : "text-2xl opacity-100"}>
-                              <MdEditDocument  />
-                          </button>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              }
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                            className={
+                              person.number_follower === null ? "text-2xl opacity-50" : "text-2xl opacity-100"}>
+                                <MdEditDocument  />
+                            </button>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  }) 
+                }
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      }
     </div>
   )
 }
