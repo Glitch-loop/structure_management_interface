@@ -35,6 +35,7 @@ const StrategyForms = () => {
   */
   const [typeOperation, setTypeOperation] = useState<number>(0);
   const [targetLevel, setTargetLevel] = useState<IStrategy>(initialStrategyState);
+  const [storeTargetLevel, setStoreTargetLevel] = useState<IStrategy>(initialStrategyState);
 
   //Reducers for alerts message
   const dispatch:Dispatch<AnyAction> = useDispatch();
@@ -81,7 +82,7 @@ const StrategyForms = () => {
           message: "El nivel de la estrategia se ha eliminado exitosamente"}}));
       } else {
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
+          alertType: EAlert.warning, 
           message: "Hubo un error al intentar eliminar el nivel de la estrategia"}}));
       }
       return response;
@@ -108,21 +109,45 @@ const StrategyForms = () => {
         method: 'PUT',
         data: data
       })
-      
+
+      console.log(response)
+      if(response.message === "There is another level with the same name for the zone_type"
+      && response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "No se pueden repetir los nombres de las 'zonas' entre los niveles de la estrategia"}}));
+      }
+      if(response.message === "There is another level with the same name for role_name"
+      && response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "No se pueden repetir los nombres de los 'roles' entre los niveles de la estrategia"}}));
+      }
+      if(response.message === "The zone type name can't be grater than 60 characteres"
+      && response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "El nombre de la zona no puede ser mas largo que 60 caracteres"}}));
+      }
+      if(response.message === "The role name can't be grater than 60 characteres"
+      && response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "El nombre del nivel jerarquico no puede ser mas largo que 60 caracteres"}}));
+      }
+
       if(response.code === 200) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.success, 
           message: "El nivel de la estrategia se ha actualizado exitosamente"}}));
-      } else {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
-          message: "Hubo un error al intentar actualizar el nivel de la estrategia"}}));
-      }
+      } 
+        
       return response;
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectar con el servidor"}}));   
+
       const response:IRequest<undefined> = {
         message: "error",
         code: 500
@@ -143,15 +168,31 @@ const StrategyForms = () => {
         method: 'POST',
         data: data
       })
+
+      let messageSuccesfull = "Se ha agregado el nivel a la estrategia exitosamente";
+      strategyLevel.zone_type !== "" ? 
+        messageSuccesfull+=" (administra un tipo de zona)" : messageSuccesfull+=" (NO administra un tipo de zona)";
+
+      if(response.code === 400 && response.message === "Repeating names for roles and zone types are not allowed.") {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Se esta repetiendo el nombre del nivel jerárquico con otro nivel ya existente"}}));
+      }
+      if(response.code === 400 && response.message === "roleName can't be grater than 60 characteres") {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "El nombre del nivel jerarquico no puede ser mas largo que 60 caracteres"}}));
+      }
+      if(response.code === 400 && response.message === "zoneType can't be grater than 60 characteres") {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "El nombre de la zona no puede ser mas largo que 60 caracteres"}}));
+      }
       if(response.code === 201) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.success, 
-          message: "Se ha agregado el nivel a la estrategia exitosamente"}}));
-      } else {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
-          message: "Hubo un error al intentar agregar el nuevo nivel a la estrategia"}}));
-      }
+          message: messageSuccesfull}}));
+      } 
       return response
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
@@ -168,7 +209,8 @@ const StrategyForms = () => {
 
   //Handlers
   const handleOnCloseDialog = ():void => {
-    setShowDialog(false)
+    restartOperation();
+
   }
 
 
@@ -194,7 +236,10 @@ const StrategyForms = () => {
         cardinality_level: strategyLevel.cardinality_level
       }
       setTargetLevel(newStrategyLevel);
-    } else setTargetLevel(strategyLevel);
+    } else {
+      setTargetLevel(strategyLevel)
+      setStoreTargetLevel(strategyLevel);
+    };
     setTypeOperation(typeOperation);
     
     // At the end, show the dialog
@@ -207,15 +252,22 @@ const StrategyForms = () => {
       This function is to cancel the current operation.
       The state of the operation is set to 0 (none), and close the dialog
     */
-    setTypeOperation(0);
-    setTargetLevel(initialStrategyState);
-    setShowDialog(false);
+    restartOperation();
   }
 
   const handlePerfomOperation = async():Promise<void> => {
     if(targetLevel !== undefined) {
-        let response:IRequest<undefined>|undefined = undefined;
+      let response:IRequest<undefined>|undefined = undefined;
       if(typeOperation === 1) {
+        //Verify that the role ins't empty
+        if(targetLevel.role === "") {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "El nombre del nivel jerárquico (rol) no puede estar vacío"}})); 
+          restartOperation();
+          return;
+        }
+
         /*
           Call to the function to add a new strategy level.
           If everything is fine, we call again to the API for the new 
@@ -231,12 +283,44 @@ const StrategyForms = () => {
           If everything is fine, we call again to the API for the new 
           strategy levels
         */
-         response = await updateStrategyLevel(targetLevel);
-         if(response?.code === 200) {
-          if(strategyLevels !== undefined) {
-            const index:number = strategyLevels.findIndex(strategyLevel => strategyLevel.id_strategy === targetLevel.id_strategy);
-            strategyLevels[index] = targetLevel
-            setStrategyLevels(strategyLevels)
+        
+        if(strategyLevels !== undefined) {
+          const index:number = strategyLevels.findIndex(strategyLevel => strategyLevel.id_strategy === targetLevel.id_strategy);
+
+          //Verify that the role ins't empty
+          if(targetLevel.role === "") {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "El nombre del nivel jerárquico no puede no puede estar vacío"}})); 
+            restartOperation();
+            return;
+          }
+
+          //In case that the role manage a geographic area, then care that isn't empty
+          if(strategyLevels[index].zone_type !== "") {
+            if(targetLevel.zone_type === "") {
+              dispatch(enqueueAlert({alertData: {
+                alertType: EAlert.warning, 
+                message: "El nombre del tipo de zona no puede estar vacío"}})); 
+              restartOperation();
+              return;
+            }
+          }
+
+          //If there is any difference in the role or zone type name, then update
+          if(targetLevel.role != strategyLevels[index].role 
+          || targetLevel.zone_type != strategyLevels[index].zone_type) {
+            response = await updateStrategyLevel(targetLevel);
+  
+            //If the update was success, then update in the state the changes.
+            if(response?.code === 200) {
+              strategyLevels[index] = targetLevel
+              setStrategyLevels(strategyLevels)
+            }
+          } else {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.info, 
+              message: "No ha habido ningun cambio"}}));  
           }
         }
       } else if(typeOperation === 3) {
@@ -253,11 +337,15 @@ const StrategyForms = () => {
     }
 
     //At the end, restart the states
-    setTypeOperation(0);
-    setShowDialog(false);
-    setTargetLevel(initialStrategyState);
+    restartOperation();
   }
 
+  const restartOperation = ():void => {
+    setShowDialog(false);
+    // setTypeOperation(0);
+    setTargetLevel(initialStrategyState);
+    setStoreTargetLevel(initialStrategyState);
+  }
   return(
     <div className="w-10/12 h-5/6 p-5 bg-neutral-100 rounded-lg overflow-auto">
       <Dialog onClose={handleOnCloseDialog} open={showDialog}>
@@ -277,14 +365,14 @@ const StrategyForms = () => {
                   required={true} />
               {
                 (targetLevel!==undefined && 
-                  ((targetLevel?.zone_type!=="" && typeOperation===2) || typeOperation===1)) &&
+                  ((storeTargetLevel.zone_type!=="" && typeOperation===2) || typeOperation===1)) &&
                 <Input 
                     onType={setTargetLevel}
                     objectValue={targetLevel}
                     inputName={"zone_type"}
                     placeholder={"Nombre del tipo de zona"}
                     inputType="text"
-                    required={true} />
+                    required={typeOperation===1 ? false : true} />
               }
             </>)
           }
