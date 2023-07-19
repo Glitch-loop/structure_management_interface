@@ -342,9 +342,9 @@ const StrategyForms = () => {
 
   const restartOperation = ():void => {
     setShowDialog(false);
-    // setTypeOperation(0);
     setTargetLevel(initialStrategyState);
     setStoreTargetLevel(initialStrategyState);
+    // setTypeOperation(0);
   }
   return(
     <div className="w-10/12 h-5/6 p-5 bg-neutral-100 rounded-lg overflow-auto">

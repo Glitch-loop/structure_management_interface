@@ -22,8 +22,8 @@ interface IStrategyShow extends IStrategy {
 function getColorForPolygon(): any {
   const colorCombination:IColor = {
     target: 0,
-    spectrum1: randomNumber(50),
-    spectrum2: randomNumber(50),
+    spectrum1: randomNumber(25),
+    spectrum2: randomNumber(25),
     spectrum3: randomNumber(50),
     opactity: 1
   }
@@ -318,7 +318,7 @@ const VisualizateGeographicArea = () => {
       <div className="p-5 pb-10 flex flex-col justify-center">
         {
           arrayStrategyLevel.map(strategyLevel => {
-            return <div className="flex row justify-between">
+            return <div key={strategyLevel.id_strategy} className="flex row justify-between">
               <p className="text-lg">{strategyLevel.zone_type}</p>
               <Switch 
                 checked={strategyLevel.show}
@@ -338,6 +338,11 @@ const VisualizateGeographicArea = () => {
             <span className='italic ml-2 font-bold'>
               {treeMembers?.countMemberStructure(geographicArea?.id_member)}
             </span>
+          </p>
+          <p>ID del area geográfica: 
+              <span className="ml-2 italic font-bold">
+                {geographicArea?.id_geographic_area}
+              </span>
           </p>
           <p className='mt-2'>
             Persona quien lo administra: 
@@ -365,7 +370,7 @@ const VisualizateGeographicArea = () => {
         <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
           <div className="mt-1 "></div>
           <Searcher 
-            placeholder="Buscar por nombre de area geografica o administrador"
+            placeholder="Buscar por area geografica o administrador"
             optionsToShow={searchGeographicAreas.map(element => {
               const option = {
                 id: element.id_geographic_area !== undefined ? 
@@ -402,7 +407,7 @@ const VisualizateGeographicArea = () => {
             className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-12 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
             <div className="text-white">
               <FiEye />
-            </div>
+            </div>  
           </button>
         </Tooltip>
       </div>

@@ -12,7 +12,6 @@ export const appSlice = createSlice({
   reducers: {
     enqueueAlert: (state, action: PayloadAction<{type?: string, alertData?: IAlert}>) => {
       const { type, alertData } = action.payload;
-      console.log(type)
       if (type === 'reload' && state.queueAlert.length > 0) {
         return { ...state, currentAlert: state.queueAlert[0], queueAlert: state.queueAlert.slice(1) };
       }
