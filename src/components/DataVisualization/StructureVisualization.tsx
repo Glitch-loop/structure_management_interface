@@ -49,14 +49,13 @@ const options: Options = {
   },
   nodes: {
     shape: "dot",
-    margin: {top: 10, right: 30, left: 30, bottom: 10},
     size: 16,
   },
   layout: {
     hierarchical: {
       enabled: true,
         levelSeparation: 150,
-      // nodeSpacing: 300,
+      nodeSpacing: 200,
       treeSpacing: 200,
       // blockShifting: true,
     }
@@ -210,8 +209,7 @@ const StructureVisualization = () => {
             background: color,
             border: "black"
           },
-          borderWidth: 1,
-          margin: {top: 10, right: 30, left: 30, bottom: 10}
+          borderWidth: 1
         })
 
         //Set the edges
