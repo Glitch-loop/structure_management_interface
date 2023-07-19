@@ -1,5 +1,5 @@
 import { GoogleMap, PolygonF, Polyline } from "@react-google-maps/api"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useDebugValue } from "react"
 import {FiPlus, FiEye } from "react-icons/fi"
 import '../../styles/global.css'
 import { DialogTitle, Tooltip, Switch } from "@mui/material"
@@ -227,7 +227,12 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
-  const createNewGeographicArea = async(geographicArea:IGeographicArea):Promise<number> => {
+  const createNewGeographicArea = async(geographicArea:IGeographicArea):Promise<IRequest<any>> => {
+    const wrongResponse:IRequest<any> = {
+      message: "There was an error",
+      code: 400,
+      data: {id_geographic_area: 0}
+    }
     try {
       const data = {
         geographicAreaName: geographicArea.geographic_area_name,
@@ -245,26 +250,27 @@ function ManageGeographicAreasMapRender() {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.success, 
               message: "Se ha agregado exitosamente el area geográfica"}}));  
-            return response.data.id_geographic_area
+            return response
           }
       }
+
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.warning, 
         message: "Ha habido un problema al intentar crear la nueva area geográfica, intente nuevamente"}}));  
+      return wrongResponse;
 
-      return 0;
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
-      return 0;
+      return wrongResponse;
     }
   }
 
   const updateGeographicAreaStrategyLevel = async (geographicArea: IGeographicArea):Promise<IRequest<undefined>> => {
     try {
       const {id_geographic_area, id_strategy} = geographicArea;
-      const response:IRequest<IGeographicArea> = await requester({
+      const response:IRequest<undefined> = await requester({
         url: `/geographicAreas/strategicInformation/strategyLevel/${id_geographic_area}/${id_strategy}`,
         method: "PUT"
       });
@@ -720,28 +726,53 @@ function ManageGeographicAreasMapRender() {
 
 
   //This function is when geographic area has been finished
-  const handleOnSubmitAddGeographicArea = async () => {
+  const handleOnSubmitAddGeographicArea = async ():Promise<void> => {
+    if(geographicArea.geographic_area_name === "") {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "El nombre del area geografica no puede estar vacío"}})); 
+      setShowDialog(false);
+      return;
+    }
+
     geographicArea.coordinates = line; //Get the lines
 
     //Create the geographic area
-    const idGeographicAreaAdded:number = await createNewGeographicArea(geographicArea)
+    const responseBasicData:IRequest<any> = await createNewGeographicArea(geographicArea)
 
-    if(idGeographicAreaAdded !== 0) {
+    let idGeographicAreaAdded = 0;
+    if(responseBasicData.data !== undefined) 
+      idGeographicAreaAdded = responseBasicData.data.id_geographic_area;
+
+    if(idGeographicAreaAdded !== 0 && idGeographicAreaAdded !== undefined) {
       geographicArea.id_geographic_area = idGeographicAreaAdded; //Get the ID of the geographic area created
       
       /*
-        If the geographic area was created successfully and the user set a id_strategy for the area,
+        If the geographic area was created successfully and chose a 'zone_type' for the area,
         then we update the type of zone of the area.
       */
-      if(geographicArea.id_geographic_area !== 0 && geographicArea.id_strategy !== 0) 
-        if(await updateGeographicAreaStrategyLevel(geographicArea) !== 200) 
+      if(geographicArea.id_strategy !== 0) {
+        const response:IRequest<undefined> = await updateGeographicAreaStrategyLevel(geographicArea);
+
+        if(response.code !== 200) 
           geographicArea.id_strategy = 0
-        
+      } else {
+        geographicArea.id_strategy = undefined;
+      }
+      
+      if(geographicArea.id_geographic_area_belongs !== 0) {
+        const response:IRequest<undefined> = await updateGeographicAreaBelongsTo(geographicArea);
+        if(response.code !== 200) 
+          geographicArea.id_geographic_area_belongs = 0
+      } else {
+        geographicArea.id_strategy = undefined;
+      }
+      
       polygonsForWork.push(geographicArea); //Save the new area to render.
     }
 
     //Reset the variables (this for the next time that the user wants to create other. area)
-    setShowDialog(false)
+    setShowDialog(false);
     setLine([]);
     resetStates();
   }
@@ -811,7 +842,7 @@ function ManageGeographicAreasMapRender() {
       If the polygon suffer any modification, then the system is going to be stored that modification
       for "possibly" update it (if the user confirm the update).
     */
-    console.log(polygon)
+   console.log("Current polygon: ", polygon)
     setGeographicArea({
       ...geographicArea,
       id_geographic_area: polygon.id_geographic_area,
@@ -974,7 +1005,6 @@ function ManageGeographicAreasMapRender() {
       return;
     }
 
-    console.log("Geographic area to update: ", geographicArea);
     const indexPolygonUpdating:number = polygons.findIndex(
       polygon => polygon.id_geographic_area === geographicArea.id_geographic_area);
     const previousePolygon:IGeographicArea = polygons[indexPolygonUpdating];
@@ -1048,9 +1078,10 @@ function ManageGeographicAreasMapRender() {
   const handleOnSubmitDeleteGeographicArea = async (e: any) => {
     if(geographicArea.id_geographic_area!==0) {
       if(await deleteGeographicArea(geographicArea) === 200) {
-        setPolygonForWork(
-          polygonsForWork
-          .filter(polygon => polygon.id_geographic_area !== geographicArea.id_geographic_area));
+        const newSetPolygons:IGeographicArea[] = polygonsForWork
+        .filter(polygon => polygon.id_geographic_area !== geographicArea.id_geographic_area)
+        setPolygonForWork(newSetPolygons);
+        setPolygons(newSetPolygons);
       }
       setGeographicArea(initialGeographicAreaState);
       setShowDialog(false);
@@ -1184,8 +1215,6 @@ function ManageGeographicAreasMapRender() {
       if(findGeographicArea.id_geographic_area !== undefined) {
         const dataResponse:IGeographicArea[] = 
           await getGeographicAreasInside(findGeographicArea.id_geographic_area);
-        console.log(dataResponse)
-
         setPolygons(dataResponse);
         setPolygonForWork(dataResponse);
         setShowAllGeographicAreas(false);
