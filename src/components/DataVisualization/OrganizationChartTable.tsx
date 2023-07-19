@@ -29,6 +29,7 @@ const initialStrategy:IStrategy = {
 
 interface IMemberStrategyLevel extends IMember {
   number_follower: number;
+  number_followers_structure: number;
   id_geographic_area: number;
   geographic_area_name: string;
 }
@@ -51,6 +52,7 @@ const initialMemberStrategyLevel:IMemberStrategyLevel = {
   colony_name: "",
   postal_code: "",
   number_follower: 0,
+  number_followers_structure: 0,
   id_geographic_area: 0,
   geographic_area_name: ""
 }
@@ -76,6 +78,16 @@ const emptyMember: IMember = {
 
 const emptyMemberStrategicInformation:IStructure = {
   id_member: 0
+}
+
+//Auxiliar functions
+const getLeaderRole = (id_strategy: number, arrayStrategyLevel: IStrategy[]):string => {
+  const leaderLevel:IStrategy|undefined = arrayStrategyLevel.find(level => level.id_strategy === id_strategy);
+
+  if(leaderLevel !== undefined) 
+    return leaderLevel.role
+  else return "";
+  
 }
 
 const OrganizationChartTable = () => {
@@ -136,7 +148,6 @@ const OrganizationChartTable = () => {
         data: data
       })
       
-      console.log(response)
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
@@ -227,21 +238,32 @@ const OrganizationChartTable = () => {
     }
   }
 
-  const handleOnReturnLevel = async(memberToConsult:IMemberStrategyLevel) => {
+  const handleOnReturnLevel = async(memberToConsult:IMemberStrategyLevel):Promise<void> => {
     /* 
       From the "current" leader, get the level above (ascending in the strategic
       level)
     */
     const previousStrategyLevel:IStrategy|undefined = arrayStrategyLevel
       .find(level => level.cardinality_level === currentLevel.cardinality_level - 1);
-    
+      
+    /*
+        This "if" is to manage the case when the "current leader" doesn't have a leader and he doesn't have the
+        highest heirarchical level.
+        If it happens, then we break the function flow and send a message.
+    */
     if(previousStrategyLevel !== undefined) {
       const { id_strategy, id_leader } = memberToConsult;
-
+      if(currentLevel.cardinality_level - 1 !== 1 && id_leader === null){
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "El lider actual no tiene un lider, por lo que no se puede volver"}}));
+        return;
+      }
       /*
         Consult the followers of the leader of the current leader... 
         The leader now is a follower, so we search to him and his mates.
       */
+      
       setMemberCurrentLevel(
         await searchStrategyLevelsFollowers(id_strategy, id_leader, ""));
 
@@ -272,6 +294,7 @@ const OrganizationChartTable = () => {
           colony_name: "",
           postal_code: "",
           number_follower: 0,
+          number_followers_structure: 0,
           id_geographic_area: 0,
           geographic_area_name: geographic_area_name!==undefined ? geographic_area_name : ""
         }
@@ -280,6 +303,7 @@ const OrganizationChartTable = () => {
       } else {
         setCurrentLeader(initialMemberStrategyLevel);
       }
+
       setCurrentLevel(previousStrategyLevel);
     }
   }
@@ -328,7 +352,6 @@ const OrganizationChartTable = () => {
         const newLevel:IStrategy|undefined = arrayStrategyLevel.find(level => level.id_strategy === id_strategy);
         if(newLevel !== undefined) {
           setMemberCurrentLevel(followersFounded);
-          console.log("newLevel: ", newLevel)
           setCurrentLevel(newLevel);
         }
       }
@@ -370,11 +393,6 @@ const OrganizationChartTable = () => {
       }
       <div className='flex flex-row mb-3 justify-between'>
         <div className='flex flex-col'>
-          <p> Nivel jerarquico: 
-            <span className='ml-2 italic font-bold'>
-              { currentLevel.role }
-            </span>
-          </p>
           {
             /*
               This labels are to indicate the leader's information, if we are at the
@@ -392,6 +410,11 @@ const OrganizationChartTable = () => {
                     {currentLeader.first_name} {currentLeader.last_name}
                   </span>
                 </p>
+                <p className='mt-3'> Nivel jerarquico del lider: 
+                  <span className='ml-2 italic font-bold'>
+                    { getLeaderRole(currentLeader.id_strategy, arrayStrategyLevel) }
+                  </span>
+                </p>
                 <p>
                   Area geografica que administra: 
                   <span className='ml-2 italic font-bold'>
@@ -399,6 +422,14 @@ const OrganizationChartTable = () => {
                   </span>
                 </p>
               </>
+          }
+          {
+            arrayStrategyLevel[0] !== undefined &&
+            <p className='mt-3'> Nivel jerarquico actual: 
+              <span className='ml-2 italic font-bold'>
+                { currentLevel.role }
+              </span>
+            </p>
           }
           { 
             /*
@@ -411,17 +442,19 @@ const OrganizationChartTable = () => {
               <p className='italic ml-3 my-1'>Ultimo nivel de la estrategia</p>
           }
         </div>
-        {
-          arrayStrategyLevel[0] !== undefined &&
-          (
-            currentLevel.id_strategy !== arrayStrategyLevel[0].id_strategy &&
-            memberSearched === ""
-          ) && 
-            <Button 
+        <div>
+          {
+            arrayStrategyLevel[0] !== undefined &&
+            (
+              currentLevel.id_strategy !== arrayStrategyLevel[0].id_strategy 
+              && memberSearched === ""
+            ) && 
+              <Button 
               label='Volver'
               onClick={() => { handleOnReturnLevel(currentLeader) }}
-            />
-        }
+              />
+          }
+        </div>
       </div>
       <Paper sx={{overflow: 'hidden'}}>
         <TableContainer sx={{ maxHeight: 440 }}>
@@ -433,8 +466,9 @@ const OrganizationChartTable = () => {
                 <TableCell align="center">Telefono</TableCell> 
                 <TableCell align="center">INE</TableCell> 
                 <TableCell align="center">Area geográfica</TableCell>
-                <TableCell align="center">No. seguidores</TableCell>
-                <TableCell align="center">Seguidores</TableCell>
+                <TableCell align="center">Cantidad total de seguidores</TableCell>
+                <TableCell align="center">Seguidores directos</TableCell>
+                <TableCell align="center">Ver</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -457,6 +491,9 @@ const OrganizationChartTable = () => {
                       <TableCell align="center">
                         {person.geographic_area_name === null ?
                         "No administra ninguna" : person.geographic_area_name}
+                      </TableCell>
+                      <TableCell align="center">
+                        { person.number_followers_structure - 1 }
                       </TableCell>
                       <TableCell align="center">
                         {person.number_follower === null ? 
