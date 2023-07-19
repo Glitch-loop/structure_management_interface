@@ -191,7 +191,7 @@ const StructureVisualization = () => {
 
       const currentNodes: Node[] = [];
       const currentEdges: Edge[] = [];
-
+      console.log(data)
       members.forEach(member => {
         //Find the color of the node according to their heriarchical level
         const index:number = nodesColor.findIndex(nodeColor => nodeColor.target === member.cardinality_level);
@@ -202,7 +202,9 @@ const StructureVisualization = () => {
         //Set the nodes
         currentNodes.push({
           id: member.id_member, 
-          label: `${member.first_name} ${member.last_name} \n${member.role}`,
+          label: `${member.first_name} ${member.last_name} \n${
+            member.role===null ? "Sin nivel estrategico":member.role
+          }`,
           level: member.cardinality_level,
           color: {
             background: color,
@@ -286,18 +288,22 @@ const StructureVisualization = () => {
 
   return(
     <>
-      <Searcher 
-        placeholder={"Buscar por nombre, numero ó INE"}
-        optionsToShow={searchMembers.map(element => {
-          const option = {
-            id: element.id_member,
-            data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
-          }
-          return option;
-        })}
-        onSelectOption={selectOptionMember}
-        onType={onSearchTypeMember}
-      />
+      <div className="flex items-center justify-center">
+        <div className="p-2 rounded-lg bg-slate-200 ">
+          <Searcher 
+            placeholder={"Buscar por nombre, numero ó INE"}
+            optionsToShow={searchMembers.map(element => {
+              const option = {
+                id: element.id_member,
+                data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
+              }
+              return option;
+            })}
+            onSelectOption={selectOptionMember}
+            onType={onSearchTypeMember}
+          />
+        </div>
+      </div>
       <div className="absolute flex-col w-full h-full justify-center">
         <Tooltip title="Crear nueva area">
           <button
