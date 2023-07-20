@@ -1,5 +1,5 @@
 import { GoogleMap, PolygonF, Polyline } from "@react-google-maps/api"
-import { useState, useEffect, useRef, useDebugValue } from "react"
+import { useState, useEffect, useRef } from "react"
 import {FiPlus, FiEye } from "react-icons/fi"
 import '../../styles/global.css'
 import { DialogTitle, Tooltip, Switch } from "@mui/material"
@@ -552,6 +552,7 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleOnMouseMoveMap = (): void => {
+    console.log("MAP HOVER")
     /*
       First, validate if there is being modified a geographic area,
       if it is, then, we find its index in polygonsForWorks (array where
@@ -660,6 +661,17 @@ function ManageGeographicAreasMapRender() {
       }))
     }
     }
+  }
+
+  const handleMouseOver = (e:any): void => {
+    console.log("HOVER POLYGON")
+    if(polygonToManage !== undefined) {
+      const index:number = polygonsForWork.findIndex(
+        polygon => polygon.id_geographic_area === polygonToManage.id_geographic_area)
+      polygonsForWork[index] = polygonToManage
+      setPolygonToManage(undefined)
+    }
+    setPolygons(polygonsForWork)
   }
 
   //This function finish the new polygon
@@ -1417,6 +1429,7 @@ function ManageGeographicAreasMapRender() {
                 onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}
                 onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
                 onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
+                onMouseMove={(e:any) => handleMouseOver(e)}
                 onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
                 path={polygon.coordinates}
                 options={getPolygonColor(polygonColor, polygon.id_strategy)}
@@ -1430,7 +1443,7 @@ function ManageGeographicAreasMapRender() {
               <Polyline 
                 editable
                 onClick={(e: any) => { handleClickLine(e)} } 
-                onMouseMove={(e:any) => handleMouseMoveLine(e)}
+                onMouseMove={(e:any) => handleMouseMoveLine(e) }
                 onMouseDown={(e:any) => handleMouseDownLine(e)}
                 onMouseUp={(e:any) => handleMouseUpLine(e)}
                 onRightClick={(e:any) => handleRightClickLine(e)}
