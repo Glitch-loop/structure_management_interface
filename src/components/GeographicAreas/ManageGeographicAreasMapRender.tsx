@@ -952,6 +952,8 @@ function ManageGeographicAreasMapRender() {
     In short, this is the easiest way to get the current polygon points.
   */
   const handleUnmountPolygon = async (e:any, idPolygon: number|undefined) => {
+    console.log("UNMOUNTING")
+    console.log("This is ref: ", refCurrentPolygon)
     if(idPolygon !== undefined) {
       //This process is to update the polygon (add, delete, move vertices [points]).
       if(refCurrentPolygon!==undefined) {
@@ -1082,6 +1084,7 @@ function ManageGeographicAreasMapRender() {
         .filter(polygon => polygon.id_geographic_area !== geographicArea.id_geographic_area)
         setPolygonForWork(newSetPolygons);
         setPolygons(newSetPolygons);
+        refCurrentPolygon.current = geographicArea;
       }
       setGeographicArea(initialGeographicAreaState);
       setShowDialog(false);
