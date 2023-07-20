@@ -24,6 +24,25 @@ import { useState } from "react";
 import Button from '../UIcomponents/Button';
 import moment from 'moment';
 
+const voidMember:IMember = {
+  id_member: 0,
+  first_name: "",
+  last_name: "",
+  street: "",
+  ext_number: "",
+  int_number: "", //address
+  cell_phone_number: "",
+  ine: "",
+  birthday: "0",
+  gender: 0,
+  id_leader: 0,
+  id_follower: [],
+  id_colony: 0,
+  id_strategy: 0,
+  colony_name: "",
+  postal_code: ""
+}
+
 //Auxiliar functions
 const getOldestYear = (arrayMembers:IMember[]):number => {
   let oldestYear = 0;
@@ -317,19 +336,49 @@ const ColonyAnalisysTable = () => {
 
   //Handle to search
   const handleSearch = async() => {
-    const arrIdColonies = coloniesSelected.map(colony => {return colony.id_colony})
+    let data:any = {};
+    //Get the colonies where the user want to search
+    const arrIdColonies = coloniesSelected.map(colony => {return colony.id_colony});
     if(leader !== undefined) {
+      /*
+        That means that the user wants to search the members that a leader has
+        in certains colonies
+      */
+     console.log("MEMBERS AND COLONIES")
       const { id_member } = leader;
-      const data:any = await searchMemberByLeaderAndColony(id_member, arrIdColonies);
-      setMemberByColonyArray(data);
+      data = await searchMemberByLeaderAndColony(id_member, arrIdColonies);
+      console.log(data)
+      console.log(arrIdColonies)
+      console.log(coloniesSelected)
+
+      console.log("DATA: ", data)
       const leaderData:IStructure|undefined = storeResponseSearchMember
         .find(member => member.id_member === id_member);
       setLeaderConsulted(leader);
     } else if(coloniesSelected[0] !== undefined) {
-      const data:any = await searchMemberByColony(arrIdColonies);
+      data = await searchMemberByColony(arrIdColonies);
       console.log(data)
-      setMemberByColonyArray(data);
     }
+
+    //Handle the case of the colonies that doesn't have members
+    for(let i = 0; i < coloniesSelected.length; i++) {
+      let verifyColony:boolean|undefined = data
+        .find((setMembers:any) => {
+          if (setMembers[0].id_colony === coloniesSelected[i].id_colony) 
+            return setMembers[0]
+        })
+
+      if(verifyColony === undefined){
+
+        data.push([{...voidMember, 
+          id_colony: coloniesSelected[i].id_colony,
+          colony_name: coloniesSelected[i].name_colony,
+          postal_code: coloniesSelected[i].postal_code
+        }])
+      }
+    }
+    setMemberByColonyArray(data);
+
   }
 
   const handleDeleteSearch = async() => {
@@ -382,19 +431,22 @@ const ColonyAnalisysTable = () => {
         </p>
       }
       {coloniesSelected.length > 0 &&
-        <div className='flex flex-row flex-wrap ml-2'>
-          {
-            coloniesSelected.map(colonySelected => {
-              return <div
-                  key={colonySelected.id_colony}
-                  className='ml-1 mt-1'>
-                <Chip 
-                  label={`${colonySelected.name_colony} - ${colonySelected.postal_code}`}
-                  onDelete={() => unSelectOptionColony(colonySelected)}
-                />
-              </div>
-            })
-          }
+        <div className='flex flex-col mt-2 ml-3'>
+          <p>Colonias seleccionadas</p>
+          <div className='flex flex-row flex-wrap ml-2'>
+            {
+              coloniesSelected.map(colonySelected => {
+                return <div
+                    key={colonySelected.id_colony}
+                    className='ml-1 mt-1'>
+                  <Chip 
+                    label={`${colonySelected.name_colony} - ${colonySelected.postal_code}`}
+                    onDelete={() => unSelectOptionColony(colonySelected)}
+                  />
+                </div>
+              })
+            }
+          </div>
         </div>
       }
       <div>
@@ -402,11 +454,16 @@ const ColonyAnalisysTable = () => {
           label='Buscar'
           onClick={handleSearch}
           />
-        <Button 
-          label='Borrar busqueda'
-          colorButton={1}
-          onClick={handleDeleteSearch}
-        />
+        { (coloniesSelected[0] !== undefined 
+          || leader !== undefined
+          || membersByColonyArray[0] !== undefined
+          || leaderConsulted !== undefined) &&
+          <Button 
+            label='Borrar busqueda'
+            colorButton={1}
+            onClick={handleDeleteSearch}
+          />
+        } 
       </div>
       {leaderConsulted !== undefined &&        
         <p className='ml-3 my-2'>
@@ -416,6 +473,7 @@ const ColonyAnalisysTable = () => {
           </span>
         </p>
       }
+      <div className='bg-black p-0.5 my-2'></div>
       <div className='overflow-scroll max-h-96'>
         { membersByColonyArray[0] !== undefined ?
           (
@@ -435,25 +493,35 @@ const ColonyAnalisysTable = () => {
                     <div className='flex flex-row'>
                       <div className='flex flex-col'>
                         <Typography>{colony[0].colony_name} - C.P: {colony[0].postal_code}</Typography>
-                        <Typography>No. miembros: {colony.length}</Typography>
-
-                      </div>
-                      <div className='ml-5 flex flex-col'>
-                      <Typography>Edad promedio: {averageYear(colony)}</Typography>
-                        {colony.length > 1 &&
-                          <Typography>
-                            Rango de edad: { getYoungestYear(colony) } - {getOldestYear(colony)}
-                          </Typography>  
+                        {(colony.length - 1 > 0) &&
+                          <Typography>No. miembros: {colony.length}</Typography>
                         }
                       </div>
-                      <div className='ml-5 flex flex-col'>
-                      <Typography>
-                        Mujeres: {getAmountGender(1, colony)}
-                      </Typography>
-                      <Typography>
-                        Hombres: {getAmountGender(0, colony)}
-                      </Typography>  
-                      </div>
+                      {(colony.length - 1 > 0) ? 
+                        <>
+                          <div className='ml-5 flex flex-col'>
+                          <Typography>Edad promedio: {averageYear(colony)}</Typography>
+                            {colony.length > 1 &&
+                              <Typography>
+                                Rango de edad: { getYoungestYear(colony) } - {getOldestYear(colony)}
+                              </Typography>  
+                            }
+                          </div>
+                          <div className='ml-5 flex flex-col'>
+                          <Typography>
+                            Mujeres: {getAmountGender(1, colony)}
+                          </Typography>
+                          <Typography>
+                            Hombres: {getAmountGender(0, colony)}
+                          </Typography>  
+                          </div>
+                        </> :
+                        <>
+                          <div className='ml-5 flex flex-col text-lg font-bold items-center text-center'>
+                            No hay miembros en esta colonia
+                          </div>
+                        </>
+                      }
                     </div>
                     </AccordionSummary>
                     <AccordionDetails>
