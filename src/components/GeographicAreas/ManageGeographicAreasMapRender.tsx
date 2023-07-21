@@ -348,7 +348,7 @@ function ManageGeographicAreasMapRender() {
         url: `/geographicAreas/strategicInformation/areaBelongs/${geographicArea.id_geographic_area}/${geographicArea.id_geographic_area_belongs}`,
         method: 'PUT'
       })
-      console.log(response);
+      
       if(response.code === 400) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.warning, 
@@ -370,7 +370,7 @@ function ManageGeographicAreasMapRender() {
         url: `/geographicAreas/strategicInformation/areaBelongs/${geographicArea.id_geographic_area}`,
         method: 'DELETE'
       })
-      console.log(response);
+
       if(response.code === 400) {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.warning, 
@@ -552,7 +552,6 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleOnMouseMoveMap = (): void => {
-    console.log("MAP HOVER")
     /*
       First, validate if there is being modified a geographic area,
       if it is, then, we find its index in polygonsForWorks (array where
@@ -664,7 +663,6 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleMouseOver = (e:any): void => {
-    console.log("HOVER POLYGON")
     if(polygonToManage !== undefined) {
       const index:number = polygonsForWork.findIndex(
         polygon => polygon.id_geographic_area === polygonToManage.id_geographic_area)
@@ -854,7 +852,6 @@ function ManageGeographicAreasMapRender() {
       If the polygon suffer any modification, then the system is going to be stored that modification
       for "possibly" update it (if the user confirm the update).
     */
-   console.log("Current polygon: ", polygon)
     setGeographicArea({
       ...geographicArea,
       id_geographic_area: polygon.id_geographic_area,
@@ -964,8 +961,6 @@ function ManageGeographicAreasMapRender() {
     In short, this is the easiest way to get the current polygon points.
   */
   const handleUnmountPolygon = async (e:any, idPolygon: number|undefined) => {
-    console.log("UNMOUNTING")
-    console.log("This is ref: ", refCurrentPolygon)
     if(idPolygon !== undefined) {
       //This process is to update the polygon (add, delete, move vertices [points]).
       if(refCurrentPolygon!==undefined) {
@@ -1137,7 +1132,6 @@ function ManageGeographicAreasMapRender() {
   
   // Handler geographic area autocomplete
   const handleSearchGeographicAreaBelongsTo = async (event: any, newInputValue: string | null) => {
-    console.log(newInputValue)
     if(newInputValue !== null) {
       //Save the current user's search
       setSearchGeographicAreaBelongsTo(newInputValue) 
