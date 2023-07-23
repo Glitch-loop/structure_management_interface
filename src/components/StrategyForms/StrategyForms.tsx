@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { IStrategy, IRequest } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { FiPlus } from "react-icons/fi"
-import { Dialog } from "@mui/material";
+import { Dialog, Tooltip } from "@mui/material";
 import Button from "../UIcomponents/Button";
 import Input from "../UIcomponents/Input";
 import { CircularProgress } from "@mui/material";
@@ -13,6 +13,7 @@ import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import Forbbiden from "../Authorization/Forbbiden";
 
 
 const initialStrategyState = {
@@ -23,6 +24,11 @@ const initialStrategyState = {
 }
 
 const StrategyForms = () => {
+  //Privileges states
+  const [addLevelPrivilege, setAddLevelPrivilege] = useState<boolean>(false);
+  const [updateLevelPrivilege, setUpdateLevelPrivilege] = useState<boolean>(false);
+  const [deleteLevelPrivilege, setDeleteLevelPrivilege] = useState<boolean>(false);
+
   const [strategyLevels, setStrategyLevels] = useState<IStrategy[]|undefined>(undefined);
   const [showDialog, setShowDialog] = useState<boolean>(false);
   /*
@@ -42,6 +48,20 @@ const StrategyForms = () => {
   const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(()=>{
+    //Get privileges of the user
+    requester({url: '/privileges/user/[4]', method: "GET"})
+    .then(response => {
+      setAddLevelPrivilege(response.data.privilege);
+    });
+    requester({url: '/privileges/user/[5]', method: "GET"})
+    .then(response => {
+      setUpdateLevelPrivilege(response.data.privilege);
+    });
+    requester({url: '/privileges/user/[6]', method: "GET"})
+    .then(response => {
+      setDeleteLevelPrivilege(response.data.privilege);
+    });
+
     getStrategy().then((data) => setStrategyLevels(data));
   },[])
 
@@ -346,143 +366,174 @@ const StrategyForms = () => {
     setStoreTargetLevel(initialStrategyState);
     // setTypeOperation(0);
   }
+
   return(
-    <div className="w-10/12 h-5/6 p-5 bg-neutral-100 rounded-lg overflow-auto">
-      <Dialog onClose={handleOnCloseDialog} open={showDialog}>
-        <div className="p-5">
-          {(typeOperation===1 || typeOperation===2) &&
-            (<>
-              <p className="text-lg text-center">
-                {typeOperation===1 && "Agregar nuevo nivel a la estrategia"}
-                {typeOperation===2 && "Actualizar nivel de la estrategia"}
-              </p>
-              <Input 
-                  onType={setTargetLevel}
-                  objectValue={targetLevel}
-                  inputName={"role"}
-                  placeholder={"Nombre de la posicion"}
-                  inputType="text"
-                  required={true} />
-              {
-                (targetLevel!==undefined && 
-                  ((storeTargetLevel.zone_type!=="" && typeOperation===2) || typeOperation===1)) &&
-                <Input 
-                    onType={setTargetLevel}
-                    objectValue={targetLevel}
-                    inputName={"zone_type"}
-                    placeholder={"Nombre del tipo de zona"}
-                    inputType="text"
-                    required={typeOperation===1 ? false : true} />
+    <>
+      { (addLevelPrivilege === true || updateLevelPrivilege === true || deleteLevelPrivilege === true) ?
+        <div className="w-10/12 h-5/6 p-5 bg-neutral-100 rounded-lg overflow-auto">
+          <Dialog onClose={handleOnCloseDialog} open={showDialog}>
+            <div className="p-5">
+              {(typeOperation===1 || typeOperation===2) &&
+                (<>
+                  <p className="text-lg text-center">
+                    {typeOperation===1 && "Agregar nuevo nivel a la estrategia"}
+                    {typeOperation===2 && "Actualizar nivel de la estrategia"}
+                  </p>
+                  <Input 
+                      onType={setTargetLevel}
+                      objectValue={targetLevel}
+                      inputName={"role"}
+                      placeholder={"Nombre de la posicion"}
+                      inputType="text"
+                      required={true} />
+                  {
+                    (targetLevel!==undefined && 
+                      ((storeTargetLevel.zone_type!=="" && typeOperation===2) || typeOperation===1)) &&
+                    <Input 
+                        onType={setTargetLevel}
+                        objectValue={targetLevel}
+                        inputName={"zone_type"}
+                        placeholder={"Nombre del tipo de zona"}
+                        inputType="text"
+                        required={typeOperation===1 ? false : true} />
+                  }
+                </>)
               }
-            </>)
-          }
-          {typeOperation===3 &&
-            (<>
-              <p className="text-xl text-center mb-3">
-                ¿Seguro que quieres 
-                <span className="font-bold"> eliminar </span> 
-                el siguiente nivel de la estrategia?
-              </p>
-              <p className="mb-3 text-lg">Nombre:
-                <span className="ml-2 italic">{targetLevel?.role}</span>
-              </p>
-              <p className="mb-3 text-lg">Tipo de zona que administra: 
-                <span className="ml-2 italic">
-                {
-                  targetLevel?.zone_type === "" ? "Este nivel no administra ningun tipo de zona":targetLevel?.zone_type
-                }
-                </span>
-              </p>
-              <p>
-                Esta acción 
-                <span className="font-bold"> puede tener graves repercuciones en la estructura actual, </span> como perdida
-                de relaciones entre lider-seguidor o administrador-area geografica, etc.
-              </p>
-            </>)
-          }
-          <div className="flex flex-row justify-center">
-            <Button label="Aceptar" onClick={handlePerfomOperation} />
-            <Button 
-              label="Cancelar" 
-              onClick={handlerCancelOperation} 
-              colorButton={1}/>
-          </div>
-        </div>
-      </Dialog>
-      {strategyLevels === undefined ?
-        <div className="flex justify-center items-center h-full">
-          <CircularProgress />
-        </div> : 
-        <>
-          {
-            strategyLevels.map(strategyLevel => 
-            <div 
-              key={strategyLevel.id_strategy} 
-              className="flex flex-col justify-center">
-              <div className="flex flex-row justify-center">
-                <button 
-                className="w-12 h-12 p-4 bg-sky-600 rounded-full flex justify-center hover:bg-sky-800"
-                onClick={() => 
-                  {handleInitializeOperation(strategyLevel, 1)}} 
-                >
-                  <FiPlus className="text-lg text-white"/>  
-                </button>
-              </div>
-              <div 
-                className="p-5 m-3 bg-white  rounded-lg flex flex-row items-center divide-x-2 divide-black">
-                  <p className="basis-1/4 px-2 text-center">
-                    {strategyLevel.role}
+              {typeOperation===3 &&
+                (<>
+                  <p className="text-xl text-center mb-3">
+                    ¿Seguro que quieres 
+                    <span className="font-bold"> eliminar </span> 
+                    el siguiente nivel de la estrategia?
                   </p>
-                  <p className="basis-1/4 px-2 text-center">
+                  <p className="mb-3 text-lg">Nombre:
+                    <span className="ml-2 italic">{targetLevel?.role}</span>
+                  </p>
+                  <p className="mb-3 text-lg">Tipo de zona que administra: 
+                    <span className="ml-2 italic">
                     {
-                      strategyLevel.zone_type === "" ? "No administra areas" : strategyLevel.zone_type
+                      targetLevel?.zone_type === "" ? "Este nivel no administra ningun tipo de zona":targetLevel?.zone_type
                     }
+                    </span>
                   </p>
-                  <button 
-                    onClick={() => 
-                      {handleInitializeOperation(strategyLevel, 2)}} 
-                    className="basis-1/4 flex flex-row justify-center divide-x-2 divide-black">              
-                    <MdEdit 
-                      className="text-2xl text-sky-600 hover:text-sky-800 hover:cursor-pointer"/>
-                  </button>
-                  <button 
-                    onClick={() => 
-                      {handleInitializeOperation(strategyLevel, 3)}} 
-                    className="basis-1/4 flex flex-row justify-center divide-x-2 divide-black">              
-                    <BsFillTrashFill 
-                      className="text-2xl text-red-600 hover:text-red-800
-                      hover:cursor-pointer"/>
-                  </button>
+                  <p>
+                    Esta acción 
+                    <span className="font-bold"> puede tener graves repercuciones en la estructura actual, </span> como perdida
+                    de relaciones entre lider-seguidor o administrador-area geografica, etc.
+                  </p>
+                </>)
+              }
+              <div className="flex flex-row justify-center">
+                <Button label="Aceptar" onClick={handlePerfomOperation} />
+                <Button 
+                  label="Cancelar" 
+                  onClick={handlerCancelOperation} 
+                  colorButton={1}/>
               </div>
             </div>
-            )
-          }
-          <div className="flex flex-row justify-center">
-            <button className="w-12 h-12 p-4 bg-sky-600 rounded-full flex justify-center hover:bg-sky-800"
-              onClick={() => {
-                if(strategyLevels !== undefined) {
-                  if(strategyLevels[strategyLevels.length-1] === undefined) {
-                    const referenceLevel:IStrategy = {
-                      id_strategy: 0,
-                      zone_type: "",
-                      role: "",
-                      cardinality_level: 1
+          </Dialog>
+          {strategyLevels === undefined ?
+            <div className="flex justify-center items-center h-full">
+              <CircularProgress />
+            </div> : 
+            <>
+              {
+                strategyLevels.map(strategyLevel => 
+                <div 
+                  key={strategyLevel.id_strategy} 
+                  className="flex flex-col justify-center">
+                  <div className="flex flex-row justify-center">
+                    <Tooltip title="Agregar nivel">
+                      <button 
+                      onClick={() => { if(addLevelPrivilege === true) handleInitializeOperation(strategyLevel, 1); }} 
+                      >
+                        <div 
+                          className={ addLevelPrivilege===true ?
+                            "w-12 h-12 p-4 bg-sky-600 rounded-full flex justify-center hover:bg-sky-800" :
+                            "w-12 h-12 p-4 bg-slate-300 rounded-full flex justify-center"
+                          }>
+                          <FiPlus className="text-lg text-white"/>  
+                        </div>
+                      </button>
+                    </Tooltip>
+                  </div>
+                  <div 
+                    className="p-5 m-3 bg-white  rounded-lg flex flex-row items-center divide-x-2 divide-black">
+                      <p className="basis-1/4 px-2 text-center">
+                        {strategyLevel.role}
+                      </p>
+                      <p className="basis-1/4 px-2 text-center">
+                        {
+                          strategyLevel.zone_type === "" ? "No administra areas" : strategyLevel.zone_type
+                        }
+                      </p>
+                      <Tooltip title="Administrar nivel">
+                        <button 
+                          onClick={() => { if(updateLevelPrivilege===true) handleInitializeOperation(strategyLevel, 2); }} 
+                          className="basis-1/4 flex flex-row justify-center divide-x-2 divide-black">
+                            <MdEdit 
+                              className={ updateLevelPrivilege===true ?
+                                "text-2xl text-sky-600 hover:text-sky-800 hover:cursor-pointer" : 
+                                "text-2xl text-slate-300 hover:cursor-pointer"
+                              }
+                            />
+                          </button>
+                      </Tooltip>
+                      <Tooltip title="Eliminar nivel">
+                        <button 
+                          onClick={() => { if(deleteLevelPrivilege === true) handleInitializeOperation(strategyLevel, 3) }} 
+                          className="basis-1/4 flex flex-row justify-center divide-x-2 divide-black">
+                          <BsFillTrashFill 
+                            className={ deleteLevelPrivilege===true ?
+                              "text-2xl text-red-600 hover:text-red-800 hover:cursor-pointer" :
+                              "text-2xl text-slate-300 hover:cursor-pointer"
+                              }/>
+                        </button>
+                      </Tooltip>
+                  </div>
+                </div>
+                )
+              }
+              {/* This button is to add a new level, indeed this button works when a there isn't a strategy yet */}
+              <div className="flex flex-row justify-center">
+                <Tooltip title="Agregar nivel">
+                  <button 
+                    onClick={() => {
+                      if(strategyLevels !== undefined && addLevelPrivilege === true) {
+                        if(strategyLevels[strategyLevels.length-1] === undefined) {
+                          const referenceLevel:IStrategy = {
+                            id_strategy: 0,
+                            zone_type: "",
+                            role: "",
+                            cardinality_level: 1
+                          }
+                          handleInitializeOperation(referenceLevel, 1)
+                        } else {
+                          const referenceLevel:IStrategy = strategyLevels[strategyLevels.length-1];
+                          referenceLevel.cardinality_level = referenceLevel.cardinality_level + 1;
+                          handleInitializeOperation(referenceLevel, 1)
+                        }
+                      }
+                    }}
+                  >
+                    <div className={ addLevelPrivilege === true ?
+                      "w-12 h-12 p-4 bg-sky-600 rounded-full flex justify-center hover:bg-sky-800" :
+                      "w-12 h-12 p-4 bg-slate-300 rounded-full flex justify-center"
                     }
-                    handleInitializeOperation(referenceLevel, 1)
-                  } else {
-                    const referenceLevel:IStrategy = strategyLevels[strategyLevels.length-1];
-                    referenceLevel.cardinality_level = referenceLevel.cardinality_level + 1;
-                    handleInitializeOperation(referenceLevel, 1)
-                  }
-                }
-              }}
-            >
-              <FiPlus className="text-lg text-white"/>  
-            </button>
-          </div>
-        </> 
-    }
-    </div>
+                      >
+                      <FiPlus className="text-lg text-white"/>  
+                    </div>
+                  </button>
+                </Tooltip>
+              </div>
+            </> 
+        }
+        </div> : 
+        <div className="bg-white rounded-lg p-5">
+          <Forbbiden />
+        </div>
+      }
+    </>
   )
 }
 

@@ -176,19 +176,19 @@ const FormPerson = (
 
     // useEffect procedure ---
     useEffect(() => {
-      //Get privileges
-      if(action===0) {
+      //Get privileges depending the action that the user is performing
+      if(action === 0) {
         //Add new member case
         requester({url: '/privileges/user/[8]', method: "GET"})
         .then(response => {
-          setAddStrategycInformationToMember(response.data.privilege)
-        })
-      } else {
+          setAddStrategycInformationToMember(response.data.privilege);
+        });
+      } else if(action===1) {
         //Update member case
         requester({url: '/privileges/user/[7]', method: "GET"})
         .then(response => {
-          setUpdateStrategycInformationToMember(response.data.privilege)
-        })
+          setUpdateStrategycInformationToMember(response.data.privilege);
+        });
       }
 
 

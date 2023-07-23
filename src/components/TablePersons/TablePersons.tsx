@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -18,6 +18,7 @@ import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import Forbbiden from "../Authorization/Forbbiden";
 
 const emptyMemberStrategicInformation:IStructure = {
   id_member: 0
@@ -68,7 +69,14 @@ interface IStructureExtraFields extends IStructure {
   action = 1 Configuration for collaborators
 */
 const TablePersons = ({ action }:{ action:number }) => {
-  //States
+  //Privilege states
+  const [updateMemberPrivilege, setUpdateMemberPrivielge] = useState<boolean|undefined>(undefined);
+  const [deleteMemberPrivielge, setDeleteMemberPrivilege] = useState<boolean|undefined>(undefined);
+  const [updateCollaboratorPrivilege, setUpdateCollaboratorPrivilege] = useState<boolean|undefined>(undefined);
+  const [deleteCollaboratorPrivilege, setDeleteCollaboratorPrivilege] = useState<boolean|undefined>(undefined);
+
+
+  //Operational States
   const [personsFounded, setPersonsFounded] = useState<IStructureExtraFields[]>([]);
   const [memberBasicInfoToUpdate, setMemberBasicInfoToUpdate] = useState<IMember>();
   const [memberStrategicInfoToUpdate, setMemberStrategicInfoToUpdate] = useState<IStructure>();
@@ -80,6 +88,35 @@ const TablePersons = ({ action }:{ action:number }) => {
   const dispatch:Dispatch<AnyAction> = useDispatch();
   const userData = useSelector((state: RootState) => state.userReducer);
 
+  useEffect(() => {
+    //Get privileges depending the action that the user is performing
+    if(action === 0) {
+      //Update member 
+      requester({url: '/privileges/user/[2]', method: "GET"})
+      .then(response => {
+        setUpdateMemberPrivielge(response.data.privilege);
+      });
+
+      //Delete member
+      requester({url: '/privileges/user/[3]', method: "GET"})
+      .then(response => {
+        setDeleteMemberPrivilege(response.data.privilege);
+      });
+
+    } else if(action === 1) {
+      //Update member 
+      requester({url: '/privileges/user/[10]', method: "GET"})
+      .then(response => {
+        setUpdateCollaboratorPrivilege(response.data.privilege);
+      });
+
+      //Delete member
+      requester({url: '/privileges/user/[11]', method: "GET"})
+      .then(response => {
+        setDeleteCollaboratorPrivilege(response.data.privilege);
+      });
+    }
+  }, []);
 
 
   //Calls to API ---
@@ -456,73 +493,107 @@ const TablePersons = ({ action }:{ action:number }) => {
           />)
         )
          :
-        (<>
-          <Searcher 
-            handleSearcher={handleSearchPerson}
-            placeholder={action === 0 ? "Buscar por nombre, telefono ó INE" :
-              "Buscar por nombre, telefono ó e-mail"}/>
-          {personsFounded[0] !== undefined &&          
-          <Paper sx={{overflow: 'hidden'}}>
-            <TableContainer sx={{ maxHeight: 440 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="center">ID</TableCell>
-                    <TableCell align="center">Nombre</TableCell>
-                    <TableCell align="center">Telefono</TableCell> 
-                    <TableCell align="center">
-                      {action === 0 ? "INE" : "E-mail"}
-                    </TableCell>
-                    <TableCell align="center">Modificar</TableCell>
-                    <TableCell align="center">Eliminar</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {
-                    personsFounded.map(person => {
-                      return (
-                        <TableRow key={person.id_member}>
-                          <TableCell align="center">
-                            {person.id_member}
-                          </TableCell>
-                          <TableCell align="center">
-                            {person.first_name} {person.last_name}
-                          </TableCell>
-                          <TableCell align="center">
-                            {person.cell_phone_number}
-                          </TableCell>
-                          <TableCell align="center">
-                            {action === 0 ? person.ine : person.email}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Tooltip title="Editar">
-                              <button
-                              onClick={() => 
-                                {handleOnUpdate(person.id_member)}}
-                              className="text-2xl">
-                                <MdEditDocument />
-                              </button>
-                            </Tooltip>
-                          </TableCell>
-                          <TableCell align="center">
-                            <Tooltip title="Eliminar">
-                              <button onClick={() => 
-                                {handleOnDelete(person.id_member)}}
-                              className="text-2xl">
-                                <MdDeleteForever />
-                              </button>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  }
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-          }
-        </>)
+        ( /*
+            We perform this validate to avoid show data in case that the user doesn't have 
+            privileges enough
+          */
+          (updateMemberPrivilege === true 
+          || deleteMemberPrivielge === true 
+          || updateCollaboratorPrivilege === true 
+          || deleteCollaboratorPrivilege === true) ?
+          <>
+            <Searcher 
+              handleSearcher={handleSearchPerson}
+              placeholder={action === 0 ? "Buscar por nombre, telefono ó INE" :
+                "Buscar por nombre, telefono ó e-mail"}/>
+            {personsFounded[0] !== undefined &&          
+            <Paper sx={{overflow: 'hidden'}}>
+              <TableContainer sx={{ maxHeight: 440 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="center">ID</TableCell>
+                      <TableCell align="center">Nombre</TableCell>
+                      <TableCell align="center">Telefono</TableCell> 
+                      <TableCell align="center">
+                        {action === 0 ? "INE" : "E-mail"}
+                      </TableCell>
+                      <TableCell align="center">Modificar</TableCell>
+                      <TableCell align="center">Eliminar</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {
+                      personsFounded.map(person => {
+                        return (
+                          <TableRow key={person.id_member}>
+                            <TableCell align="center">
+                              {person.id_member}
+                            </TableCell>
+                            <TableCell align="center">
+                              {person.first_name} {person.last_name}
+                            </TableCell>
+                            <TableCell align="center">
+                              {person.cell_phone_number}
+                            </TableCell>
+                            <TableCell align="center">
+                              {action === 0 ? person.ine : person.email}
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Editar">
+                                <button 
+                                  onClick={() => {
+                                    if((updateMemberPrivilege === true && action===0)
+                                    || (updateCollaboratorPrivilege === true && action===1)) {
+                                      handleOnUpdate(person.id_member);
+                                    }
+                                  }}
+                                >
+                                  <div 
+                                    className={
+                                      (updateMemberPrivilege === true && action===0)
+                                      || (updateCollaboratorPrivilege === true && action===1) ?
+                                      "text-2xl" : "text-2xl text-slate-400"
+                                    }
+                                  >
+                                    <MdEditDocument />
+                                  </div>
+                                </button>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Eliminar">
+                                <button onClick={() => {
+                                    if((deleteMemberPrivielge === true && action===0)
+                                    || (deleteCollaboratorPrivilege === true && action===1)) {
+                                      handleOnDelete(person.id_member);
+                                    }
+                                  }}
+                                className="text-2xl">
+                                  <div
+                                    className={
+                                      (deleteMemberPrivielge === true && action===0)
+                                      || (deleteCollaboratorPrivilege === true && action===1) ?
+                                      "text-2xl" : "text-2xl text-slate-400"
+                                    }
+                                  >
+                                    <MdDeleteForever />
+                                  </div>
+                                </button>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    }
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+            }
+          </> :
+          <Forbbiden />
+        )
       }
     </div>
   )
