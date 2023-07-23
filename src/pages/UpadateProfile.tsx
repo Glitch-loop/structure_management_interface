@@ -33,6 +33,10 @@ const UpdateProfile = () => {
     if(userData.idUser !== undefined) {
       (getCollaboratorBasicInformation(userData.idUser))
       .then(response => {
+        if(response.int_number === null) {
+          response.int_number = "";
+        }
+        
         setCollaborator(response);
       });
     }

@@ -185,22 +185,29 @@ const FormCollaborator = (
           method: 'POST',
           data: collaborator
         })
-        if(response.code === 201) {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.success, 
-            message: "Se ha agregado exitosamente el nuevo colaborador"}})); 
-        } else {
+
           if(response.message == "You are trying to create a new collaborator with data repeated (full name, email or cellphone number)") {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
               message: "Hubo un error al momento de crear el colaborador, el correo, nombre completo o numero telefonico se repite con el de otro"}})); 
-              
-            } else {
+          } else if(response.message === "Invalid format for cellphone number, valid formats: xx-xxxx-xxxx or xxx-xxx-xxxx") {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
-              message: "Hubo un error al intentar agregar al nuevo colaborador, intente mas tarde"}})); 
+              message: "Formato invalido para el telefono"}})); 
+          } else if (response.message === "Invalid format for email, example of valid format: someone@gmail.com") {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Formato invalido para el email"}}));             
+          } else if(response.message === "Invalid password, the password must contain: Minimum eight characters, One uppercase letter, One lowercase letter, One number, One special charatcer: @$!%*?&") {
+              dispatch(enqueueAlert({alertData: {
+                alertType: EAlert.warning, 
+                message: "La contraseña no cumple con los requisitos"}})); 
+          } else {
+              dispatch(enqueueAlert({alertData: {
+                alertType: EAlert.warning, 
+                message: "Hubo un error al intentar agregar al nuevo colaborador, intente mas tarde"}})); 
           }
-        }
+        
         return response;
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
@@ -210,7 +217,7 @@ const FormCollaborator = (
       }
     }
 
-    const updateMember = async(idCollaborator: number, collaborator: ICollaborator):Promise<IRequest<any>> => {
+    const updateCollaborator = async(idCollaborator: number, collaborator: ICollaborator):Promise<IRequest<any>> => {
       try {
         const response: IRequest<any> = await requester({
           url: `/collaborators/${idCollaborator}`,
@@ -249,14 +256,26 @@ const FormCollaborator = (
           method: 'PUT',
           data: {privileges: privileges}
         })
-        if(response.code === 200) {
-          dispatch(enqueueAlert({alertData: {
-            alertType: EAlert.success, 
-            message: "Se ha actualizado exitosamente los privilegios del colaborador"}})); 
-        } else {
+        if(response.message === "Only a super admin can grant the privilege for create another super admin") {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
-            message: "Hubo un error al intentar actualizar los privilegios del colaborador, intente mas tarde"}})); 
+            message: "Solo un super administrador puede otorgar privilegios de super administrador"}})); 
+        } else if(response.message === "Only a super admin can revoke the privilege for delete other super admin"){
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Solo un super administrador puede revocar privilegios de administrador"}}));             
+        } else if(response.message === "You cannot revoke any privileges, rather than 'super admin privilege' for a superadmin"){ 
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "No se puede revocar privilegios a un super administrador (solo se pude revocar los privilegios de super administrador)"}})); 
+        } else if(response.message === "The user does not have privileges enough"){
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "No tienes suficientes privilegios para poder modificar o eliminar privilegios"}})); 
+        } else {            
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Hubo un error al intentar actualizar los privilegios del colaborador, intente mas tarde"}})); 
         }
         return response;
       } catch (error) {
@@ -298,15 +317,23 @@ const FormCollaborator = (
           method: 'PUT',
           data: {password: password}
         })
+        console.log(response)
         if(response.code === 200) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
             message: "Se ha actualizado la contraseña del colaborador exitosamente"}})); 
+        }
+
+        if(response.message === "Invalid password, the password must contain: Minim…etter, One number, One special charatcer: @$!%*?&") {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "La contraseña no cumple con los requisitos"}})); 
         } else {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
             message: "Hubo un error al intentar restaurar la constraseña del colaborador, intente nuevamente"}})); 
         }
+
         return response;
       } catch (error) {
         dispatch(enqueueAlert({alertData: {
@@ -369,6 +396,9 @@ const FormCollaborator = (
     //Handle password
     const handleOnSubmit = async(e: any) => {
       e.preventDefault();
+      console.log(person.password)
+      console.log(confirmPassword.password)
+      //Verify all the data is in the body to be send
       if(
         person.first_name === '' ||
         person.last_name === '' ||
@@ -382,6 +412,24 @@ const FormCollaborator = (
             alertType: EAlert.warning, 
             message: "Llena todos los campos obligatorios"}}));
           return;
+      }
+
+      if(person.ext_number !== undefined) {
+        if(person.ext_number.length > 5) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "El numero externo no puede ser mayor a 5 caracteres"}}));
+          return;
+        }
+      }
+
+      if(person.int_number !== undefined) {
+        if(person.int_number.length > 5) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "El numero interno no puede ser mayor a 5 caracteres"}}));
+          return;
+        }
       }
 
       const basicData = {
@@ -399,26 +447,56 @@ const FormCollaborator = (
 
 
         if(action==0) {
-          const response:IRequest<any> = await addNewMember(basicData);
-          if(response.code === 201 && response.data !== undefined) {
-            const { idCollaborator } = response.data;
+          if(person.password === '' ||
+          confirmPassword === '') {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "Llena todos los campos obligatorios"}}));
+            return;
+          }
+          if(person.password != confirmPassword.password) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.warning, 
+              message: "No coinciden las contraseñas"}}));
+            return;
+          }
+
+          const responseAddMember:IRequest<any> = await addNewMember(basicData);
+          console.log(responseAddMember)
+          if(responseAddMember.code === 201 && responseAddMember.data !== undefined) {
+            dispatch(enqueueAlert({alertData: {
+              alertType: EAlert.success, 
+              message: "Se ha agregado exitosamente el nuevo colaborador"}})); 
+            const { idCollaborator } = responseAddMember.data;
             if(privileges[0] !== undefined) {
               const responsePrivilege:IRequest<any> 
                 = await updatePrivileges(idCollaborator, 
                   getArrPrivilegesSelected(privileges));
+              if(responsePrivilege.code === 200) {
+                dispatch(enqueueAlert({alertData: {
+                  alertType: EAlert.success, 
+                  message: "Se ha actualizado exitosamente los privilegios del colaborador"}})); 
+              }
+              resetAllStates();
             }
-            // resetAllStates();
           }
-        } else if(action==1 || action==2) {
-          const response:IRequest<any> = await updateMember(basicData.idCollaborator, basicData);
+        } else if(action==1) {
+          const response:IRequest<any> = 
+            await updateCollaborator(basicData.idCollaborator, basicData);
           const responsePrivilege:IRequest<any> 
           = await updatePrivileges(basicData.idCollaborator, 
             getArrPrivilegesSelected(privileges));
+          console.log(responsePrivilege)
           if(response.code === 200) {
               resetAllStates();
               handleSubmit(true)
           }
+        } else if(action==2) {
+          const response:IRequest<any> = 
+          await updateCollaborator(basicData.idCollaborator, basicData);
         }
+
+        // setPerson(initialPersonState)
     }
     
     //This function is to reset the password
@@ -428,22 +506,37 @@ const FormCollaborator = (
         code: 400,
         message: ""
       };
+
       if(action === 1) {
+        //This is to recover a password, reseting it
         if(person.id_collaborator !== undefined)
          response = await resetPassword(person.id_collaborator);
       } else {
+        console.log(person.password)
+        if(person.password === undefined){
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "La contraseña no puede estar vacía"}})); 
+        }
+
+        if(person.password !== confirmPassword.password) {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Las contraseñas tienen que concidir"}})); 
+        }
+        //This is when a user wants to update his password
         if(person.password !== undefined)
           response = await  updatePassword(person.password)
       }
-         {
-  
-          if(response.code === 200) {
-            setShowDialog(true);
-            action == 1 &&
-              setPerson({...person, password: response.data.password});
-            setConfirmPassword({password: ''})
-          }
-        }
+
+      console.log("Hola")    
+      if(response.code === 200) {
+        setShowDialog(true);
+        action == 1 &&
+          setPerson({...person, password: response.data.password});
+        setConfirmPassword({password: ''})
+      }
+    
     }
 
     //This function is to close the dialog (the function remove the password)
@@ -523,7 +616,7 @@ const FormCollaborator = (
                 required={true}
               />
             </div>
-            <div className="flex flex-row ">
+            <div className="flex flex-row justify-center">
               <Input
                 onType={setPerson}
                 objectValue={person} 
@@ -556,7 +649,7 @@ const FormCollaborator = (
                 testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
               />
             </div>
-            <div className="flex flex-row">
+            <div className="flex flex-row justify-center">
               <Input
                   onType={setPerson}
                   objectValue={person} 
@@ -583,7 +676,7 @@ const FormCollaborator = (
                 renderInput={(params) => <TextField {...params} label="Colonia" />}
                 />
             </div>
-            <div className="flex flex-row">
+            <div className="flex flex-row justify-center">
               <div className="mr-2">
                 <Input
                   onType={setPerson}
@@ -764,7 +857,8 @@ const FormCollaborator = (
                     privileges.filter(privilege => {
                       if(
                         privilege.id_privilege === 12 ||
-                        privilege.id_privilege === 13
+                        privilege.id_privilege === 13 ||
+                        privilege.id_privilege === 19
                         ) return privilege
                     })
                     .map(privilege => 

@@ -134,7 +134,7 @@ const showGeographicAreaInputFunction = (idStrategy:number|undefined, arrayStrat
 const FormPerson = (
   {
     label,
-    action,
+    action = 0,
     handleSubmit,
     initialPersonInformation = initialPersonState,
     initialStrategicInformation = initialStrategicInformationState,
@@ -146,6 +146,10 @@ const FormPerson = (
     initialStrategicInformation?: IStructure, 
   }) => {
     //useState states ---
+    //Privileges
+    const [addStrategycInformationToMember, setAddStrategycInformationToMember] = useState<boolean>(false);
+    const [updateStrategycInformationToMember, setUpdateStrategycInformationToMember] = useState<boolean>(false);
+
     //Common fileds
     const [person, setPerson] = useState<IMember>(initialPersonInformation);
     const [strategicInformationPerson, setStrategicInformationPerson] = useState<IStructure>(initialStrategicInformation);
@@ -172,21 +176,40 @@ const FormPerson = (
 
     // useEffect procedure ---
     useEffect(() => {
-      if(action == 0 || action == 1) {
-        getStrategy().then((dataResponse) => {
-          setArrayStrategyLevel(dataResponse)
-          setShowLeaderInput(
-            showLeaderInputFunction(strategicInformationPerson.id_strategy, dataResponse))
-          setShowFollowerInput(
-            showFollowerInputFunction(strategicInformationPerson.id_strategy, dataResponse))
-          setShowGeographicArea(
-            showGeographicAreaInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+      //Get privileges
+      if(action===0) {
+        //Add new member case
+        requester({url: '/privileges/user/[8]', method: "GET"})
+        .then(response => {
+          setAddStrategycInformationToMember(response.data.privilege)
+        })
+      } else {
+        //Update member case
+        requester({url: '/privileges/user/[7]', method: "GET"})
+        .then(response => {
+          setUpdateStrategycInformationToMember(response.data.privilege)
         })
       }
+
+
+      //Get information for the form
+      getStrategy().then((dataResponse) => {
+        setArrayStrategyLevel(dataResponse)
+        setShowLeaderInput(
+          showLeaderInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+        setShowFollowerInput(
+          showFollowerInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+        setShowGeographicArea(
+          showGeographicAreaInputFunction(strategicInformationPerson.id_strategy, dataResponse))
+      })
+    
     }, [])
 
 
     //Calls to API
+    //Endpoint for privilege
+    
+
     //Enpoint for add and update member
     const getStrategy = async ():Promise<IStrategy[]> => {
       try {
@@ -974,6 +997,7 @@ const FormPerson = (
         {label}
       </div>
       <form>
+        {/* Basic information */}
         <div className="flex flex-row">
           <div className="mr-3">
             <p className="text-md">
@@ -1095,112 +1119,142 @@ const FormPerson = (
                 />
             </div>
           </div>
-          {
-            (action === 0 || action === 1) &&
-            <div className="mt-3">
-              <p className="text-md">Información estrategica</p>
-              <div className="flex flex-col">
-                <div className="flex mt-3 justify-center">
-                  <Autocomplete
-                    disablePortal
-                    id="input-strategy"
-                    onInputChange={(event: any, newInputValue: string | null) => 
-                      { handleSearchStrategyLevel(event, newInputValue) }}
-                    onChange={(event: any, newValue: string | null) => 
-                      handleSelectStrategyLevel(event, newValue) }
-                    value={ strategicInformationPerson.role }
-                    options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-                    sx={{ width: 300 }}
-                    renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
-                    />
-                </div>
-                {
-                  (showLeaderInput) &&                  
+          {/* Strategic information */}
+            {
+              /*
+                Verify if the user has privileges enoguh.
+
+                In the first case "action===0", if the user can add a member, then he can
+                choose the strategy level for the new member, we verified this privileges in previous steps (in the layout for this view)... Strategy level is considerated 
+                as strategic information, but it is necessary at the moment of add a new member.
+
+                For the second case "action===1", refers if the memeber has privileges to update
+                strategic information of a member that already exists. 
+              */
+              (action === 0 || (action === 1 && updateStrategycInformationToMember===true)) &&
+              <div className="mt-3">
+                <p className="text-md">Información estrategica</p>
+                <div className="flex flex-col">
+                  {/* Heirarchical level */}
                   <div className="flex mt-3 justify-center">
                     <Autocomplete
                       disablePortal
-                      id="input-leader"
+                      id="input-strategy"
                       onInputChange={(event: any, newInputValue: string | null) => 
-                        { handleSearchLeader(event, newInputValue) }}
-                      onChange={(event: any, newValue: string | null) => {
-                        handleSelectLeader(event, newValue)
-                      }}
-                      options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
-                      value={ strategicInformationPerson.first_name_leader }
+                        { handleSearchStrategyLevel(event, newInputValue) }}
+                      onChange={(event: any, newValue: string | null) => 
+                        handleSelectStrategyLevel(event, newValue) }
+                      value={ strategicInformationPerson.role }
+                      options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
                       sx={{ width: 300 }}
-                      renderInput={(params) => <TextField {...params} label="Lider" />}
+                      renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
                       />
                   </div>
-                }
-                {
-                  (showFollowerInput) && 
+                  {
+                    /*
+                      This if is to validate if the member has privileges to set strategic 
+                      information at the moment to add a new members.
+
+                      For the first part of the if "action===1", we just verified in the previous
+                      "if" if the user has the privileges, so we only verify the "scenario" 
+                      (update a member) 
+                    */
+                  (action === 1 || (addStrategycInformationToMember===true && action===0)) &&
                   <>
-                    <div className="flex mt-3 justify-center">
-                      <Autocomplete
-                        disablePortal
-                        id="input-follower"
-                        onInputChange={(event: any, newInputValue: string | null) => 
-                          handleSearchFollowers(event, newInputValue) }
-                        onChange={(event:any, newInputValue: string | null) => 
-                          handleSelectFollower(event,newInputValue)}
-                        options={ 
-                          filterSelectedFollowers(
-                            arrayFollower, 
-                            strategicInformationPerson.followers)
-                          .map(follower => 
-                            `${follower.first_name} ${follower.last_name}`)
-                        }
-                        sx={{ width: 300 }}
-                        value={searchFollower}
-                        renderInput={(params) => <TextField {...params} label="Seguidores" />}
-                        />
-                    </div>
+                    {/* Input leader */}
                     {
-                      strategicInformationPerson.followers !== undefined  &&
-                        strategicInformationPerson.followers[0] !== undefined &&
-                          <div className="my-2 overflow-y-auto max-h-32 flex justify-center outline outline-2">
-                            <div className="w-52 py-1 flex flex-wrap justify-center">
-                              {
-                                strategicInformationPerson.followers.map((follower) => 
-                                  <div key={follower.id_member} className="my-1">
-                                    <Chip 
-                                      label={`${follower.first_name} ${follower.last_name}`} 
-                                      onDelete={() => handleDeleteFollower(follower)}
-                                      />
-                                  </div>
-                                )
-                              }                          
-                            </div>
-                          </div>
+                      (showLeaderInput) &&                  
+                      <div className="flex mt-3 justify-center">
+                        <Autocomplete
+                          disablePortal
+                          id="input-leader"
+                          onInputChange={(event: any, newInputValue: string | null) => 
+                            { handleSearchLeader(event, newInputValue) }}
+                          onChange={(event: any, newValue: string | null) => {
+                            handleSelectLeader(event, newValue)
+                          }}
+                          options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
+                          value={ strategicInformationPerson.first_name_leader }
+                          sx={{ width: 300 }}
+                          renderInput={(params) => <TextField {...params} label="Lider" />}
+                          />
+                      </div>
                     }
-                  </>
-                }
-                {
-                  (showGeographicArea) &&
-                  <div className="flex mt-3 justify-center">
-                    <Autocomplete
-                      disablePortal
-                      id="input-geographic-area"
-                      onInputChange={(event: any, newInputValue: string | null) => 
-                        { handleSearchGeographicArea(event, newInputValue) }}
-                      onChange={(event: any, newValue: string | null) => {
-                        handleSelectGeographicArea(event, newValue)
-                      }}
-                      options={
-                        arrayGeographicArea.map(geographicArea => 
-                          `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}`)
-                      }
-                      value={
-                        strategicInformationPerson.geographic_area_name
-                      }
-                      sx={{ width: 300 }}
-                      renderInput={(params) => <TextField {...params} label="Area geografica" />}
-                      />
-                  </div>
-                }
+                    {/* Follower input */}
+                    {
+                      (showFollowerInput) && 
+                      <>
+                        <div className="flex mt-3 justify-center">
+                          <Autocomplete
+                            disablePortal
+                            id="input-follower"
+                            onInputChange={(event: any, newInputValue: string | null) => 
+                              handleSearchFollowers(event, newInputValue) }
+                            onChange={(event:any, newInputValue: string | null) => 
+                              handleSelectFollower(event,newInputValue)}
+                            options={ 
+                              filterSelectedFollowers(
+                                arrayFollower, 
+                                strategicInformationPerson.followers)
+                              .map(follower => 
+                                `${follower.first_name} ${follower.last_name}`)
+                            }
+                            sx={{ width: 300 }}
+                            value={searchFollower}
+                            renderInput={(params) => <TextField {...params} label="Seguidores" />}
+                            />
+                        </div>
+                        {
+                          strategicInformationPerson.followers !== undefined  &&
+                            strategicInformationPerson.followers[0] !== undefined &&
+                              <div className="my-2 overflow-y-auto max-h-32 flex justify-center outline outline-2">
+                                <div className="w-52 py-1 flex flex-wrap justify-center">
+                                  {
+                                    strategicInformationPerson.followers.map((follower) => 
+                                      <div key={follower.id_member} className="my-1">
+                                        <Chip 
+                                          label={`${follower.first_name} ${follower.last_name}`} 
+                                          onDelete={() => handleDeleteFollower(follower)}
+                                          />
+                                      </div>
+                                    )
+                                  }                          
+                                </div>
+                              </div>
+                        }
+                      </>
+                    }
+                    
+                    {/* Geographic area  */}
+                    {
+                      (showGeographicArea) &&
+                      <div className="flex mt-3 justify-center">
+                        <Autocomplete
+                          disablePortal
+                          id="input-geographic-area"
+                          onInputChange={(event: any, newInputValue: string | null) => 
+                            { handleSearchGeographicArea(event, newInputValue) }}
+                          onChange={(event: any, newValue: string | null) => {
+                            handleSelectGeographicArea(event, newValue)
+                          }}
+                          options={
+                            arrayGeographicArea.map(geographicArea => 
+                              `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}`)
+                          }
+                          value={
+                            strategicInformationPerson.geographic_area_name
+                          }
+                          sx={{ width: 300 }}
+                          renderInput={(params) => <TextField {...params} label="Area geografica" />}
+                          />
+                      </div>
+                    } 
+                  </>   
+                  }
+                </div>
               </div>
-            </div>
-          }
+            }    
+          
         </div>
         <div className="flex flex-row justify-center">
           <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          

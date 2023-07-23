@@ -139,7 +139,6 @@ const TablePersons = ({ action }:{ action:number }) => {
         url: `/members/search/${string_to_search}`,
         method: 'GET'
       })
-      console.log(response);
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
@@ -316,7 +315,6 @@ const TablePersons = ({ action }:{ action:number }) => {
         } else {
           const responseCollaborator:ICollaborator[] = 
             await searchCollaborator(personToSearch);
-            console.log(responseCollaborator)
           const arrayConverter:IStructure[] = []
 
           responseCollaborator.forEach((collaborator) => {
@@ -332,7 +330,6 @@ const TablePersons = ({ action }:{ action:number }) => {
               }
           })
           
-          console.log(arrayConverter)
           setPersonsFounded(arrayConverter);
         }
        else setPersonsFounded(personsToShow)
@@ -412,6 +409,11 @@ const TablePersons = ({ action }:{ action:number }) => {
           dataCollaborator.privileges = dataPrivilege;
         }
 
+        if(dataCollaborator.int_number === null) {
+          dataCollaborator.int_number = "";
+        }
+
+        dataCollaborator.password = "";
         setCollaboratorBasicInfoToUpdate(dataCollaborator)
         setShowForm(true)     
       }
@@ -435,9 +437,7 @@ const TablePersons = ({ action }:{ action:number }) => {
     <div className=""> 
       {
         (showForm===true) ?
-        
         (
-
           action === 0 ?
           (<FormPerson
             label="Actualizar miembro"
