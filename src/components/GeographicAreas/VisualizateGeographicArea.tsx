@@ -13,6 +13,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { IoAppsSharp } from "react-icons/io5";
 import Searcher from "../UIcomponents/Searcher";
+import Forbbiden from '../Authorization/Forbbiden';
 
 
 interface IStrategyShow extends IStrategy {
@@ -79,6 +80,11 @@ function findManagerGeographicArea(members:IStructure[], geographicArea:IGeograp
 }
 
 const VisualizateGeographicArea = () => {
+  //Privilege states
+  const [searchGeographicAreaPrivilege, setSearchGeographicAreaPrivilege] = useState<boolean>(false);
+  const [viewAllGeographicAreaPrivilege, setViewAllGeographicAreaPrivilege] = useState<boolean>(false);
+
+  //Operational states
   const [centerMap, setCenterMap] = useState<LatLng>({lat:20.64125680004875, lng: -105.22139813464167});
 
   const [members, setMembers] = useState<IStructure[]>([])
@@ -106,8 +112,20 @@ const VisualizateGeographicArea = () => {
   const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
-    getAllMembers()
-    getStrategy()
+    getAllMembers();
+    getStrategy();
+    
+    //Get search geographic area privilege
+    requester({url: '/privileges/user/[29]', method: "GET"})
+    .then(response => {
+      setSearchGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //Get view all geographic areas privilege
+    requester({url: '/privileges/user/[30]', method: "GET"})
+    .then(response => {
+      setViewAllGeographicAreaPrivilege(response.data.privilege);
+    });
   }, [])
 
 
@@ -187,7 +205,7 @@ const VisualizateGeographicArea = () => {
         if(response.data !== undefined) return response.data;
       } else {
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
+          alertType: EAlert.warning, 
           message: "Hubo un error al intentar el area geográfica, intente mas tarde"}})); 
       }
       return [];
@@ -209,7 +227,7 @@ const VisualizateGeographicArea = () => {
         if(response.data !== undefined) return response.data;
       } else {
         dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
+          alertType: EAlert.warning, 
           message: "Hubo un error al intentar buscar las areas geograficas, intente mas tarde"}})); 
       }
       return [];
@@ -365,75 +383,87 @@ const VisualizateGeographicArea = () => {
         </div>
       </div>
     </Dialog>
-    <div className="absolute flex-col w-full h-full justify-center">
-      <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
-        <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
-          <div className="mt-1 "></div>
-          <Searcher 
-            placeholder="Buscar por area geografica o administrador"
-            optionsToShow={searchGeographicAreas.map(element => {
-              const option = {
-                id: element.id_geographic_area !== undefined ? 
-                  element.id_geographic_area : 0,
-                data: `${element.geographic_area_name} | ${
-                  element.zone_type===null ? "No tiene tipo de zona" : element.zone_type
-                } - ${
-                  (element.first_name === null && element.last_name === null) ? "No tiene administrador" : `${element.first_name} ${element.last_name}`
-                }`
-              }
-              return option;
-            })}
-            onSelectOption={selectOptionMember}
-            onType={onSearchTypeGeographicArea}
-            />
-        </div>
-      </div>
-    </div>
-    <div className="absolute flex-col w-full h-full justify-center">
-      <Tooltip title="Visualizar todas las areas geográficas">
-        <button
-          onClick={() => handleVisualizateAllGeographicArea()} 
-          className={`z-10 absolute p-5 rounded-full hover:bg-orange-800 bottom-0 left-0 mb-28 ml-3 ${showAllGeographicAreas ? "bg-orange-800" : "bg-orange-600"}`} >
-          <div className="text-white">
-            <IoAppsSharp />
+    { searchGeographicAreaPrivilege === true || viewAllGeographicAreaPrivilege === true ? 
+      <>
+        { searchGeographicAreaPrivilege === true &&
+          <div className="absolute flex-col w-full h-full justify-center">
+            <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
+              <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
+                <div className="mt-1 "></div>
+                  <Searcher 
+                    placeholder="Buscar por area geografica o administrador"
+                    optionsToShow={searchGeographicAreas.map(element => {
+                      const option = {
+                        id: element.id_geographic_area !== undefined ? 
+                          element.id_geographic_area : 0,
+                        data: `${element.geographic_area_name} | ${
+                          element.zone_type===null ? "No tiene tipo de zona" : element.zone_type
+                        } - ${
+                          (element.first_name === null && element.last_name === null) ? "No tiene administrador" : `${element.first_name} ${element.last_name}`
+                        }`
+                      }
+                      return option;
+                    })}
+                    onSelectOption={selectOptionMember}
+                    onType={onSearchTypeGeographicArea}
+                    />
+              </div>
+            </div>
           </div>
-        </button>
-      </Tooltip>
-    </div>
-      <div className="absolute flex-col w-full h-full justify-center">
-        <Tooltip title="Crear nueva area">
-          <button
-            onClick={() => handleShowTypeArea()} 
-            className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-12 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
-            <div className="text-white">
-              <FiEye />
-            </div>  
-          </button>
-        </Tooltip>
-      </div>
-      <GoogleMap 
-        zoom={14}
-        center={centerMap} 
-        mapContainerClassName="map-container"
-        >
-        {
-          polygons[0]!==undefined &&
-          polygons.map((polygon) => {
-            return <PolygonF
-              key={polygon.id_geographic_area}
-              visible={polygonVisible(arrayStrategyLevel, polygon)}
-              // onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
-              onDblClick={(e: any) => {
-                handleOpenShowAnalysisGeographicArea(e, polygon)
-              }}
-              path={polygon.coordinates}
-              options={getPolygonColor(polygonColor, polygon.id_strategy)}
-
-            ></PolygonF>
-          }
-          )
         }
-    </GoogleMap>
+        { viewAllGeographicAreaPrivilege === true &&
+        <div className="absolute flex-col w-full h-full justify-center">
+          <Tooltip title="Visualizar todas las areas geográficas">
+            <button
+              onClick={() => handleVisualizateAllGeographicArea()} 
+              className={`z-10 absolute p-5 rounded-full hover:bg-orange-800 bottom-0 left-0 mb-28 ml-3 ${showAllGeographicAreas ? "bg-orange-800" : "bg-orange-600"}`} >
+              <div className="text-white">
+                <IoAppsSharp />
+              </div>
+            </button>
+          </Tooltip>
+        </div>
+        }
+          <div className="absolute flex-col w-full h-full justify-center">
+            <Tooltip title="Crear nueva area">
+              <button
+                onClick={() => handleShowTypeArea()} 
+                className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-12 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
+                <div className="text-white">
+                  <FiEye />
+                </div>  
+              </button>
+            </Tooltip>
+          </div>
+        <GoogleMap 
+          zoom={14}
+          center={centerMap} 
+          mapContainerClassName="map-container"
+        >
+          {
+            polygons[0]!==undefined &&
+            polygons.map((polygon) => {
+              return <PolygonF
+                key={polygon.id_geographic_area}
+                visible={polygonVisible(arrayStrategyLevel, polygon)}
+                // onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
+                onDblClick={(e: any) => {
+                  handleOpenShowAnalysisGeographicArea(e, polygon)
+                }}
+                path={polygon.coordinates}
+                options={getPolygonColor(polygonColor, polygon.id_strategy)}
+
+              ></PolygonF>
+            }
+            )
+          }
+        </GoogleMap>
+      </> : 
+      <div className='h-full flex flex-row justify-center items-center'>
+        <Forbbiden />
+      </div>
+    }
+
   </>)
 }
 

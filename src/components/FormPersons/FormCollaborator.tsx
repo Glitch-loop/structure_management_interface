@@ -818,7 +818,9 @@ const FormCollaborator = (
                         privilege.id_privilege === 25 ||
                         privilege.id_privilege === 26 ||
                         privilege.id_privilege === 27 ||
-                        privilege.id_privilege === 28
+                        privilege.id_privilege === 28 ||
+                        privilege.id_privilege === 29 ||
+                        privilege.id_privilege === 30 
                         ) return privilege
                     })
                     .map(privilege => 
