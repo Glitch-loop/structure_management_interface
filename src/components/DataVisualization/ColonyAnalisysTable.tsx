@@ -20,9 +20,10 @@ import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from '../UIcomponents/Button';
 import moment from 'moment';
+import Forbbiden from '../Authorization/Forbbiden';
 
 const voidMember:IMember = {
   id_member: 0,
@@ -118,6 +119,12 @@ const getAmountGender = (gender:number, arrayMembers:IMember[]):number =>{
 }
 
 const ColonyAnalisysTable = () => {
+  //Privileges states
+  const [membersByColonyPrivilege, setMembersByColonyPrivilege] = useState<boolean>(false);
+  const [membersByColonyAndLeaderPrivilege, setMembersByColonyAndLeaderPrivilege] = useState<boolean>(false);
+
+
+  //Operational states
   const [searchMembers, setSearchMembers] = useState<IStructure[]>([]);
   const [storeResponseSearchMember, setStoreResponseSearchMember] = useState<IStructure[]>([]);
   const [searchColonies, setSearchColonies] = useState<IColony[]>([]);
@@ -132,6 +139,20 @@ const ColonyAnalisysTable = () => {
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
   const userData = useSelector((state: RootState) => state.userReducer);
+
+  useEffect(() => {
+    // Get privilege to search by colony
+    requester({url: '/privileges/user/[27]', method: "GET"})
+    .then(response => {
+      setMembersByColonyPrivilege(response.data.privilege);
+    });
+    // Get privilege to search by colony and leader
+    requester({url: '/privileges/user/[28]', method: "GET"})
+    .then(response => {
+      setMembersByColonyAndLeaderPrivilege(response.data.privilege);
+    });
+    
+  })
 
   //Calls to API
   const searchMember = async(string_to_search: string):Promise<IStructure[]> => {
@@ -244,7 +265,6 @@ const ColonyAnalisysTable = () => {
       setSearchMembers([]);
     } else {
       if(storeResponseSearchMember[0] !== undefined) {
-        console.log("FILTRAR")
         const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
       
         const personsToShow:IStructure[] = storeResponseSearchMember.filter(person => {
@@ -279,13 +299,11 @@ const ColonyAnalisysTable = () => {
   }
 
   const onSearchTypeColony = async(stringToSearch: string) => {
-    console.log("On search colony: ", stringToSearch)
     if(stringToSearch === "") {
       setStoreResponseSearchColonies([]);
       setSearchColonies([]);
     } else {
       if(storeResponseSearchColonies[0] !== undefined) {
-        console.log("FILTRAR")
         const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
       
         const coloniesToShow:IColony[] = storeResponseSearchColonies.filter(colony => {
@@ -297,7 +315,6 @@ const ColonyAnalisysTable = () => {
         if(coloniesToShow !== undefined) setSearchColonies(coloniesToShow);
         else setSearchColonies([]);  
       } else {
-        console.log("search")
         const responseData:IColony[] = await searchColony(stringToSearch);
         
         //Filter Colonies already selected
@@ -344,20 +361,14 @@ const ColonyAnalisysTable = () => {
         That means that the user wants to search the members that a leader has
         in certains colonies
       */
-     console.log("MEMBERS AND COLONIES")
       const { id_member } = leader;
       data = await searchMemberByLeaderAndColony(id_member, arrIdColonies);
-      console.log(data)
-      console.log(arrIdColonies)
-      console.log(coloniesSelected)
 
-      console.log("DATA: ", data)
       const leaderData:IStructure|undefined = storeResponseSearchMember
         .find(member => member.id_member === id_member);
       setLeaderConsulted(leader);
     } else if(coloniesSelected[0] !== undefined) {
       data = await searchMemberByColony(arrIdColonies);
-      console.log(data)
     }
 
     //Handle the case of the colonies that doesn't have members
@@ -393,191 +404,197 @@ const ColonyAnalisysTable = () => {
   }
 
   return (
-    <div>
-      <div className='flex flex-row'>
-        <Searcher 
-          placeholder={"Buscar por nombre, numero ó INE"}
-          optionsToShow={searchMembers.map(element => {
-            const option = {
-              id: element.id_member,
-              data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
+       (membersByColonyPrivilege === true || membersByColonyAndLeaderPrivilege === true) ?
+        <>
+          <div className='flex flex-row'>
+            { membersByColonyAndLeaderPrivilege === true &&
+              <Searcher 
+                placeholder={"Buscar por nombre, numero ó INE"}
+                optionsToShow={searchMembers.map(element => {
+                  const option = {
+                    id: element.id_member,
+                    data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
+                  }
+                  return option;
+                })}
+                onSelectOption={selectOptionMember}
+                onType={onSearchTypeMember}
+              />
             }
-            return option;
-          })}
-          onSelectOption={selectOptionMember}
-          onType={onSearchTypeMember}
-        />
-        <div className='ml-2'>
-          <Searcher 
-            placeholder={"Buscar colonia"}
-            optionsToShow={searchColonies.map(element => {
-              const option = {
-                id: element.id_colony,
-                data: `${element.name_colony} - C.P: ${element.postal_code}`
-              }
-              return option;
-            })}
-            onSelectOption={selectOptionColony}
-            onType={onSearchTypeColony}
-          />
-        </div>
-      </div>
-      {
-        leader !== undefined &&
-        <p className='ml-3'>Lider a buscar: 
-          <span className='ml-2 italic'>
-            {leader.first_name} {leader.last_name}
-          </span>
-        </p>
-      }
-      {coloniesSelected.length > 0 &&
-        <div className='flex flex-col mt-2 ml-3'>
-          <p>Colonias seleccionadas</p>
-          <div className='flex flex-row flex-wrap ml-2'>
-            {
-              coloniesSelected.map(colonySelected => {
-                return <div
-                    key={colonySelected.id_colony}
-                    className='ml-1 mt-1'>
-                  <Chip 
-                    label={`${colonySelected.name_colony} - ${colonySelected.postal_code}`}
-                    onDelete={() => unSelectOptionColony(colonySelected)}
-                  />
-                </div>
-              })
+            { (membersByColonyPrivilege === true || membersByColonyAndLeaderPrivilege === true) &&
+              <div className='ml-2'>
+                <Searcher 
+                  placeholder={"Buscar colonia"}
+                  optionsToShow={searchColonies.map(element => {
+                    const option = {
+                      id: element.id_colony,
+                      data: `${element.name_colony} - C.P: ${element.postal_code}`
+                    }
+                    return option;
+                  })}
+                  onSelectOption={selectOptionColony}
+                  onType={onSearchTypeColony}
+                />
+              </div>
             }
           </div>
-        </div>
-      }
-      <div>
-        <Button 
-          label='Buscar'
-          onClick={handleSearch}
-          />
-        { (coloniesSelected[0] !== undefined 
-          || leader !== undefined
-          || membersByColonyArray[0] !== undefined
-          || leaderConsulted !== undefined) &&
-          <Button 
-            label='Borrar busqueda'
-            colorButton={1}
-            onClick={handleDeleteSearch}
-          />
-        } 
-      </div>
-      {leaderConsulted !== undefined &&        
-        <p className='ml-3 my-2'>
-          Nombre del lider: 
-          <span className='ml-3 italic font-bold'>
-            {leaderConsulted.first_name} {leaderConsulted.last_name}  
-          </span>
-        </p>
-      }
-      <div className='bg-black p-0.5 my-2'></div>
-      <div className='overflow-scroll max-h-96'>
-        { membersByColonyArray[0] !== undefined ?
-          (
-            <div className='m-3'>
-              {membersByColonyArray.map(colony => {              
-                return <div className='my-1' key={colony[0].id_colony}>
-                  <Accordion >
-                    <AccordionSummary
-                      expandIcon={
-                        <div className='text-2xl'>
-                          <IoChevronDown/>
-                        </div>
-                    }
-                      aria-controls="panel1a-content"
-                      id="panel1a-header"
-                    >
-                    <div className='flex flex-row'>
-                      <div className='flex flex-col'>
-                        <Typography>{colony[0].colony_name} - C.P: {colony[0].postal_code}</Typography>
-                        {(colony.length - 1 > 0) &&
-                          <Typography>No. miembros: {colony.length}</Typography>
+          {
+            leader !== undefined &&
+            <p className='ml-3'>Lider a buscar: 
+              <span className='ml-2 italic'>
+                {leader.first_name} {leader.last_name}
+              </span>
+            </p>
+          }
+          {coloniesSelected.length > 0 &&
+            <div className='flex flex-col mt-2 ml-3'>
+              <p>Colonias seleccionadas</p>
+              <div className='flex flex-row flex-wrap ml-2'>
+                {
+                  coloniesSelected.map(colonySelected => {
+                    return <div
+                        key={colonySelected.id_colony}
+                        className='ml-1 mt-1'>
+                      <Chip 
+                        label={`${colonySelected.name_colony} - ${colonySelected.postal_code}`}
+                        onDelete={() => unSelectOptionColony(colonySelected)}
+                      />
+                    </div>
+                  })
+                }
+              </div>
+            </div>
+          }
+          <div>
+            <Button 
+              label='Buscar'
+              onClick={handleSearch}
+              />
+            { (coloniesSelected[0] !== undefined 
+              || leader !== undefined
+              || membersByColonyArray[0] !== undefined
+              || leaderConsulted !== undefined) &&
+              <Button 
+                label='Borrar busqueda'
+                colorButton={1}
+                onClick={handleDeleteSearch}
+              />
+            } 
+          </div>
+          {leaderConsulted !== undefined &&        
+            <p className='ml-3 my-2'>
+              Nombre del lider: 
+              <span className='ml-3 italic font-bold'>
+                {leaderConsulted.first_name} {leaderConsulted.last_name}  
+              </span>
+            </p>
+          }
+          <div className='bg-black p-0.5 my-2'></div>
+          <div className='overflow-scroll max-h-96'>
+            { membersByColonyArray[0] !== undefined ?
+              (
+                <div className='m-3'>
+                  {membersByColonyArray.map(colony => {              
+                    return <div className='my-1' key={colony[0].id_colony}>
+                      <Accordion >
+                        <AccordionSummary
+                          expandIcon={
+                            <div className='text-2xl'>
+                              <IoChevronDown/>
+                            </div>
                         }
-                      </div>
-                      {(colony.length - 1 > 0) ? 
-                        <>
-                          <div className='ml-5 flex flex-col'>
-                          <Typography>Edad promedio: {averageYear(colony)}</Typography>
-                            {colony.length > 1 &&
-                              <Typography>
-                                Rango de edad: { getYoungestYear(colony) } - {getOldestYear(colony)}
-                              </Typography>  
+                          aria-controls="panel1a-content"
+                          id="panel1a-header"
+                        >
+                        <div className='flex flex-row'>
+                          <div className='flex flex-col'>
+                            <Typography>{colony[0].colony_name} - C.P: {colony[0].postal_code}</Typography>
+                            {(colony.length - 1 > 0) &&
+                              <Typography>No. miembros: {colony.length}</Typography>
                             }
                           </div>
-                          <div className='ml-5 flex flex-col'>
-                          <Typography>
-                            Mujeres: {getAmountGender(1, colony)}
-                          </Typography>
-                          <Typography>
-                            Hombres: {getAmountGender(0, colony)}
-                          </Typography>  
-                          </div>
-                        </> :
-                        <>
-                          <div className='ml-5 flex flex-col text-lg font-bold items-center text-center'>
-                            No hay miembros en esta colonia
-                          </div>
-                        </>
-                      }
+                          {(colony.length - 1 > 0) ? 
+                            <>
+                              <div className='ml-5 flex flex-col'>
+                              <Typography>Edad promedio: {averageYear(colony)}</Typography>
+                                {colony.length > 1 &&
+                                  <Typography>
+                                    Rango de edad: { getYoungestYear(colony) } - {getOldestYear(colony)}
+                                  </Typography>  
+                                }
+                              </div>
+                              <div className='ml-5 flex flex-col'>
+                              <Typography>
+                                Mujeres: {getAmountGender(1, colony)}
+                              </Typography>
+                              <Typography>
+                                Hombres: {getAmountGender(0, colony)}
+                              </Typography>  
+                              </div>
+                            </> :
+                            <>
+                              <div className='ml-5 flex flex-col text-lg font-bold items-center text-center'>
+                                No hay miembros en esta colonia
+                              </div>
+                            </>
+                          }
+                        </div>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Paper sx={{overflow: 'hidden'}}>
+                            <TableContainer sx={{ maxHeight: 440 }}>
+                              <Table>
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell align="center">ID</TableCell>
+                                    <TableCell align="center">Nombre</TableCell>
+                                    <TableCell align="center">Telefono</TableCell> 
+                                    <TableCell align="center">INE</TableCell>
+                                    <TableCell align="center">Dirección</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {
+                                    colony.map(person => {
+                                      return (
+                                        <TableRow key={person.id_member}>
+                                          <TableCell align="center">
+                                            {person.id_member}
+                                          </TableCell>
+                                          <TableCell align="center">
+                                            { person.first_name } { person.last_name }
+                                          </TableCell>
+                                          <TableCell align="center">
+                                            { person.cell_phone_number }
+                                          </TableCell>
+                                          <TableCell align="center">
+                                            { person.ine }
+                                          </TableCell>
+                                          <TableCell align="center">
+                                            {person.street} #{person.ext_number} {person.int_number !== null && `Int: ${person.int_number}`} ,{person.colony_name}
+                                          </TableCell>
+                                        </TableRow>
+                                      )
+                                    })
+                                  }
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </Paper>
+                        </AccordionDetails>
+                      </Accordion>  
                     </div>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Paper sx={{overflow: 'hidden'}}>
-                        <TableContainer sx={{ maxHeight: 440 }}>
-                          <Table>
-                            <TableHead>
-                              <TableRow>
-                                <TableCell align="center">ID</TableCell>
-                                <TableCell align="center">Nombre</TableCell>
-                                <TableCell align="center">Telefono</TableCell> 
-                                <TableCell align="center">INE</TableCell>
-                                <TableCell align="center">Dirección</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {
-                                colony.map(person => {
-                                  return (
-                                    <TableRow key={person.id_member}>
-                                      <TableCell align="center">
-                                        {person.id_member}
-                                      </TableCell>
-                                      <TableCell align="center">
-                                        { person.first_name } { person.last_name }
-                                      </TableCell>
-                                      <TableCell align="center">
-                                        { person.cell_phone_number }
-                                      </TableCell>
-                                      <TableCell align="center">
-                                        { person.ine }
-                                      </TableCell>
-                                      <TableCell align="center">
-                                        {person.street} #{person.ext_number} {person.int_number !== null && `Int: ${person.int_number}`} ,{person.colony_name}
-                                      </TableCell>
-                                    </TableRow>
-                                  )
-                                })
-                              }
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </Paper>
-                    </AccordionDetails>
-                  </Accordion>  
+                      
+                    
+                  })}
                 </div>
-                  
-                
-              })}
-            </div>
-          ) :
-          (leaderConsulted !== undefined &&
-            <p className='font-bold m-3 text-lg'>No tiene seguidores</p>)
-        }
-      </div>
-    </div>
+              ) :
+              (leaderConsulted !== undefined &&
+                <p className='font-bold m-3 text-lg'>No tiene seguidores</p>)
+            }
+          </div>  
+        </>:
+        <Forbbiden />
   )
 }
 

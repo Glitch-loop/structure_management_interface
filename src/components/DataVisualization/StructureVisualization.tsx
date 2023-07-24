@@ -12,6 +12,7 @@ import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Tooltip } from "@mui/material";
 import { IoAppsSharp } from "react-icons/io5";
+import Forbbiden from "../Authorization/Forbbiden";
 
 interface IColor {
   target: number;
@@ -111,11 +112,15 @@ const generateColors = (members: IStructure[]):IColor[] => {
 }
 
 const StructureVisualization = () => {
+  //Privileges state
+  const [viewAllStructurePrivilege, setViewAllStructurePrivilege] = useState<boolean>(false);
+  const [searchIndividualStruaturePrivilege, setSearchIndividualStruaturePrivilege] = useState<boolean>(false);
   /*
     We can graph a "nodes graph" just using Node and Edges interfaces
     but use "DataSet" makes able to us to establish options for
     enhance the behaviour of our nodes. 
   */
+  //Operational states
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [dataSetNodes, setDataSetNodes] = useState<any>(undefined);
@@ -131,7 +136,16 @@ const StructureVisualization = () => {
   const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
-    // getStructure()
+    //Get search individual structure privilege
+    requester({url: '/privileges/user/[24]', method: "GET"})
+    .then(response => {
+      setSearchIndividualStruaturePrivilege(response.data.privilege);
+    });
+    //Get view all structure privilege
+    requester({url: '/privileges/user/[25]', method: "GET"})
+    .then(response => {
+      setViewAllStructurePrivilege(response.data.privilege);
+    });
   } ,[])
 
   //Calls to API
@@ -183,136 +197,141 @@ const StructureVisualization = () => {
 
 
   //Handle on select member
-    //Handlers
-    const setDataInNode = (data:IStructure[]):void => {
-      const members:IStructure[] = getHandlerCardinalityLevelNull(data);
-      const nodesColor:IColor[] = generateColors(members);
+  //Handlers
+  const setDataInNode = (data:IStructure[]):void => {
+    const members:IStructure[] = getHandlerCardinalityLevelNull(data);
+    const nodesColor:IColor[] = generateColors(members);
 
-      const currentNodes: Node[] = [];
-      const currentEdges: Edge[] = [];
-      console.log(data)
-      members.forEach(member => {
-        //Find the color of the node according to their heriarchical level
-        const index:number = nodesColor.findIndex(nodeColor => nodeColor.target === member.cardinality_level);
+    const currentNodes: Node[] = [];
+    const currentEdges: Edge[] = [];
+    
+    members.forEach(member => {
+      //Find the color of the node according to their heriarchical level
+      const index:number = nodesColor.findIndex(nodeColor => nodeColor.target === member.cardinality_level);
 
-        const color = `rgb(${nodesColor[index].spectrum1}, ${nodesColor[index].spectrum2}, ${nodesColor[index].spectrum2}, ${nodesColor[index].opactity})`;
-        const border = `rgb(${nodesColor[index].spectrum1}, ${nodesColor[index].spectrum2}, ${nodesColor[index].spectrum2}, ${nodesColor[index].opactity+0.5})`;
+      const color = `rgb(${nodesColor[index].spectrum1}, ${nodesColor[index].spectrum2}, ${nodesColor[index].spectrum2}, ${nodesColor[index].opactity})`;
+      const border = `rgb(${nodesColor[index].spectrum1}, ${nodesColor[index].spectrum2}, ${nodesColor[index].spectrum2}, ${nodesColor[index].opactity+0.5})`;
 
-        //Set the nodes
-        currentNodes.push({
-          id: member.id_member, 
-          label: `${member.first_name} ${member.last_name} \n${
-            member.role===null ? "Sin nivel estrategico":member.role
-          }`,
-          level: member.cardinality_level,
-          color: {
-            background: color,
-            border: "black"
-          },
-          borderWidth: 1
-        })
-
-        //Set the edges
-        if( member.id_leader !== undefined &&  member.id_leader !== null) {
-          //This if is to avoid errors in case that the member doesn't have a leader
-          currentEdges.push({ 
-            from: member.id_member, 
-            to: member.id_leader,
-            color: 'black'
-          })
-        }
+      //Set the nodes
+      currentNodes.push({
+        id: member.id_member, 
+        label: `${member.first_name} ${member.last_name} \n${
+          member.role===null ? "Sin nivel estrategico":member.role
+        }`,
+        level: member.cardinality_level,
+        color: {
+          background: color,
+          border: "black"
+        },
+        borderWidth: 1
       })
 
-      //Set the node to display
-      setNodes(currentNodes)
-      setEdges(currentEdges)
+      //Set the edges
+      if( member.id_leader !== undefined &&  member.id_leader !== null) {
+        //This if is to avoid errors in case that the member doesn't have a leader
+        currentEdges.push({ 
+          from: member.id_member, 
+          to: member.id_leader,
+          color: 'black'
+        })
+      }
+    })
 
-      //Create DataSet
-      const dataSetCurrentNodes = new DataSet(currentNodes);
-      const dataSetCurrentEdges = new DataSet(currentEdges);
-    
-      setDataSetNodes(dataSetCurrentNodes);
-      setDataSetEdges(dataSetCurrentEdges);
-    
-    }
+    //Set the node to display
+    setNodes(currentNodes)
+    setEdges(currentEdges)
 
-    const onSearchTypeMember = async(stringToSearch: string) => {
-      if(stringToSearch === "") {
-        setStoreResponseSearchMember([]);
-        setSearchMembers([]);
-      } else {
-        if(storeResponseSearchMember[0] !== undefined) {
-          const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
+    //Create DataSet
+    const dataSetCurrentNodes = new DataSet(currentNodes);
+    const dataSetCurrentEdges = new DataSet(currentEdges);
+  
+    setDataSetNodes(dataSetCurrentNodes);
+    setDataSetEdges(dataSetCurrentEdges);
+  
+  }
+
+  const onSearchTypeMember = async(stringToSearch: string) => {
+    if(stringToSearch === "") {
+      setStoreResponseSearchMember([]);
+      setSearchMembers([]);
+    } else {
+      if(storeResponseSearchMember[0] !== undefined) {
+        const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
+      
+        const personsToShow:IStructure[] = storeResponseSearchMember.filter(person => {
+            const name = `${person.first_name} ${person.last_name}`;
+            const cell_phone_number = `${person.cell_phone_number}`;
+            const ine = `${person.ine}`;
+            if(
+                re.test(name.toLocaleLowerCase()) === true ||
+                re.test(cell_phone_number) === true ||
+                re.test(ine)
+              ) 
+              return person;
+          })
         
-          const personsToShow:IStructure[] = storeResponseSearchMember.filter(person => {
-              const name = `${person.first_name} ${person.last_name}`;
-              const cell_phone_number = `${person.cell_phone_number}`;
-              const ine = `${person.ine}`;
-              if(
-                  re.test(name.toLocaleLowerCase()) === true ||
-                  re.test(cell_phone_number) === true ||
-                  re.test(ine)
-                ) 
-                return person;
-            })
-          
-          if(personsToShow !== undefined) setSearchMembers(personsToShow);
-          else setSearchMembers([]);  
-        } else {
-          const responseData:IStructure[] = await searchMember(stringToSearch);
-          setStoreResponseSearchMember(responseData);
-          setSearchMembers(responseData);
-        }
+        if(personsToShow !== undefined) setSearchMembers(personsToShow);
+        else setSearchMembers([]);  
+      } else {
+        const responseData:IStructure[] = await searchMember(stringToSearch);
+        setStoreResponseSearchMember(responseData);
+        setSearchMembers(responseData);
       }
     }
-  
-    const selectOptionMember = async (idLeader: number) => {
-      setShowAllTheStructure(false);
-      const findDataLeader:undefined|IStructure = storeResponseSearchMember
-        .find(member => member.id_member === idLeader);
-      
-      if(findDataLeader !== undefined)
-        await getMemberStructure(findDataLeader?.id_member);
+  }
+
+  const selectOptionMember = async (idLeader: number) => {
+    setShowAllTheStructure(false);
+    const findDataLeader:undefined|IStructure = storeResponseSearchMember
+      .find(member => member.id_member === idLeader);
+    
+    if(findDataLeader !== undefined)
+      await getMemberStructure(findDataLeader?.id_member);
 
 
-      setSearchMembers([]);
-      setStoreResponseSearchMember([]);
-    }
+    setSearchMembers([]);
+    setStoreResponseSearchMember([]);
+  }
 
-    const handleShowAllStructure = async():Promise<void> => {
-      setShowAllTheStructure(true)
-      await getStructure();
-    }
+  const handleShowAllStructure = async():Promise<void> => {
+    setShowAllTheStructure(true)
+    await getStructure();
+  }
 
   return(
+    (viewAllStructurePrivilege === true || searchIndividualStruaturePrivilege === true) ?
     <>
-      <div className="flex items-center justify-center">
-        <div className="p-2 rounded-lg bg-slate-200 ">
-          <Searcher 
-            placeholder={"Buscar por nombre, numero ó INE"}
-            optionsToShow={searchMembers.map(element => {
-              const option = {
-                id: element.id_member,
-                data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
-              }
-              return option;
-            })}
-            onSelectOption={selectOptionMember}
-            onType={onSearchTypeMember}
-          />
+      { searchIndividualStruaturePrivilege === true && 
+        <div className="flex items-center justify-center">
+          <div className="p-2 rounded-lg bg-slate-200 ">
+            <Searcher 
+              placeholder={"Buscar por nombre, numero ó INE"}
+              optionsToShow={searchMembers.map(element => {
+                const option = {
+                  id: element.id_member,
+                  data: `${element.first_name} ${element.last_name} / ${element.cell_phone_number} / ${element.ine}`
+                }
+                return option;
+              })}
+              onSelectOption={selectOptionMember}
+              onType={onSearchTypeMember}
+            />
+          </div>
         </div>
-      </div>
-      <div className="absolute flex-col w-full h-full justify-center">
-        <Tooltip title="Crear nueva area">
-          <button
-            onClick={ () => handleShowAllStructure() } 
-            className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showAllTheStructure ? "bg-lime-800" : "bg-lime-600"}`} >
-            <div className="text-white">
-              <IoAppsSharp />
-            </div>
-          </button>
-        </Tooltip>
-      </div>
+      }
+      { viewAllStructurePrivilege === true &&
+        <div className="absolute flex-col w-full h-full justify-center">
+          <Tooltip title="Crear nueva area">
+            <button
+              onClick={ () => handleShowAllStructure() } 
+              className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showAllTheStructure ? "bg-lime-800" : "bg-lime-600"}`} >
+              <div className="text-white">
+                <IoAppsSharp />
+              </div>
+            </button>
+          </Tooltip>
+        </div>
+      }
       {(nodes[0]!==undefined && edges[0]!==undefined) && 
         <Graphos 
           nodes={nodes}
@@ -322,7 +341,11 @@ const StructureVisualization = () => {
           options={options}
         />
       }
-    </>
+    </> :
+    <div className="h-full flex flex-row justify-center items-center">
+      <Forbbiden />
+    </div>
+    
   )
 }
 
