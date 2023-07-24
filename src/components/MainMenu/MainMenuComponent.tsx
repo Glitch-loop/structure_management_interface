@@ -29,6 +29,12 @@ import { IStrategy } from "../../interfaces/interfaces";
 ChartJS.register(ArcElement, TooltipChart, Legend); // Register for Pie Chart
 ChartJS.register( CategoryScale, LinearScale, BarElement, Title, TooltipChart, Legend); // Register for Bar chart
 
+const errorResponse:IRequest<any> = {
+  code: 500,
+  data: undefined,
+  message: "error"
+}
+
 const emptyMember: IMember = {
   id_member: 0,
   first_name: "",
@@ -91,6 +97,14 @@ interface IMemberRankingStructure extends IMember {
 
 const MainMenuComponent = () => {
 
+  //Privileges states
+  const [updateMemberPrivilege, setUpdatePrivilege] = useState<boolean>(false);
+  const [updateGeographicAreaPrivilege, setUpdateGeographicAreaPrivilege] = useState<boolean>(false);
+  const [allStructureCountPrivilege, setAllStructureCountPrivilege] = useState<boolean>(false);
+  const [histogramAgesStructurePrivilege, setHistogramAgesStructurePrivilege] = useState<boolean>(false);
+  const [rankingColoniesPrivilege, setRankingColoniesPrivilege] = useState<boolean>(false);
+  const [rankingLeadersPrivilege, setRankingLeadersPrivilege] = useState<boolean>(false);
+
   const [incompleteMembersProfile, setIncompleteMembersProfile] = useState<IMemberProfileIncomplete[]>([]);
   const [incompleteGeographicAreasInformation, setIncompleteGeographicAreasInformation] = useState<IGeographicAreaManage[]>([]);
 
@@ -115,20 +129,39 @@ const MainMenuComponent = () => {
   const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
+    // Get privilege colony ranking
+    requester({url: '/privileges/user/[22]', method: "GET"})
+    .then(response => {
+      setRankingColoniesPrivilege(response.data.privilege);
+    });
+    // Get privilege leader ranking
+    requester({url: '/privileges/user/[23]', method: "GET"})
+    .then(response => {
+      setRankingLeadersPrivilege(response.data.privilege);
+    });
     getMembersWithoutCompleteInformation()
       .then(response => {
-        setIncompleteMembersProfile(response);
+        let {data, code} = response;
+        if(code !== 403) setUpdatePrivilege(true);
+        if(data !== undefined) setIncompleteMembersProfile(data);    
       });
     getGeographicAreasWithoutCompleteInformation()
       .then(response => {
-        setIncompleteGeographicAreasInformation(response);
+        const { data, code } = response;
+        if(code !== 403) setUpdateGeographicAreaPrivilege(true);
+        if(data !== undefined) setIncompleteGeographicAreasInformation(data);
       });
     getCountAllStructure()
       .then(response => {
-        setTotalAmountDataChart([response.amount_male, response.amount_female])
+        const {code, data} = response;
+        if(code !== 403) setAllStructureCountPrivilege(true);
+        setTotalAmountDataChart([data.amount_male, data.amount_female]);
       });
     getAgeHistogram()
-      .then(response => {
+      .then(responseDB => {
+        const response = responseDB.data;
+        const {code} = responseDB;
+        if(code !== 403) setHistogramAgesStructurePrivilege(true);
         if(response !== undefined) {
           setExtraDataHistogram({
             "youngestAge": response.youngest_age,
@@ -176,7 +209,9 @@ const MainMenuComponent = () => {
   }, [])
 
   //Request to API
-  const getMembersWithoutCompleteInformation = async():Promise<IMemberProfileIncomplete[]> => {
+  const getMembersWithoutCompleteInformation = async():Promise<IRequest<IMemberProfileIncomplete[]>> => {
+    errorResponse.data = [];
+
     try {
       const response:IRequest<IMemberProfileIncomplete[]> = await requester({
         url: `/members/profile/incomplete`,
@@ -185,22 +220,29 @@ const MainMenuComponent = () => {
 
       if(response.code === 200)
         if(response.data !== undefined)
-          return response.data;
+          return response;
 
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.error, 
-        message: "Hubo un error al intentar los miembros con información completa"}}));
-      return [];
+      if(response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Hubo un error al intentar obtener los miembros con información completa"}}));
+      }
+
+      response.data = [];
+      return response;
         
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectar con el servidor"}}));
-      return [];
+      
+      return errorResponse;
     }
   }
-  const getGeographicAreasWithoutCompleteInformation = async():Promise<IGeographicAreaManage[]> => {
+
+  const getGeographicAreasWithoutCompleteInformation = async():Promise<IRequest<IGeographicAreaManage[]>> => {
     try {
+      errorResponse.data = [];
       const response:IRequest<IGeographicAreaManage[]> = await requester({
         url: `/geographicAreas/information/incomplete`,
         method: 'GET'
@@ -208,18 +250,21 @@ const MainMenuComponent = () => {
 
       if(response.code === 200)
         if(response.data !== undefined)
-          return response.data;
+          return response;
 
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.error, 
-        message: "Hubo un error al intentar obtener las areas geográficas con informacion incompleta"}}));
-      return [];
+      if(response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar obtener las areas geográficas con informacion incompleta"}}));
+      }
+      response.data = [];
+      return response;
         
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectar con el servidor"}}));
-      return [];
+      return errorResponse;
     }
   }
 
@@ -292,34 +337,41 @@ const MainMenuComponent = () => {
     }
   }
 
-  const getCountAllStructure = async():Promise<any> => {
+  const getCountAllStructure = async():Promise<IRequest<any>> => {
     const defaultData = {
       "amount_female": 0,
       "amount_male": 0,
       "total": 0
     }
+    errorResponse.data = defaultData;
+
     try {
       const response:IRequest<any> = await requester({
         url: `/data/structure/total/`
       })
       if(response.code === 200)
         if(response.data !== undefined)
-          return response.data
+          return response
 
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.warning, 
-        message: "Hubo problemas al momento de obtener el total de miembros en la estructura, intente nuevamente"}}));
-      return defaultData;
+      response.data = defaultData;
+      if(response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Hubo problemas al momento de obtener el total de miembros en la estructura, intente nuevamente"}}));
+        return response
+      }
+
+      return response;
 
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
-      return defaultData;
+      return errorResponse;
     }
   }
 
-  const getAgeHistogram = async():Promise<any> => {
+  const getAgeHistogram = async():Promise<IRequest<any>> => {
     try {
       const response:IRequest<any> = await requester({
         url: `/data/structure/age`
@@ -327,18 +379,20 @@ const MainMenuComponent = () => {
 
       if(response.code === 200)
         if(response.data !== undefined)
-          return response.data
+          return response
 
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.warning, 
-        message: "Hubo problemas al momento de obtener el total de miembros en la estructura, intente nuevamente"}}));
-      return undefined;
+      if(response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Hubo problemas al momento de obtener el total de miembros en la estructura, intente nuevamente"}}));
+      }
+      return response;
 
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
-      return undefined;
+      return errorResponse;
     }
   }
 
@@ -463,8 +517,10 @@ const MainMenuComponent = () => {
       array for search persons.
     */
     setShowForm(false);
-    setIncompleteMembersProfile(
-      await getMembersWithoutCompleteInformation());
+    const response = await getMembersWithoutCompleteInformation();
+    if(response.data !== undefined) {
+      setIncompleteMembersProfile(response.data);
+    }
   }
 
   const handleSearchStrategyLevelStructure = async (event: any, newInputValue: string | null) => {
@@ -509,121 +565,120 @@ const MainMenuComponent = () => {
       }
       { (showForm === false) &&
         <div className="flex flex-col font-bold text-bg text-center"> 
-          {(incompleteMembersProfile[0] !== undefined) &&
-            <>
-              <p className="text-center mb-3 text-xl font-bold">
-                Miembros de la estructura con información incompleta
-              </p>
-              <Paper sx={{overflow: 'hidden'}}>
-                <TableContainer sx={{ maxHeight: 440 }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell align="center">ID</TableCell>
-                        <TableCell align="center">Nombre</TableCell>
-                        <TableCell align="center">Telefono</TableCell> 
-                        <TableCell align="center">INE</TableCell> 
-                        <TableCell align="center">Colonia</TableCell>
-                        <TableCell align="center">Nivel jerarquico</TableCell>
-                        <TableCell align="center">Lider</TableCell>
-                        <TableCell align="center">Area geografica</TableCell>
-                        <TableCell align="center">Editar</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {
-                        incompleteMembersProfile.map(person => {
-                          return (
-                            <TableRow key={person.id_member}>
-                              <TableCell align="center">
-                                {person.id_member}
-                              </TableCell>
-                              <TableCell align="center">
-                                {person.last_name} {person.first_name}
-                              </TableCell>
-                              <TableCell align="center">
-                                {person.cell_phone_number}
-                              </TableCell>
-                              <TableCell align="center">
-                                {person.ine}
-                              </TableCell>
-                              <TableCell align="center">
-                                <div className="text-xl flex flex-row justify-center">
-                                  {person.id_colony === null ?  
-                                    <div className="text-orange-400">
-                                      <MdErrorOutline />
-                                    </div>
-                                    :
-                                    <div className="text-green-400">
-                                      <BsCheckCircle />
-                                    </div>
-                                    }
-                                </div>
+          <p className="text-center mb-3 text-xl font-bold">
+            Miembros de la estructura con información incompleta
+          </p>
+          {(incompleteMembersProfile[0] !== undefined && updateMemberPrivilege) ?
+            <Paper sx={{overflow: 'hidden'}}>
+              <TableContainer sx={{ maxHeight: 440 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell align="center">ID</TableCell>
+                      <TableCell align="center">Nombre</TableCell>
+                      <TableCell align="center">Telefono</TableCell> 
+                      <TableCell align="center">INE</TableCell> 
+                      <TableCell align="center">Colonia</TableCell>
+                      <TableCell align="center">Nivel jerarquico</TableCell>
+                      <TableCell align="center">Lider</TableCell>
+                      <TableCell align="center">Area geografica</TableCell>
+                      <TableCell align="center">Editar</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {
+                      incompleteMembersProfile.map(person => {
+                        return (
+                          <TableRow key={person.id_member}>
+                            <TableCell align="center">
+                              {person.id_member}
                             </TableCell>
-                              <TableCell align="center">
-                                <div className="text-xl flex flex-row justify-center">
-                                  {person.id_strategy === null ?  
-                                    <div className="text-orange-400">
-                                      <MdErrorOutline />
-                                    </div>
-                                    :
-                                    <div className="text-green-400">
-                                      <BsCheckCircle />
-                                    </div>
-                                    }
-                                </div>
-                              </TableCell>
-                              <TableCell align="center">
-                                <div className="text-xl flex flex-row justify-center">
-                                  {person.id_leader === null ?  
-                                    <div className="text-orange-400">
-                                      <MdErrorOutline />
-                                    </div>
-                                    :
-                                    <div className="text-green-400">
-                                      <BsCheckCircle />
-                                    </div>
-                                    }
-                                </div>
-                              </TableCell>
-                              <TableCell align="center">
-                                <div className="text-xl flex flex-row justify-center">
-                                  {person.id_geographic_area === null ?  
-                                    <div className="text-orange-400">
-                                      <MdErrorOutline />
-                                    </div>
-                                    :
-                                    <div className="text-green-400">
-                                      <BsCheckCircle />
-                                    </div>
-                                    }
-                                </div>
-                              </TableCell>
-                              <TableCell align="center">
-                                <Tooltip title="Editar">
-                                  <button
-                                  onClick={() => 
-                                    {handleOnUpdate(person.id_member)}}
-                                  className="text-sky-600 text-2xl">
-                                    <MdEditDocument />
-                                  </button>
-                                </Tooltip>
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })
-                      }
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            </>
+                            <TableCell align="center">
+                              {person.last_name} {person.first_name}
+                            </TableCell>
+                            <TableCell align="center">
+                              {person.cell_phone_number}
+                            </TableCell>
+                            <TableCell align="center">
+                              {person.ine}
+                            </TableCell>
+                            <TableCell align="center">
+                              <div className="text-xl flex flex-row justify-center">
+                                {person.id_colony === null ?  
+                                  <div className="text-orange-400">
+                                    <MdErrorOutline />
+                                  </div>
+                                  :
+                                  <div className="text-green-400">
+                                    <BsCheckCircle />
+                                  </div>
+                                  }
+                              </div>
+                          </TableCell>
+                            <TableCell align="center">
+                              <div className="text-xl flex flex-row justify-center">
+                                {person.id_strategy === null ?  
+                                  <div className="text-orange-400">
+                                    <MdErrorOutline />
+                                  </div>
+                                  :
+                                  <div className="text-green-400">
+                                    <BsCheckCircle />
+                                  </div>
+                                  }
+                              </div>
+                            </TableCell>
+                            <TableCell align="center">
+                              <div className="text-xl flex flex-row justify-center">
+                                {person.id_leader === null ?  
+                                  <div className="text-orange-400">
+                                    <MdErrorOutline />
+                                  </div>
+                                  :
+                                  <div className="text-green-400">
+                                    <BsCheckCircle />
+                                  </div>
+                                  }
+                              </div>
+                            </TableCell>
+                            <TableCell align="center">
+                              <div className="text-xl flex flex-row justify-center">
+                                {person.id_geographic_area === null ?  
+                                  <div className="text-orange-400">
+                                    <MdErrorOutline />
+                                  </div>
+                                  :
+                                  <div className="text-green-400">
+                                    <BsCheckCircle />
+                                  </div>
+                                  }
+                              </div>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Tooltip title="Editar">
+                                <button
+                                onClick={() => 
+                                  {handleOnUpdate(person.id_member)}}
+                                className="text-sky-600 text-2xl">
+                                  <MdEditDocument />
+                                </button>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    }
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper> : 
+            <p className="font-normal mt-3">Acceso no permitido</p>
           }
-          {(incompleteGeographicAreasInformation[0] !== undefined ) &&
-            <div className="mt-5">
-              <p className="text-center mb-3 text-xl font-bold">
-                Areas geográficas con información incompleta
-              </p>
+          <div className="mt-5">
+            <p className="text-center mb-3 text-xl font-bold">
+                  Areas geográficas con información incompleta
+            </p>
+            {(incompleteGeographicAreasInformation[0] !== undefined && updateGeographicAreaPrivilege === true) ?
               <Paper sx={{overflow: 'hidden'}}>
                 <TableContainer sx={{ maxHeight: 440 }}>
                   <Table>
@@ -693,15 +748,16 @@ const MainMenuComponent = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              </Paper>
-            </div>
-          }
+              </Paper> : 
+              <p className="font-normal mt-3">Acceso no permitido</p>
+            }
+          </div>
           <div className="flex flex-row mx-2 mt-5 ">
             <div className="flex flex-col basis-1/3">
               <p className="">
                 Numero total de miembros que conforman la estructura
               </p>
-              { totalAmountDataChart[0] !== undefined &&
+              { (totalAmountDataChart[0] !== undefined && allStructureCountPrivilege === true) ?
                 <>
                   <p className="font-normal">
                     Total de miembros: {totalAmountDataChart[0] + totalAmountDataChart[1]}
@@ -726,14 +782,15 @@ const MainMenuComponent = () => {
                       ],
                     }
                   }/>
-                </>
+                </> :
+                <p className="font-normal mt-3">Acceso no permitido</p>
               }
             </div>
             <div className="flex flex-col basis-2/3">
               <p  className="">
                 Histograma de edades de la estructura
               </p>
-              {extraDataHistogram !== undefined &&
+              {(extraDataHistogram !== undefined && histogramAgesStructurePrivilege === true) ?
                 <>
                   <p  className="font-normal text-md">
                     Miembro mas joven: {extraDataHistogram.youngestAge} años
@@ -741,7 +798,8 @@ const MainMenuComponent = () => {
                   <p  className="font-normal text-md">
                     Miembro mas mayor: {extraDataHistogram.oldestAge} años
                   </p>
-                </>
+                </> : 
+                <p className="font-normal mt-3">Acceso no permitido</p>
               }
               { membersAgeDataHistogram !== undefined &&
                 <div className="flex justify-center items-center ">
@@ -754,124 +812,136 @@ const MainMenuComponent = () => {
             <p  className="mb-3">
               Ranking colonias con mas miembros
             </p>
-            <div className="flex justify-center mb-3">
-              <Autocomplete
-                  disablePortal
-                  id="input-strategy"
-                  onInputChange={(event: any, newInputValue: string | null) => 
-                    { handleSearchStrategyLevelColony(event, newInputValue) }}
-                  onChange={(event: any, newValue: string | null) => 
-                    handleSelectStrategyLevelColony(event, newValue) }
-                  value={
-                    searchStrategyLevelColony
-                  }
-                  options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-                  sx={{ width: 300 }}
-                  renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
-                />
-            </div>
-            <Paper sx={{overflow: 'hidden'}}>
-              <TableContainer sx={{ maxHeight: 440 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell align="center">ID</TableCell>
-                      <TableCell align="center">Nombre</TableCell>
-                      <TableCell align="center">Codigo postal</TableCell> 
-                      <TableCell align="center">Cantidad de miembros</TableCell> 
-                      <TableCell align="center">Lider principal</TableCell> 
-                      <TableCell align="center">Seguidores</TableCell> 
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                  {
-                    rankingColonies[0] !== undefined &&
-                      rankingColonies.map(colony => {
-                        return (
-                          <TableRow key={colony.id_colony}>
-                            <TableCell align="center">
-                              {colony.id_colony}
-                            </TableCell>
-                            <TableCell align="center">
-                              {colony.name_colony}
-                            </TableCell>
-                            <TableCell align="center">
-                              {colony.postal_code}
-                            </TableCell>
-                            <TableCell align="center">
-                              {colony.amount_members}
-                            </TableCell>
-                            <TableCell align="center">
-                              {
-                                colony.main_leader_name === "" ? 
-                                "No se encontro ningún líder" :
-                                colony.main_leader_name
-                              }
-                            </TableCell>
-                            <TableCell align="center">
-                              {colony.leader_followers}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                  }
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
+            { rankingColoniesPrivilege === true ? 
+              <>
+                <div className="flex justify-center mb-3">
+                  <Autocomplete
+                      disablePortal
+                      id="input-strategy"
+                      onInputChange={(event: any, newInputValue: string | null) => 
+                        { handleSearchStrategyLevelColony(event, newInputValue) }}
+                      onChange={(event: any, newValue: string | null) => 
+                        handleSelectStrategyLevelColony(event, newValue) }
+                      value={
+                        searchStrategyLevelColony
+                      }
+                      options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                      sx={{ width: 300 }}
+                      renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
+                    />
+                </div>
+                <Paper sx={{overflow: 'hidden'}}>
+                  <TableContainer sx={{ maxHeight: 440 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell align="center">ID</TableCell>
+                          <TableCell align="center">Nombre</TableCell>
+                          <TableCell align="center">Codigo postal</TableCell> 
+                          <TableCell align="center">Cantidad de miembros</TableCell> 
+                          <TableCell align="center">Lider principal</TableCell> 
+                          <TableCell align="center">Seguidores</TableCell> 
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                      {
+                        rankingColonies[0] !== undefined &&
+                          rankingColonies.map(colony => {
+                            return (
+                              <TableRow key={colony.id_colony}>
+                                <TableCell align="center">
+                                  {colony.id_colony}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {colony.name_colony}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {colony.postal_code}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {colony.amount_members}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {
+                                    colony.main_leader_name === "" ? 
+                                    "No se encontro ningún líder" :
+                                    colony.main_leader_name
+                                  }
+                                </TableCell>
+                                <TableCell align="center">
+                                  {colony.leader_followers}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                      }
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>              
+              </> :
+              <p className="font-normal mt-3">Acceso no permitido</p>
+            }
+
           </div>
           <div className="flex flex-col mt-5 mx-36">
             <p  className="mb-3">
               Ranking lideres con mas seguidores
             </p>
-            <div className="flex justify-center mb-3">
-              <Autocomplete
-                disablePortal
-                id="input-strategy"
-                onInputChange={(event: any, newInputValue: string | null) => 
-                  { handleSearchStrategyLevelStructure(event, newInputValue) }}
-                onChange={(event: any, newValue: string | null) => 
-                  handleSelectStrategyLevelStructure(event, newValue) }
-                value={
-                  searchStrategyLevelStructure
-                }
-                options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-                sx={{ width: 300 }}
-                renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
-              />
-            </div>
-            <Paper sx={{overflow: 'hidden'}}>
-              <TableContainer sx={{ maxHeight: 440 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell align="center">ID</TableCell>
-                      <TableCell align="center">Nombre</TableCell>
-                      <TableCell align="center">No. Seguidores</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {
-                      rankingMemberStructure.map(member => {
-                        return (
-                          <TableRow key={member.id_member}>
-                            <TableCell align="center">
-                              {member.id_member}
-                            </TableCell>
-                            <TableCell align="center">
-                              {member.first_name} {member.last_name}
-                            </TableCell>
-                            <TableCell align="center">
-                              {member.followers - 1}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
+            { rankingLeadersPrivilege === true ?
+              <>
+                <div className="flex justify-center mb-3">
+                  <Autocomplete
+                    disablePortal
+                    id="input-strategy"
+                    onInputChange={(event: any, newInputValue: string | null) => 
+                      { handleSearchStrategyLevelStructure(event, newInputValue) }}
+                    onChange={(event: any, newValue: string | null) => 
+                      handleSelectStrategyLevelStructure(event, newValue) }
+                    value={
+                      searchStrategyLevelStructure
                     }
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
+                    options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                    sx={{ width: 300 }}
+                    renderInput={(params) => <TextField {...params} label="Nivel jerárquico" />}
+                  />
+                </div>
+                <Paper sx={{overflow: 'hidden'}}>
+                  <TableContainer sx={{ maxHeight: 440 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell align="center">ID</TableCell>
+                          <TableCell align="center">Nombre</TableCell>
+                          <TableCell align="center">No. Seguidores</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {
+                          rankingMemberStructure.map(member => {
+                            return (
+                              <TableRow key={member.id_member}>
+                                <TableCell align="center">
+                                  {member.id_member}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {member.first_name} {member.last_name}
+                                </TableCell>
+                                <TableCell align="center">
+                                  {member.followers - 1}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                        }
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>              
+              </> :
+              <p className="font-normal mt-3">Acceso no permitido</p>
+            }
+
           </div> 
         </div>
       }

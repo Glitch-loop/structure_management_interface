@@ -272,10 +272,12 @@ const FormCollaborator = (
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
             message: "No tienes suficientes privilegios para poder modificar o eliminar privilegios"}})); 
-        } else {            
-            dispatch(enqueueAlert({alertData: {
-              alertType: EAlert.warning, 
-              message: "Hubo un error al intentar actualizar los privilegios del colaborador, intente mas tarde"}})); 
+        } else {
+            if(response.code === 400) {
+              dispatch(enqueueAlert({alertData: {
+                alertType: EAlert.warning, 
+                message: "Hubo un error al intentar actualizar los privilegios del colaborador, intente mas tarde"}})); 
+            }
         }
         return response;
       } catch (error) {
@@ -808,7 +810,14 @@ const FormCollaborator = (
                   {
                     privileges.filter(privilege => {
                       if(
-                        privilege.id_privilege === 0
+                        privilege.id_privilege === 20 ||
+                        privilege.id_privilege === 21 ||
+                        privilege.id_privilege === 22 ||
+                        privilege.id_privilege === 23 ||
+                        privilege.id_privilege === 24 ||
+                        privilege.id_privilege === 25 ||
+                        privilege.id_privilege === 26 ||
+                        privilege.id_privilege === 27
                         ) return privilege
                     })
                     .map(privilege => 
