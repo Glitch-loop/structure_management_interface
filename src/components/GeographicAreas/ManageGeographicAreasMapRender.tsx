@@ -17,6 +17,7 @@ import { RootState } from '../../redux/store';
 import { randomNumber } from "../../utils/utils";
 import { IoAppsSharp } from "react-icons/io5";
 import Searcher from "../UIcomponents/Searcher";
+import Forbbiden from "../Authorization/Forbbiden"
 
 const responseError:IRequest<undefined> = {
   code: 500,
@@ -107,6 +108,14 @@ function polygonVisible(
 }
 
 function ManageGeographicAreasMapRender() {
+  //Privileges states
+  const [addGeographicAreaPrivilege, setAddGeographicAreaPrivilege] = useState<boolean>(false);
+  const [updateGeographicAreaPrivilege, setUpdateGeographicAreaPrivilege] = useState<boolean>(false);
+  const [deleteGeographicAreaPrivilege, setDeleteGeographicAreaPrivilege] = useState<boolean>(false);
+  const [addStrategicInformationGeographicAreaPrivilege, setAddStrategicInformationGeographicAreaPrivilege] = useState<boolean>(false);
+  const [updateStrategicInformationGeographicAreaPrivilege, setUpdateStrategicInformationGeographicAreaPrivilege] = useState<boolean>(false);
+
+
   //General States
   const [line, setLine] = useState<LatLng[]|undefined>(undefined);
   const [centerMap, setCenterMap] = useState<LatLng>({lat:20.64125680004875, lng: -105.22139813464167});
@@ -156,6 +165,39 @@ function ManageGeographicAreasMapRender() {
   const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
+    //Get privileges
+    //add geographic area privilege
+    requester({url: '/privileges/user/[14]', method: "GET"})
+    .then(response => {
+      setAddGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //update geographic area privilege
+    requester({url: '/privileges/user/[15]', method: "GET"})
+    .then(response => {
+      setUpdateGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //delete geographic area privilege
+    requester({url: '/privileges/user/[16]', method: "GET"})
+    .then(response => {
+      setDeleteGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //add strategic information to geographic area privilege
+    requester({url: '/privileges/user/[17]', method: "GET"})
+    .then(response => {
+      setAddStrategicInformationGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //update strategic information to geographic area privilege
+    requester({url: '/privileges/user/[18]', method: "GET"})
+    .then(response => {
+      setUpdateStrategicInformationGeographicAreaPrivilege(response.data.privilege);
+    });
+
+
+
     getStrategy()
     .then((dataStrategyLevels:IStrategy[]) => {
       /*
@@ -1254,81 +1296,97 @@ function ManageGeographicAreasMapRender() {
   }
 
   return (<>
+    {/* This dialog is for the geographic area's information */}
     <Dialog onClose={handleCloseDialog} open={showDialog}>
       <div className="p-5 pb-10 flex flex-col justify-center text-center">
-        <DialogTitle>
-          { managePolygon ? 'Administrar area geográfica' : 'Agregar area geográfica' }
-        </DialogTitle>
-        {
-          managePolygon &&
-            <p>ID del area geográfica: 
-              <span className="ml-2 italic font-bold">
-                {geographicArea.id_geographic_area}
-              </span>
-            </p>
-        }
-        <Input 
-          onType={setGeographicArea}
-          objectValue={geographicArea} 
-          inputName={"geographic_area_name"}
-          placeholder={'Nombre de area greografica'}
-          inputType={'text'}
-          required={true}
-          />
-        <div className="mt-4">
-          <Autocomplete
-            disablePortal
-            id="input-strategy"
-            onInputChange={(event: any, newInputValue: string | null) => 
-              { handleSearchStrategyLevel(event, newInputValue) }}
-            onChange={(event: any, newValue: string | null) => 
-              handleSelectStrategyLevel(event, newValue) }
-            value={
-              searchStrategyLevel
-            }
-            options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.zone_type)) }
-            sx={{ width: 300 }}
-            renderInput={(params) => <TextField {...params} label="Tipo de zona" />}
-            />
-        </div>
-        {
-          showGeographicAreaBelongsTo(geographicArea) &&
-          <div className="mt-3">
-            <Autocomplete
-              disablePortal
-              id="input-strategy"
-              onInputChange={(event: any, newInputValue: string | null) => 
-                { handleSearchGeographicAreaBelongsTo(event, newInputValue) }}
-              onChange={(event: any, newValue: string | null | undefined) => 
-                handleSelectGeographicAreaBelongsTo(event, newValue) }
-              value={
-                searchGeographicAreaBelongsTo
-              }
-              options={ arraySearchGeographicAreaBelongsTo.map((strategyLevel => `${strategyLevel.geographic_area_name} - ${strategyLevel.id_geographic_area}`)) }
-              sx={{ width: 300 }}
-              renderInput={(params) => <TextField {...params} label="Dentro de" />}
-              />
-          </div>
-        }
-        <div className="flex flex-row justify-center">
-          <Button 
-            label={managePolygon ? "Actualizar" : "Agregar"}
-            onClick={
-              managePolygon ? handleOnSubmitUpdateGeographicArea : handleOnSubmitAddGeographicArea
-            }
-            />
+        { (updateGeographicAreaPrivilege || deleteGeographicAreaPrivilege || addGeographicAreaPrivilege) ?
+          <>  
+            <DialogTitle>
+              { managePolygon ? 'Administrar area geográfica' : 'Agregar area geográfica' }
+            </DialogTitle>
             {
               managePolygon &&
-              <Button 
-                label="Eliminar"
-                onClick={handleOnSubmitDeleteGeographicArea}
-                colorButton={1}
-              />
+                <p>ID del area geográfica: 
+                  <span className="ml-2 italic font-bold">
+                    {geographicArea.id_geographic_area}
+                  </span>
+                </p>
             }
-        </div>
+            {/* Geographic area's basic information */}
+            <Input 
+              onType={setGeographicArea}
+              objectValue={geographicArea} 
+              inputName={"geographic_area_name"}
+              placeholder={'Nombre de area greografica'}
+              inputType={'text'}
+              required={true}
+              />
+            {/* Geographic area's strategic information */}
+            { ((updateStrategicInformationGeographicAreaPrivilege && managePolygon) 
+              || (addStrategicInformationGeographicAreaPrivilege && managePolygon === false)) &&
+              <>
+                <div className="mt-4">
+                  <Autocomplete
+                    disablePortal
+                    id="input-strategy"
+                    onInputChange={(event: any, newInputValue: string | null) => 
+                      { handleSearchStrategyLevel(event, newInputValue) }}
+                    onChange={(event: any, newValue: string | null) => 
+                      handleSelectStrategyLevel(event, newValue) }
+                    value={
+                      searchStrategyLevel
+                    }
+                    options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.zone_type)) }
+                    sx={{ width: 300 }}
+                    renderInput={(params) => <TextField {...params} label="Tipo de zona" />}
+                    />
+                </div>
+                {
+                  showGeographicAreaBelongsTo(geographicArea) &&
+                  <div className="mt-3">
+                    <Autocomplete
+                      disablePortal
+                      id="input-strategy"
+                      onInputChange={(event: any, newInputValue: string | null) => 
+                        { handleSearchGeographicAreaBelongsTo(event, newInputValue) }}
+                      onChange={(event: any, newValue: string | null | undefined) => 
+                        handleSelectGeographicAreaBelongsTo(event, newValue) }
+                      value={
+                        searchGeographicAreaBelongsTo
+                      }
+                      options={ arraySearchGeographicAreaBelongsTo.map((strategyLevel => `${strategyLevel.geographic_area_name} - ${strategyLevel.id_geographic_area}`)) }
+                      sx={{ width: 300 }}
+                      renderInput={(params) => <TextField {...params} label="Dentro de" />}
+                      />
+                  </div>
+                }
+              </>
+            }
+
+            <div className="flex flex-row justify-center">
+              { ((updateGeographicAreaPrivilege && managePolygon) || (addGeographicAreaPrivilege && managePolygon === false)) &&
+                <Button 
+                  label={managePolygon ? "Actualizar" : "Agregar"}
+                  onClick={
+                    managePolygon ? handleOnSubmitUpdateGeographicArea : handleOnSubmitAddGeographicArea
+                  }
+                  />
+              }
+              { (managePolygon && deleteGeographicAreaPrivilege) &&
+                <Button 
+                  label="Eliminar"
+                  onClick={handleOnSubmitDeleteGeographicArea}
+                  colorButton={1}
+                />
+              }
+            </div>
+          </> :
+          <p>Accesso no permitido</p>
+        }
       </div>
     </Dialog>
-    
+
+    {/* This dialog helps to the user to decide which "type of zone" show  */}
     <Dialog onClose={() => setShowVisualizationForm(false)} open={showVisualizationForm}>
       <DialogTitle>Visualizar areas</DialogTitle>   
       <div className="p-5 pb-10 flex flex-col justify-center">
@@ -1345,106 +1403,123 @@ function ManageGeographicAreasMapRender() {
         }
       </div>
     </Dialog>
-    <div className="absolute flex-col w-full h-full justify-center">
-      <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
-        <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
-          <div className="mt-1 "></div>
-          <Searcher 
-            placeholder="Buscar por area geografica o administrador"
-            optionsToShow={searchGeographicAreas.map(element => {
-              const option = {
-                id: element.id_geographic_area !== undefined ? 
-                  element.id_geographic_area : 0,
-                data: `${element.geographic_area_name} | ${
-                  element.zone_type===null ? "No tiene tipo de zona" : element.zone_type
-                } - ${
-                  (element.first_name === null && element.last_name === null) ? "No tiene administrador" : `${element.first_name} ${element.last_name}`
-                } - ${
-                  element.id_geographic_area
-                }`
-              }
-              return option;
-            })}
-            onSelectOption={selectOptionMember}
-            onType={onSearchTypeGeographicArea}
-            />
+        
+    { (addGeographicAreaPrivilege || updateGeographicAreaPrivilege || deleteGeographicAreaPrivilege) ?
+      <>
+        {/* Searcher to search for geographic areas */}
+        <div className="absolute flex-col w-full h-full justify-center">
+          <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
+            <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
+              <div className="mt-1 "></div>
+              <Searcher 
+                placeholder="Buscar por area geografica o administrador"
+                optionsToShow={searchGeographicAreas.map(element => {
+                  const option = {
+                    id: element.id_geographic_area !== undefined ? 
+                      element.id_geographic_area : 0,
+                    data: `${element.geographic_area_name} | ${
+                      element.zone_type===null ? "No tiene tipo de zona" : element.zone_type
+                    } - ${
+                      (element.first_name === null && element.last_name === null) ? "No tiene administrador" : `${element.first_name} ${element.last_name}`
+                    } - ${
+                      element.id_geographic_area
+                    }`
+                  }
+                  return option;
+                })}
+                onSelectOption={selectOptionMember}
+                onType={onSearchTypeGeographicArea}
+                />
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-    <div className="absolute flex-col w-full h-full justify-center">
-      <Tooltip title="Visualizar todas las areas geográficas">
-        <button
-          onClick={() => handleVisualizateAllGeographicArea()} 
-          className={`z-10 absolute p-5 rounded-full hover:bg-orange-800 bottom-0 left-0 mb-44 ml-3 ${showAllGeographicAreas ? "bg-orange-800" : "bg-orange-600"}`} >
-          <div className="text-white">
-            <IoAppsSharp />
+
+        {/* This button is to add a new geographic area */}
+        { addGeographicAreaPrivilege &&
+          <div className="absolute flex-col w-full h-full justify-center">
+            <Tooltip title="Crear nueva area">
+              <button
+                onClick={() => handleCreateNewArea()} 
+                className={`z-10 absolute p-5 rounded-full hover:bg-blue-800 bottom-0 left-0 mb-44 ml-3 ${createNewPolygon ? "bg-blue-800" : "bg-blue-600"}`} >
+                <div className="text-white">
+                  <FiPlus />
+                </div>
+              </button>
+            </Tooltip>
           </div>
-        </button>
-      </Tooltip>
-    </div>
-    <div className="absolute flex-col w-full h-full justify-center">
-      <Tooltip title="Crear nueva area">
-        <button
-          onClick={() => handleCreateNewArea()} 
-          className={`z-10 absolute p-5 rounded-full hover:bg-blue-800 bottom-0 left-0 mb-12 ml-3 ${createNewPolygon ? "bg-blue-800" : "bg-blue-600"}`} >
-          <div className="text-white">
-            <FiPlus />
-          </div>
-        </button>
-      </Tooltip>
-    </div>
-    <div className="absolute flex-col w-full h-full justify-center">
-      <Tooltip title="Crear nueva area">
-        <button
-          onClick={ () => setShowVisualizationForm(true) } 
-          className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
-          <div className="text-white">
-            <FiEye />
-          </div>
-        </button>
-      </Tooltip>
-    </div>
-    <GoogleMap 
-        zoom={14}
-        center={centerMap} 
-        mapContainerClassName="map-container"
-        onClick={(e: any) => handleClickMap(e)}
-        onMouseMove={() => handleOnMouseMoveMap()}
-        >
-          {
-            polygons.map((polygon) =>
+        }
+
+        {/* This button is to show the display to decide which types of zone show */}
+        <div className="absolute flex-col w-full h-full justify-center">
+          <Tooltip title="Crear nueva area">
+            <button
+              onClick={ () => setShowVisualizationForm(true) } 
+              className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showVisualizationForm ? "bg-lime-800" : "bg-lime-600"}`} >
+              <div className="text-white">
+                <FiEye />
+              </div>
+            </button>
+          </Tooltip>
+        </div>
+
+        {/* This button is to show all the geographic areas */}
+        <div className="absolute flex-col w-full h-full justify-center">
+          <Tooltip title="Visualizar todas las areas geográficas">
+            <button
+              onClick={() => handleVisualizateAllGeographicArea()} 
+              className={`z-10 absolute p-5 rounded-full hover:bg-orange-800 bottom-0 left-0 mb-12 ml-3 ${showAllGeographicAreas ? "bg-orange-800" : "bg-orange-600"}`} >
+              <div className="text-white">
+                <IoAppsSharp />
+              </div>
+            </button>
+          </Tooltip>
+        </div>
+
+        <GoogleMap 
+          zoom={14}
+          center={centerMap} 
+          mapContainerClassName="map-container"
+          onClick={(e: any) => handleClickMap(e)}
+          onMouseMove={() => handleOnMouseMoveMap()}
+          >
             {
-              return <PolygonF
-                key={polygon.id_geographic_area}
-                visible={polygonVisible(arrayStrategyLevel, polygon)}
-                editable={polygon.edtiable}
-                onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
-                onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
-                onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}
-                onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
-                onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
-                onMouseMove={(e:any) => handleMouseOver(e)}
-                onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
-                path={polygon.coordinates}
-                options={getPolygonColor(polygonColor, polygon.id_strategy)}
-              ></PolygonF>
-            } 
-            )
-          }
-          
-          {
-            line !== undefined &&
-              <Polyline 
-                editable
-                onClick={(e: any) => { handleClickLine(e)} } 
-                onMouseMove={(e:any) => handleMouseMoveLine(e) }
-                onMouseDown={(e:any) => handleMouseDownLine(e)}
-                onMouseUp={(e:any) => handleMouseUpLine(e)}
-                onRightClick={(e:any) => handleRightClickLine(e)}
-                path={line}
-              />          
-          }
-    </GoogleMap>
+              polygons.map((polygon) =>
+              {
+                return <PolygonF
+                  key={polygon.id_geographic_area}
+                  visible={polygonVisible(arrayStrategyLevel, polygon)}
+                  editable={polygon.edtiable}
+                  onMouseDown={(e:any) => {handleMouseDownPolygon(e)}}
+                  onMouseUp={(e:any) => {handleMouseUpPolygon(e, polygon)}}
+                  onRightClick={(e: any) => {handleRightClickLinePolyline(e, polygon.id_geographic_area)}}
+                  onClick={(e: any) => {handleDataClickPolygon(e, polygon)}} 
+                  onDblClick={(e: any) => {handleDbClickPolygon(e, polygon)}}
+                  onMouseMove={(e:any) => handleMouseOver(e)}
+                  onUnmount={(e: any) => {handleUnmountPolygon(e, polygon.id_geographic_area)}}
+                  path={polygon.coordinates}
+                  options={getPolygonColor(polygonColor, polygon.id_strategy)}
+                ></PolygonF>
+              } 
+              )
+            }
+            {
+              line !== undefined &&
+                <Polyline 
+                  editable
+                  onClick={(e: any) => { handleClickLine(e)} } 
+                  onMouseMove={(e:any) => handleMouseMoveLine(e) }
+                  onMouseDown={(e:any) => handleMouseDownLine(e)}
+                  onMouseUp={(e:any) => handleMouseUpLine(e)}
+                  onRightClick={(e:any) => handleRightClickLine(e)}
+                  path={line}
+                />          
+            }
+        </GoogleMap>
+      </> : 
+      <div className="h-full flex flex-row justify-center items-center">
+        <Forbbiden />
+      </div>
+    }
   </>)
 }
 
