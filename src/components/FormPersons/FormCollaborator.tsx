@@ -20,6 +20,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import MessageAlert from "../UIcomponents/MessageAlert";
 import { CircularProgress } from "@mui/material";
+import Forbbiden from "../Authorization/Forbbiden";
 
 //Initial states
 const initialPersonState:ICollaborator = {
@@ -80,6 +81,12 @@ const FormCollaborator = (
     initialPersonInformation?: ICollaborator, 
   }) => {
     //useState states ---
+    //Privileges state
+    const [addCollaboratorPrivilege, setAddCollaboratorPrivilege] = useState<boolean>(false);
+    const [addPrivilegesPrivilege, setAddPrivilegesPrivilege] = useState<boolean>(false);
+    const [removePrivilegesPrivilege, setRemovePrivilegesPrivilege] = useState<boolean>(false);
+    const [superAdminPrivilege, setSuperAdminPrivilege] = useState<boolean>(false);
+
     //Common fileds
     const [person, setPerson] = useState<ICollaborator>(initialPersonInformation);
     const [privileges, setPrivileges] = useState<IPrivilege[]>([]);
@@ -99,37 +106,65 @@ const FormCollaborator = (
 
     // useEffect procedure ---
     useEffect(() => {
-      getAllPrivileges().then((privileges) => {
+      //Add new collaborator case
+      requester({url: '/privileges/user/[9]', method: "GET"})
+      .then(response => {
+        setAddCollaboratorPrivilege(response.data.privilege);
+      });
+      
+      //Get add privileges privlege
+      requester({url: '/privileges/user/[12]', method: "GET"})
+      .then(response => {
+        setAddPrivilegesPrivilege(response.data.privilege);
+      });
 
-        if(action === 0) {
-          /*
-            If action is 0, that means that the user is adding a new collaborator,
-            so he doesn't have privileges yet.
-          */ 
-          setPrivileges(
-            privileges.map(privilege => {privilege.assigned = false; return privilege}));
-          } else if(action === 1) {
-            /*
-              If action is 1, that means that the user us updating a new collaborator,
-              so we set as cheked those privileges that the collaborator already has.
-            */ 
-            if(person.privileges !== undefined) {
-              const currentPrivileges:IPrivilege[] = person.privileges;
+      //Get remove privileges privlege
+      requester({url: '/privileges/user/[13]', method: "GET"})
+      .then(response => {
+        setRemovePrivilegesPrivilege(response.data.privilege);
+      });
+
+      //Get super admin privlege
+      requester({url: '/privileges/user/[20]', method: "GET"})
+      .then(response => {
+        setSuperAdminPrivilege(response.data.privilege);
+      });
+
+      // Get privileges
+      if(action !== 2) {
+        getAllPrivileges()
+          .then((privileges) => {
+            if(action === 0) {
+              /*
+                If action is 0, that means that the user is adding a new collaborator,
+                so he doesn't have privileges yet.
+              */ 
               setPrivileges(
-                privileges
-                .map(privilege => {
-                  if ((currentPrivileges.find(currentPrivilege => 
-                      currentPrivilege.id_privilege === privilege.id_privilege)) !== undefined) {
-                        privilege.assigned = true; 
-                      } else {
-                        privilege.assigned = false; 
-                      }
-                  return privilege
-                }));
-            } else setPrivileges(privileges)
-        }
-        setHelper(!helper)
-      })
+                privileges.map(privilege => {privilege.assigned = false; return privilege}));
+              } else if(action === 1) {
+                /*
+                  If action is 1, that means that the user us updating a new collaborator,
+                  so we set as cheked those privileges that the collaborator already has.
+                */ 
+                if(person.privileges !== undefined) {
+                  const currentPrivileges:IPrivilege[] = person.privileges;
+                  setPrivileges(
+                    privileges
+                    .map(privilege => {
+                      if ((currentPrivileges.find(currentPrivilege => 
+                          currentPrivilege.id_privilege === privilege.id_privilege)) !== undefined) {
+                            privilege.assigned = true; 
+                          } else {
+                            privilege.assigned = false; 
+                          }
+                      return privilege
+                    }));
+                } else setPrivileges(privileges)
+            }
+            setHelper(!helper);
+        });
+      }
+
     }, [])
 
 
@@ -142,7 +177,8 @@ const FormCollaborator = (
         })
         if(response.code === 200) {
           if(response.data !== undefined) return response.data;
-        } else {
+        }
+        if(response.code === 400) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
             message: "Hubo un error al intentar obtener los privilegios, intente mas tarde"}})); 
@@ -449,6 +485,7 @@ const FormCollaborator = (
 
 
         if(action==0) {
+          //Verify that the password doesn't be empty
           if(person.password === '' ||
           confirmPassword === '') {
             dispatch(enqueueAlert({alertData: {
@@ -456,6 +493,8 @@ const FormCollaborator = (
               message: "Llena todos los campos obligatorios"}}));
             return;
           }
+
+          //Verify that the user remember the password that he typed
           if(person.password != confirmPassword.password) {
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.warning, 
@@ -463,18 +502,23 @@ const FormCollaborator = (
             return;
           }
 
+          //Add the member
           const responseAddMember:IRequest<any> = await addNewMember(basicData);
-          console.log(responseAddMember)
+          
           if(responseAddMember.code === 201 && responseAddMember.data !== undefined) {
+            //If operation was a success, display that the collaborator was added.
             dispatch(enqueueAlert({alertData: {
               alertType: EAlert.success, 
               message: "Se ha agregado exitosamente el nuevo colaborador"}})); 
             const { idCollaborator } = responseAddMember.data;
-            if(privileges[0] !== undefined) {
+
+            if(privileges[0] !== undefined && (addPrivilegesPrivilege === true || removePrivilegesPrivilege === true)) {
+              // Update privileges (in this case add privileges)
               const responsePrivilege:IRequest<any> 
-                = await updatePrivileges(idCollaborator, 
-                  getArrPrivilegesSelected(privileges));
+                = await updatePrivileges(idCollaborator, getArrPrivilegesSelected(privileges));
+
               if(responsePrivilege.code === 200) {
+                //Make the user notice that the privileges was updated successfully
                 dispatch(enqueueAlert({alertData: {
                   alertType: EAlert.success, 
                   message: "Se ha actualizado exitosamente los privilegios del colaborador"}})); 
@@ -559,7 +603,6 @@ const FormCollaborator = (
       
     }
 
-
   return (
     <>
       <Dialog 
@@ -592,328 +635,358 @@ const FormCollaborator = (
               />
           </div>
       </Dialog>
-      <div className="text-center text-xl font-bold">
-        {label}
-      </div>
-      <form>
-        <div className="flex flex-row">
-          <div className="mt-3 mr-3">
+      {/* 
+        The first valdiation is done in the component itslef.
+        
+        For the second case, we already validate that the user has the privileges, this through
+        TablePerson components (it is first in the workflow).
+
+        For the third case, it refers when the user changes his own profile, so he doesn't need
+        any privilege to update his own profile.
+      */}
+      { (addCollaboratorPrivilege || action === 1 || action === 2) ?
+        <>
+          <div className="text-center text-xl font-bold">
+            {label}
+          </div>
+          <form>
             <div className="flex flex-row">
-              <div className="mr-2">
-                <Input
-                  onType={setPerson}
-                  objectValue={person} 
-                  inputName={"first_name"}
-                  placeholder={'Nombre(s)'}
-                  inputType={'text'}
-                  required={true}
-                />
-              </div>
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"last_name"}
-                placeholder={'Apellidos'}
-                inputType={'text'}
-                required={true}
-              />
-            </div>
-            <div className="flex flex-row justify-center">
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"street"}
-                placeholder={'Calle'}
-                inputType={'text'}
-                required={true}
-              />
-            </div>
-            <div className="flex flex-row">
-              <div className="mr-2">
-                <Input
-                  onType={setPerson}
-                  objectValue={person} 
-                  inputName={"ext_number"}
-                  placeholder={'No. Exterior'}
-                  inputType={'text'}
-                  required={true}
-                  testRegex={new RegExp(/^.{1,5}$/, 's')}
-                  testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
-                />
-              </div>
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"int_number"}
-                placeholder={'No. Interno (opcional)'}
-                inputType={'text'}
-                testRegex={new RegExp(/^.{1,5}$/, 's')}
-                testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
-              />
-            </div>
-            <div className="flex flex-row justify-center">
-              <Input
-                  onType={setPerson}
-                  objectValue={person} 
-                  inputName={"cell_phone_number"}
-                  placeholder={'Telefono'}
-                  inputType={'text'}
-                  required={true}
-                  testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
-                  testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
-                />
-            </div>
-            <div className="flex mt-3 justify-center">
-              <Autocomplete
-                disablePortal
-                id="combo-box-demo"
-                onInputChange={(event: any, newInputValue: string | null) => 
-                   handleSearchColony(event, newInputValue) }
-                onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
-                value={person.colony_name}
-                options={ 
-                  arraySearchColony.map((searchColony => searchColony.name_colony)) 
-                }
-                sx={{ width: 300 }}
-                renderInput={(params) => <TextField {...params} label="Colonia" />}
-                />
-            </div>
-            <div className="flex flex-row justify-center">
-              <div className="mr-2">
-                <Input
-                  onType={setPerson}
-                  objectValue={person} 
-                  inputName={"email"}
-                  placeholder={'email'}
-                  inputType={'text'}
-                  testRegex={new RegExp(/^([a-z]|[A-Z]|[0-9]|\.|\-)+\@([a-z])+.(com)$/, 's')}
-                  testMessage={"Formatos validos: ejemplo@gmail.com"}
-                  required={true}
-                />
-              </div>
-            </div>
-            {(action == 0 || action === 2) &&
-            <div className="flex flex-col flex-center">
-              <div className="flex flex-row">
-                <div className="mr-2">
+              <div className="mt-3 mr-3">
+                <div className="flex flex-row">
+                  <div className="mr-2">
+                    <Input
+                      onType={setPerson}
+                      objectValue={person} 
+                      inputName={"first_name"}
+                      placeholder={'Nombre(s)'}
+                      inputType={'text'}
+                      required={true}
+                    />
+                  </div>
                   <Input
                     onType={setPerson}
                     objectValue={person} 
-                    inputName={"password"}
-                    placeholder={'Contraseña'}
+                    inputName={"last_name"}
+                    placeholder={'Apellidos'}
                     inputType={'text'}
-                    testRegex={new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 's')}
-                    testMessage={"La contraseña debe contener minimo: 8 caracteres (en conjunto debe de cumplir); 1 mayuscula, 1 minuscula, un numero y un caracter especial (@$!%*?&)"}
+                    required={true}
                   />
                 </div>
-                <Input
-                  onType={setConfirmPassword}
-                  objectValue={confirmPassword} 
-                  inputName={"password"}
-                  placeholder={'Contraseña'}
-                  inputType={'text'} 
-                />
+                <div className="flex flex-row justify-center">
+                  <Input
+                    onType={setPerson}
+                    objectValue={person} 
+                    inputName={"street"}
+                    placeholder={'Calle'}
+                    inputType={'text'}
+                    required={true}
+                  />
+                </div>
+                <div className="flex flex-row">
+                  <div className="mr-2">
+                    <Input
+                      onType={setPerson}
+                      objectValue={person} 
+                      inputName={"ext_number"}
+                      placeholder={'No. Exterior'}
+                      inputType={'text'}
+                      required={true}
+                      testRegex={new RegExp(/^.{1,5}$/, 's')}
+                      testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
+                    />
+                  </div>
+                  <Input
+                    onType={setPerson}
+                    objectValue={person} 
+                    inputName={"int_number"}
+                    placeholder={'No. Interno (opcional)'}
+                    inputType={'text'}
+                    testRegex={new RegExp(/^.{1,5}$/, 's')}
+                    testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
+                  />
+                </div>
+                <div className="flex flex-row justify-center">
+                  <Input
+                      onType={setPerson}
+                      objectValue={person} 
+                      inputName={"cell_phone_number"}
+                      placeholder={'Telefono'}
+                      inputType={'text'}
+                      required={true}
+                      testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
+                      testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
+                    />
+                </div>
+                <div className="flex mt-3 justify-center">
+                  <Autocomplete
+                    disablePortal
+                    id="combo-box-demo"
+                    onInputChange={(event: any, newInputValue: string | null) => 
+                      handleSearchColony(event, newInputValue) }
+                    onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
+                    value={person.colony_name}
+                    options={ 
+                      arraySearchColony.map((searchColony => searchColony.name_colony)) 
+                    }
+                    sx={{ width: 300 }}
+                    renderInput={(params) => <TextField {...params} label="Colonia" />}
+                    />
+                </div>
+                <div className="flex flex-row justify-center">
+                  <div className="mr-2">
+                    <Input
+                      onType={setPerson}
+                      objectValue={person} 
+                      inputName={"email"}
+                      placeholder={'email'}
+                      inputType={'text'}
+                      testRegex={new RegExp(/^([a-z]|[A-Z]|[0-9]|\.|\-)+\@([a-z])+.(com)$/, 's')}
+                      testMessage={"Formatos validos: ejemplo@gmail.com"}
+                      required={true}
+                    />
+                  </div>
+                </div>
+                {(action == 0 || action === 2) &&
+                <div className="flex flex-col flex-center">
+                  <div className="flex flex-row">
+                    <div className="mr-2">
+                      <Input
+                        onType={setPerson}
+                        objectValue={person} 
+                        inputName={"password"}
+                        placeholder={'Contraseña'}
+                        inputType={'text'}
+                        testRegex={new RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 's')}
+                        testMessage={"La contraseña debe contener minimo: 8 caracteres (en conjunto debe de cumplir); 1 mayuscula, 1 minuscula, un numero y un caracter especial (@$!%*?&)"}
+                      />
+                    </div>
+                    <Input
+                      onType={setConfirmPassword}
+                      objectValue={confirmPassword} 
+                      inputName={"password"}
+                      placeholder={'Contraseña'}
+                      inputType={'text'} 
+                    />
+                  </div>
+                  {
+                    (
+                      confirmPassword?.password !== person.password
+                    ) &&
+                    <MessageAlert label="Las contraseñas tienen que coincidir" />
+                  }
+                </div>
+                }
               </div>
-              {
-                (
-                  confirmPassword?.password !== person.password
-                ) &&
-                <MessageAlert label="Las contraseñas tienen que coincidir" />
+              {privileges[0] !== undefined &&
+                <div className="mt-3 ml-3 overflow-scroll max-h-96">
+                  <div className="max-w-lg">
+                    <p className="text-lg font-medium">Privilegios de capturista</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 1 ||
+                            privilege.id_privilege === 2 ||
+                            privilege.id_privilege === 3 ||
+                            privilege.id_privilege === 14 ||
+                            privilege.id_privilege === 15 ||
+                            privilege.id_privilege === 16
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={(e:any)=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                  <div className="max-w-lg">
+                    <p className="text-lg font-medium">Privilegios de planificador</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 7 ||
+                            privilege.id_privilege === 8 ||
+                            privilege.id_privilege === 17 ||
+                            privilege.id_privilege === 18
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                  <div className="max-w-lg">
+                  <p className="text-lg font-medium">Privilegios de arquitecto</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 4 ||
+                            privilege.id_privilege === 5 ||
+                            privilege.id_privilege === 6
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                  <div className="max-w-lg">
+                  <p className="text-lg font-medium">Privilegios de analista</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 20 ||
+                            privilege.id_privilege === 21 ||
+                            privilege.id_privilege === 22 ||
+                            privilege.id_privilege === 23 ||
+                            privilege.id_privilege === 24 ||
+                            privilege.id_privilege === 25 ||
+                            privilege.id_privilege === 26 ||
+                            privilege.id_privilege === 27 ||
+                            privilege.id_privilege === 28 ||
+                            privilege.id_privilege === 29 ||
+                            privilege.id_privilege === 30 
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                  <div className="max-w-lg">
+                  <p className="text-lg font-medium">Privilegios de administrador</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 9 ||
+                            privilege.id_privilege === 10 ||
+                            privilege.id_privilege === 11
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                  <div className="max-w-lg">
+                  <p className="text-lg font-medium">Privilegios de super administrador</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 12 ||
+                            privilege.id_privilege === 13
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                      { (superAdminPrivilege===true) &&
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 19
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                </div>
               }
             </div>
+            <div className="flex flex-row justify-center">
+            <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
+            {
+              (action===1) && 
+                <Button 
+                  label="Cancelar" 
+                  onClick={() => {
+                    handleSubmit(true)
+                  }}
+                  colorButton={1}
+                  />
             }
-          </div>
-          {privileges[0] !== undefined &&
-            <div className="mt-3 ml-3 overflow-scroll max-h-96">
-              <div className="max-w-lg">
-                <p className="text-lg font-medium">Privilegios de capturista</p>
-                <div className="flex flex-row flex-wrap">
-                  {
-                    privileges.filter(privilege => {
-                      if(
-                        privilege.id_privilege === 1 ||
-                        privilege.id_privilege === 2 ||
-                        privilege.id_privilege === 3 ||
-                        privilege.id_privilege === 14 ||
-                        privilege.id_privilege === 15 ||
-                        privilege.id_privilege === 16
-                        ) return privilege
-                    })
-                    .map(privilege => 
-                      <div 
-                      key={privilege.id_privilege} 
-                      className="flex flex-row items-center">
-                        <Checkbox     
-                          onClick={(e:any)=>{handleClick(privilege.id_privilege)}}
-                          checked={privilege.assigned}
-                        />
-                        <p className="text-sm">{privilege.name_privilege}</p>
-                      </div>
-                      )
-                  }
-                </div>
-              </div>
-              <div className="max-w-lg">
-                <p className="text-lg font-medium">Privilegios de planificador</p>
-                <div className="flex flex-row flex-wrap">
-                  {
-                    privileges.filter(privilege => {
-                      if(
-                        privilege.id_privilege === 7 ||
-                        privilege.id_privilege === 8 ||
-                        privilege.id_privilege === 17 ||
-                        privilege.id_privilege === 18
-                        ) return privilege
-                    })
-                    .map(privilege => 
-                      <div 
-                      key={privilege.id_privilege} 
-                      className="flex flex-row items-center">
-                        <Checkbox     
-                          onClick={()=>{handleClick(privilege.id_privilege)}}
-                          checked={privilege.assigned}
-                        />
-                        <p className="text-sm">{privilege.name_privilege}</p>
-                      </div>
-                      )
-                  }
-                </div>
-              </div>
-              <div className="max-w-lg">
-              <p className="text-lg font-medium">Privilegios de arquitecto</p>
-                <div className="flex flex-row flex-wrap">
-                  {
-                    privileges.filter(privilege => {
-                      if(
-                        privilege.id_privilege === 4 ||
-                        privilege.id_privilege === 5 ||
-                        privilege.id_privilege === 6
-                        ) return privilege
-                    })
-                    .map(privilege => 
-                      <div 
-                      key={privilege.id_privilege} 
-                      className="flex flex-row items-center">
-                        <Checkbox     
-                          onClick={()=>{handleClick(privilege.id_privilege)}}
-                          checked={privilege.assigned}
-                        />
-                        <p className="text-sm">{privilege.name_privilege}</p>
-                      </div>
-                      )
-                  }
-                </div>
-              </div>
-              <div className="max-w-lg">
-              <p className="text-lg font-medium">Privilegios de analista</p>
-                <div className="flex flex-row flex-wrap">
-                  {
-                    privileges.filter(privilege => {
-                      if(
-                        privilege.id_privilege === 20 ||
-                        privilege.id_privilege === 21 ||
-                        privilege.id_privilege === 22 ||
-                        privilege.id_privilege === 23 ||
-                        privilege.id_privilege === 24 ||
-                        privilege.id_privilege === 25 ||
-                        privilege.id_privilege === 26 ||
-                        privilege.id_privilege === 27 ||
-                        privilege.id_privilege === 28 ||
-                        privilege.id_privilege === 29 ||
-                        privilege.id_privilege === 30 
-                        ) return privilege
-                    })
-                    .map(privilege => 
-                      <div 
-                      key={privilege.id_privilege} 
-                      className="flex flex-row items-center">
-                        <Checkbox     
-                          onClick={()=>{handleClick(privilege.id_privilege)}}
-                          checked={privilege.assigned}
-                        />
-                        <p className="text-sm">{privilege.name_privilege}</p>
-                      </div>
-                      )
-                  }
-                </div>
-              </div>
-              <div className="max-w-lg">
-              <p className="text-lg font-medium">Privilegios de administrador</p>
-                <div className="flex flex-row flex-wrap">
-                  {
-                    privileges.filter(privilege => {
-                      if(
-                        privilege.id_privilege === 9 ||
-                        privilege.id_privilege === 10 ||
-                        privilege.id_privilege === 11
-                        ) return privilege
-                    })
-                    .map(privilege => 
-                      <div 
-                      key={privilege.id_privilege} 
-                      className="flex flex-row items-center">
-                        <Checkbox     
-                          onClick={()=>{handleClick(privilege.id_privilege)}}
-                          checked={privilege.assigned}
-                        />
-                        <p className="text-sm">{privilege.name_privilege}</p>
-                      </div>
-                      )
-                  }
-                </div>
-              </div>
-              <div className="max-w-lg">
-              <p className="text-lg font-medium">Privilegios de super administrador</p>
-                <div className="flex flex-row flex-wrap">
-                  {
-                    privileges.filter(privilege => {
-                      if(
-                        privilege.id_privilege === 12 ||
-                        privilege.id_privilege === 13 ||
-                        privilege.id_privilege === 19
-                        ) return privilege
-                    })
-                    .map(privilege => 
-                      <div 
-                      key={privilege.id_privilege} 
-                      className="flex flex-row items-center">
-                        <Checkbox     
-                          onClick={()=>{handleClick(privilege.id_privilege)}}
-                          checked={privilege.assigned}
-                        />
-                        <p className="text-sm">{privilege.name_privilege}</p>
-                      </div>
-                      )
-                  }
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-        <div className="flex flex-row justify-center">
-        <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
-        {
-          (action===1) && 
-            <Button 
-              label="Cancelar" 
-              onClick={() => {
-                handleSubmit(true)
-              }}
-              colorButton={1}
-              />
-        }
-        {
-          (action===1 || action===2) && 
-            <Button 
-              label={action===1 ? "Restablecer contraseña" : "Actualizar contraseña"}
-              onClick={(e:any) => {
-                handleSubmitResetPassword(e);
-              }}
-              colorButton={2}
-              />
-        }
-        </div>  
-      </form>
+            {
+              (action===1 || action===2) && 
+                <Button 
+                  label={action===1 ? "Restablecer contraseña" : "Actualizar contraseña"}
+                  onClick={(e:any) => {
+                    handleSubmitResetPassword(e);
+                  }}
+                  colorButton={2}
+                  />
+            }
+            </div>  
+          </form>
+        </> : <Forbbiden />       
+      }
     </>
   )
 }
