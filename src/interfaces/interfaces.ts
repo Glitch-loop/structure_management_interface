@@ -1,5 +1,13 @@
 import { EAlert } from "./enums";
 
+export interface IActivity {
+  id_activity: number;
+  name_activity: string;
+  description_activity: string;
+  expiration_date: string;
+  creation_date: string;
+}
+
 export interface IAlert {
   alertType: EAlert;
   message?: string;
@@ -134,3 +142,4 @@ export interface IUser {
   idUser?: number;
   sessionToken?: string;
 }
+

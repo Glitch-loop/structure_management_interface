@@ -14,6 +14,7 @@ import UpdateProfile from "../pages/UpadateProfile";
 import OrganizationChartTableVisualization from "../pages/OrganizationChartTableVisualization";
 import ColonyAnalisysTableVisualization from "../pages/ColonyAnalisysTableVisualization";
 import MainMenu from "../pages/MainMenu";
+import Activities from "../pages/Activities";
 
 const AppRouter = () => {
   return (
@@ -35,6 +36,7 @@ const AppRouter = () => {
               <Route path="data" element={<DataView />} />
               <Route path="organizationChartTable" element={<OrganizationChartTableVisualization />} />
               <Route path="colonyAnalisysTable" element={<ColonyAnalisysTableVisualization />} />
+              <Route path="activities" element={<Activities />} />
               <Route path="updateProfile" element={<UpdateProfile />} />
             </Route>
           </Route>

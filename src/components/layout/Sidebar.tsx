@@ -12,6 +12,7 @@ import { userLogout } from "../../redux/slices/userSlice";
 import { AnyAction, Dispatch } from 'redux';
 import { IUser } from "../../interfaces/interfaces";
 import { HiUserGroup } from "react-icons/hi";
+import { FaTasks } from "react-icons/fa";
 
 const itemsSideBar = [
   { label: 'Menu principal', icon: IoDesktopOutline, path: 'mainMenu' },
@@ -25,6 +26,7 @@ const itemsSideBar = [
   { label: 'Organigrama', icon: BsDiagram3Fill  , path: 'data' },
   { label: 'Información por lider', icon: HiUserGroup, path: 'organizationChartTable' },
   { label: 'Información por colonia', icon: IoLayersSharp, path: 'colonyAnalisysTable' },
+  { label: 'Actividades', icon: FaTasks, path: 'activities' },
   { label: 'Perfil', icon: IoIdCardOutline, path: 'updateProfile' },
 ]
 

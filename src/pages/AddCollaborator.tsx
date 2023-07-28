@@ -9,7 +9,6 @@ const AddCollaborator = () => {
             action={0}
           />
         </div>
-        
     </div>
   )
 }

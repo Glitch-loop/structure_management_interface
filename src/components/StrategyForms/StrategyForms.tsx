@@ -230,7 +230,6 @@ const StrategyForms = () => {
   //Handlers
   const handleOnCloseDialog = ():void => {
     restartOperation();
-
   }
 
 

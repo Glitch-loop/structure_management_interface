@@ -23,7 +23,6 @@ const Input = (
   }) => {
     const [showAlert, setShowAlert] = useState(false);
     const [showAlertTest, setShowAlertTest] = useState(false);
-
     const testFunction = (textCase: string):void => {
       if(testRegex!='' && textCase != ''){
         if(!(testRegex.test(textCase))) setShowAlertTest(true)
