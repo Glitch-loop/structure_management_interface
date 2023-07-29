@@ -387,9 +387,9 @@ const ColonyAnalisysTable = () => {
           postal_code: coloniesSelected[i].postal_code
         }])
       }
-    }
-    setMemberByColonyArray(data);
+    }    
 
+    setMemberByColonyArray(data);
   }
 
   const handleDeleteSearch = async() => {
@@ -509,11 +509,13 @@ const ColonyAnalisysTable = () => {
                         <div className='flex flex-row'>
                           <div className='flex flex-col'>
                             <Typography>{colony[0].colony_name} - C.P: {colony[0].postal_code}</Typography>
-                            {(colony.length - 1 > 0) &&
-                              <Typography>No. miembros: {colony.length}</Typography>
+                            {(colony[0] !== undefined) &&
+                              (colony[0].id_member !== 0) &&
+                                <Typography>No. miembros: {colony.length}</Typography>
                             }
                           </div>
-                          {(colony.length - 1 > 0) ? 
+                          {(colony[0] !== undefined) &&
+                             (colony[0].id_member !== 0) ?
                             <>
                               <div className='ml-5 flex flex-col'>
                               <Typography>Edad promedio: {averageYear(colony)}</Typography>
@@ -540,52 +542,54 @@ const ColonyAnalisysTable = () => {
                           }
                         </div>
                         </AccordionSummary>
-                        <AccordionDetails>
-                          <Paper sx={{overflow: 'hidden'}}>
-                            <TableContainer sx={{ maxHeight: 440 }}>
-                              <Table>
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell align="center">ID</TableCell>
-                                    <TableCell align="center">Nombre</TableCell>
-                                    <TableCell align="center">Telefono</TableCell> 
-                                    <TableCell align="center">INE</TableCell>
-                                    <TableCell align="center">Dirección</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {
-                                    colony.map(person => {
-                                      return (
-                                        <TableRow key={person.id_member}>
-                                          <TableCell align="center">
-                                            {person.id_member}
-                                          </TableCell>
-                                          <TableCell align="center">
-                                            { person.first_name } { person.last_name }
-                                          </TableCell>
-                                          <TableCell align="center">
-                                            { person.cell_phone_number }
-                                          </TableCell>
-                                          <TableCell align="center">
-                                            { person.ine }
-                                          </TableCell>
-                                          <TableCell align="center">
-                                            {person.street} #{person.ext_number} {person.int_number !== null && `Int: ${person.int_number}`} ,{person.colony_name}
-                                          </TableCell>
+                        { (colony[0] !== undefined) &&
+                            (colony[0].id_member !== 0) &&
+                              <AccordionDetails>
+                                <Paper sx={{overflow: 'hidden'}}>
+                                  <TableContainer sx={{ maxHeight: 440 }}>
+                                    <Table>
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell align="center">ID</TableCell>
+                                          <TableCell align="center">Nombre</TableCell>
+                                          <TableCell align="center">Telefono</TableCell> 
+                                          <TableCell align="center">INE</TableCell>
+                                          <TableCell align="center">Dirección</TableCell>
                                         </TableRow>
-                                      )
-                                    })
-                                  }
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
-                          </Paper>
-                        </AccordionDetails>
+                                      </TableHead>
+                                      <TableBody>
+                                        {
+                                          colony.map(person => {
+                                            return (
+                                              <TableRow key={person.id_member}>
+                                                <TableCell align="center">
+                                                  {person.id_member}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                  { person.first_name } { person.last_name }
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                  { person.cell_phone_number }
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                  { person.ine }
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                  {person.street} #{person.ext_number} 
+                                                  {person.int_number !== null && `Int: ${person.int_number}`}, {person.colony_name}
+                                                </TableCell>
+                                              </TableRow>
+                                            )
+                                          })
+                                        }
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                </Paper>
+                              </AccordionDetails>
+                        }
                       </Accordion>  
                     </div>
-                      
-                    
                   })}
                 </div>
               ) :

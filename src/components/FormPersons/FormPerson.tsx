@@ -80,8 +80,13 @@ const validBirthDay = (date:string):boolean => {
     let age = 0;
     const actualYear = moment().format("YYYY");
     let birthAge = moment(date).format("YYYY");
+    // console.log(date)
+    // console.log("actualYear: ", actualYear)
+    // console.log("birthAge: ", JSON.parse(birthAge));
+    console.log(JSON.parse(moment(moment().diff(birthAge)).format("YY")))
     if(birthAge !== undefined && actualYear !== undefined) {
-      age = JSON.parse(actualYear) - JSON.parse(birthAge)
+      age = JSON.parse(actualYear) - JSON.parse(moment(moment().diff(birthAge)).format("YYYY"))
+      // console.log(age)
       if(age >= 18) return true;
     }
   } else {
@@ -915,7 +920,8 @@ const FormPerson = (
         person.last_name === '' ||
         person.street === '' ||
         person.ext_number === '' ||
-        person.cell_phone_number === ''
+        person.cell_phone_number === '' ||
+        person.ine === ''
         ){
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
@@ -965,11 +971,12 @@ const FormPerson = (
             strategicInformationPerson.id_leader, 
             strategicInformationPerson.followers, 
             strategicInformationPerson.id_geographic_area);
+          
+          if(response.code === 200) handleSubmit(true);
         }
 
          if(response.code === 201 || response.code === 200){
           //Reset variables
-          handleSubmit(true)
           resetAllStates()
         }
     }
@@ -1091,9 +1098,9 @@ const FormPerson = (
                 inputType={'date'}
                 required={true}
                 />
-                {validBirthDay(person.birthday) === false && 
+                {/* {validBirthDay(person.birthday) === false && 
                   <MessageAlert label="Fecha de nacimiento invalida, el miembro debe de ser mayor de edad" />
-                }
+                } */}
               </div>
               <div className="mt-5 flex basis-1/2 items-center justify-center">
                 <p>Genero: </p>

@@ -74,9 +74,9 @@ function findTypeArea(arrayStrategyLevel:IStrategy[], geographicArea:IGeographic
 function findManagerGeographicArea(members:IStructure[], geographicArea:IGeographicArea|undefined):string {
   const manager:IStructure|undefined = members.find(member => member.id_member === geographicArea?.id_member)
 
-  if(manager !== undefined){
+  if(manager !== undefined && manager !== null){
     return `${manager.first_name} ${manager.last_name}`
-  } else return '';
+  } else return 'Sin asignar lider';
 }
 
 const VisualizateGeographicArea = () => {
@@ -134,7 +134,6 @@ const VisualizateGeographicArea = () => {
     try {
       const response:IRequest<IGeographicArea[]> = await requester({
         url: `/geographicAreas`})
-
       if(response.code === 200)
         if(response.data !== undefined) 
           return response.data;
