@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import moment from 'moment';
 import MessageAlert from "../UIcomponents/MessageAlert";
+import { FaKickstarter } from "react-icons/fa";
 
 //Initial states
 const initialPersonState:IMember = {
@@ -237,7 +238,7 @@ const FormPerson = (
           data: basicData})
           
         let responseStrategicInformation:IRequest<any> = response;
-          
+        console.log(response)
         if(response.code === 201) {
 
           /*Show a message that the user has been created successfully*/
@@ -305,6 +306,7 @@ const FormPerson = (
           code: 200,
           message: ""
         };
+
         if(basicData.idMember !== undefined) {
 
           const idMember:number = basicData.idMember;
@@ -321,14 +323,16 @@ const FormPerson = (
             basicData.extNumber !== initialPersonInformation.ext_number ||
             basicData.intNumber !== initialPersonInformation.int_number ||
             basicData.cellphoneNumber !== initialPersonInformation.cell_phone_number ||
-            basicData.idColony !== initialPersonInformation.id_colony
+            basicData.idColony !== initialPersonInformation.id_colony ||
+            basicData.ine !== initialPersonInformation.ine ||
+            basicData.birthday !== initialPersonInformation.birthday
           ) {
             response = await requester({
               url: `/members/${idMember}`,
               method: "PUT",
               data: basicData
             })
-          }
+          } 
 
           /* Answers for the responses for basic information */
           if(response.code === 200) {
@@ -350,7 +354,6 @@ const FormPerson = (
               alertType: EAlert.warning, 
               message: "Ha habido un error al momento de actualizar el miembro"}}));
           }
-          console.log(response)
 
           //Update member's strategy level
           if (idStrategy !== undefined && idStrategy !== 0)
