@@ -55,8 +55,8 @@ const options: Options = {
   layout: {
     hierarchical: {
       enabled: true,
-        levelSeparation: 150,
-      nodeSpacing: 200,
+      levelSeparation: 300,
+      nodeSpacing: 250,
       treeSpacing: 200,
       // blockShifting: true,
     }

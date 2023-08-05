@@ -142,12 +142,13 @@ const OrganizationChartTable = () => {
       "stringToSearch": stringToSearch
     }
     try {
+      console.log(data)
       const response: IRequest<IMemberStrategyLevel[]> = await requester({
         url: `/data/structure/strategyLevel`,
         method: 'POST',
         data: data
       })
-      
+      console.log(response)
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
@@ -169,8 +170,8 @@ const OrganizationChartTable = () => {
       const response:IRequest<IMember[]> = await requester({
         url: `/members/${idMember}`,
         method: 'GET'
-      })
-
+      });
+      console.log("Member info: ", response)
       if(response.code === 200) 
         if(response.data !== undefined)
           return response.data[0];
@@ -192,7 +193,7 @@ const OrganizationChartTable = () => {
       const response:IRequest<IStructure[]> = await requester({
         url: `/members/strategicInformation/${idMember}`
       })
-
+      console.log("Strategic member info: ", response)
       if(response.code === 200)
         if(response.data !== undefined)
           return response.data[0]
@@ -230,6 +231,10 @@ const OrganizationChartTable = () => {
       
         
       if(nextStrategyLevel !== undefined) {
+        console.log("CONSULT DATA")
+        console.log("Next strategy level:", nextStrategyLevel.id_strategy)
+        console.log("idMember:", id_member)
+        console.log(await searchStrategyLevelsFollowers(nextStrategyLevel.id_strategy, id_member, ""))
         setMemberCurrentLevel(
           await searchStrategyLevelsFollowers(nextStrategyLevel.id_strategy, id_member, ""));      
         setCurrentLevel(nextStrategyLevel);
@@ -495,6 +500,7 @@ const OrganizationChartTable = () => {
                   <TableCell align="center">Nombre</TableCell>
                   <TableCell align="center">Telefono</TableCell> 
                   <TableCell align="center">INE</TableCell> 
+                  <TableCell align="center">Dirección</TableCell>
                   <TableCell align="center">Area geográfica</TableCell>
                   <TableCell align="center">Cantidad total de seguidores</TableCell>
                   <TableCell align="center">Seguidores directos</TableCell>
@@ -517,6 +523,9 @@ const OrganizationChartTable = () => {
                         </TableCell>
                         <TableCell align="center">
                           {person.ine}
+                        </TableCell>
+                        <TableCell align="center">
+                            {person.street} #{person.ext_number}, {person.colony_name}
                         </TableCell>
                         <TableCell align="center">
                           {person.geographic_area_name === null ?
