@@ -76,24 +76,14 @@ const filterSelectedFollowers = (arrayTofilter: IStructure[], currentFollowersSe
 }
 
 const validBirthDay = (date:string):boolean => {
+  let valideAge = false;
   if(date !== "") {
-    let age = 0;
-    const actualYear = moment().format("YYYY");
     let birthAge = moment(date).format("YYYY");
-    // console.log(date)
-    // console.log("actualYear: ", actualYear)
-    // console.log("birthAge: ", JSON.parse(birthAge));
-    console.log(JSON.parse(moment(moment().diff(birthAge)).format("YY")))
-    if(birthAge !== undefined && actualYear !== undefined) {
-      age = JSON.parse(actualYear) - JSON.parse(moment(moment().diff(birthAge)).format("YYYY"))
-      // console.log(age)
-      if(age >= 18) return true;
-    }
-  } else {
-    return true;
-  }
-  
-  return false;
+    let age = moment().diff(birthAge, "years");
+    if(age >= 18 && age <= 110) valideAge =  true;
+    else valideAge = false;
+  } else valideAge = true;
+  return valideAge;
 }
 
 //Auxiliar functions to show inputs
@@ -1064,6 +1054,21 @@ const FormPerson = (
                 testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
               />
             </div>
+            <div className="flex mt-3 justify-center">
+              <Autocomplete
+                disablePortal
+                id="combo-box-demo"
+                onInputChange={(event: any, newInputValue: string | null) => 
+                   handleSearchColony(event, newInputValue) }
+                onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
+                value={person.colony_name}
+                options={ 
+                  arraySearchColony.map((searchColony => searchColony.name_colony)) 
+                }
+                sx={{ width: 300 }}
+                renderInput={(params) => <TextField {...params} label="Colonia" />}
+                />
+            </div>
             <div className="flex flex-row">
               <div className="mr-2">
                 <Input
@@ -1098,9 +1103,9 @@ const FormPerson = (
                 inputType={'date'}
                 required={true}
                 />
-                {/* {validBirthDay(person.birthday) === false && 
+                {validBirthDay(person.birthday) === false && 
                   <MessageAlert label="Fecha de nacimiento invalida, el miembro debe de ser mayor de edad" />
-                } */}
+                }
               </div>
               <div className="mt-5 flex basis-1/2 items-center justify-center">
                 <p>Genero: </p>
@@ -1109,21 +1114,6 @@ const FormPerson = (
                   onChange={handleChangeGender}/>
                 <p>{person.gender === 0 ? "Hombre" : "Mujer"}</p>
               </div>
-            </div>
-            <div className="flex mt-3 justify-center">
-              <Autocomplete
-                disablePortal
-                id="combo-box-demo"
-                onInputChange={(event: any, newInputValue: string | null) => 
-                   handleSearchColony(event, newInputValue) }
-                onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
-                value={person.colony_name}
-                options={ 
-                  arraySearchColony.map((searchColony => searchColony.name_colony)) 
-                }
-                sx={{ width: 300 }}
-                renderInput={(params) => <TextField {...params} label="Colonia" />}
-                />
             </div>
           </div>
           {/* Strategic information */}

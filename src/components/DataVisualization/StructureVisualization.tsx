@@ -50,12 +50,12 @@ const options: Options = {
   },
   nodes: {
     shape: "dot",
-    size: 16,
+    size: 30,
   },
   layout: {
     hierarchical: {
       enabled: true,
-      levelSeparation: 300,
+      levelSeparation: 500,
       nodeSpacing: 250,
       treeSpacing: 200,
       // blockShifting: true,
