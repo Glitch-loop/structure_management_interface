@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Input from "../UIcomponents/Input";
 import { Autocomplete, TextField, Switch } from "@mui/material";
 import Button from "../UIcomponents/Button";
-import { IColony, IGeographicArea, IMember, IRequest, IStrategy, IStructure } from "../../interfaces/interfaces";
+import { IColony, IGeographicArea, IMember, IRequest, IStrategy, IStructure, ISectional } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import Chip from "@mui/material/Chip";
 import { EAlert } from "../../interfaces/enums";
@@ -12,7 +12,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import moment from 'moment';
 import MessageAlert from "../UIcomponents/MessageAlert";
-import { FaKickstarter } from "react-icons/fa";
 
 //Initial states
 const initialPersonState:IMember = {
@@ -31,7 +30,9 @@ const initialPersonState:IMember = {
   id_colony: 0,
   id_strategy: 0,
   colony_name: "",
-  postal_code: ""
+  postal_code: "",
+  id_sectional: 0,
+  sectional_name: ""
 }
 
 const initialStrategicInformationState:IStructure = {
@@ -155,6 +156,7 @@ const FormPerson = (
 
     //States to save the results of the search
     const [arraySearchColony, setArraySearchColony] = useState<IColony[]>([]);
+    const [arraySearchSectional, setArraySearchSectional] = useState<ISectional[]>([]);
     const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
     const [arrayLeader, setArrayLeader] = useState<IStructure[]>([]);
     const [arrayFollower, setArrayFollower] = useState<IStructure[]>([]);
@@ -238,7 +240,6 @@ const FormPerson = (
           data: basicData})
           
         let responseStrategicInformation:IRequest<any> = response;
-        console.log(response)
         if(response.code === 201) {
 
           /*Show a message that the user has been created successfully*/
@@ -325,7 +326,9 @@ const FormPerson = (
             basicData.cellphoneNumber !== initialPersonInformation.cell_phone_number ||
             basicData.idColony !== initialPersonInformation.id_colony ||
             basicData.ine !== initialPersonInformation.ine ||
-            basicData.birthday !== initialPersonInformation.birthday
+            basicData.birthday !== initialPersonInformation.birthday ||
+            basicData.gender !== initialPersonInformation.gender ||
+            basicData.idSectional !== initialPersonInformation.id_sectional
           ) {
             response = await requester({
               url: `/members/${idMember}`,
@@ -333,7 +336,8 @@ const FormPerson = (
               data: basicData
             })
           } 
-
+          console.log(basicData)
+          console.log(response)
           /* Answers for the responses for basic information */
           if(response.code === 200) {
             dispatch(enqueueAlert({alertData: {
@@ -566,6 +570,28 @@ const FormPerson = (
       }
     }
 
+    const searchSectionals = async (sectionalToSearch: string):Promise<ISectional[]> => {
+      try {
+        const response: IRequest<ISectional[]> = await requester({
+          url: `/sectionals/name/${sectionalToSearch}`,
+          method: 'GET',
+        })
+        if(response.code === 200) {
+          if(response.data !== undefined) return response.data;
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.error, 
+            message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}})); 
+        }
+        return [];
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+        return [];
+      }
+    }
+
     const searchLeaderByNameAndStrategyLevel = async (idStrategy: number, leaderName:string):Promise<IStructure[]> => {
       try {
         const response: IRequest<IStructure[]> = await requester({
@@ -668,6 +694,40 @@ const FormPerson = (
           ...person, 
           id_colony: colonySelected.id_colony, 
           colony_name: colonySelected.name_colony});
+    }
+
+    //Handlers for sectional autocomplete
+    const handleSearchSectional = async (event: any, newInputValue: string | null) => {
+      if(newInputValue !== null) {
+        //Save the current user's search
+        setPerson({...person, sectional_name: newInputValue}) 
+        //If the user doesn't search anything, delete the current results 
+        if(newInputValue==='') setArraySearchSectional([]) 
+
+        /*
+          If the array of results is empty and the user is searcher something, 
+          make a request to backend to search what the user is searching.
+        */
+        if(arraySearchSectional[0] === undefined && newInputValue !== '') 
+          setArraySearchSectional(await searchSectionals(newInputValue))        
+      }
+    }
+
+    const handleSelectSectional = async (event: any, newInputValue: string | null) => {
+      // Search through the name, the colony that the user selected
+      const sectionalSelected:ISectional|undefined = arraySearchSectional
+      .find(searchSectional => searchSectional.sectional_name === newInputValue);
+
+      /*
+        If the colony wasn't founded, reset the fields in the state, otherwise
+        save the ID and name of the colony selected
+      */
+      if(sectionalSelected===undefined) setPerson({...person, id_sectional: 0, sectional_name: ""});
+      else 
+        setPerson({
+          ...person, 
+          id_sectional: sectionalSelected.id_sectional, 
+          sectional_name: sectionalSelected.sectional_name});
     }
 
     const handleChangeGender = (e:any) => {
@@ -924,7 +984,13 @@ const FormPerson = (
       if(person.id_colony === 0){
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
-            message: "Haz olvidado escoger la colonia donde vive el miembro miembro"}}));
+            message: "Haz olvidado escoger la colonia donde vive el miembro"}}));
+          return;
+      }
+      if(person.id_sectional === 0){
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.warning, 
+            message: "Haz olvidado escoger el seccional a donde pertenece el miembro"}}));
           return;
       }
       if(strategicInformationPerson.id_strategy === 0){
@@ -935,6 +1001,7 @@ const FormPerson = (
       }
 
       e.preventDefault();
+      console.log("person: ", person)
       const basicData = {
         "idMember": avoidNull(person.id_member, 0),
         "firstName": avoidNull(person.first_name, ""),
@@ -945,8 +1012,9 @@ const FormPerson = (
         "cellphoneNumber": avoidNull(person.cell_phone_number, ""),
         "ine": avoidNull(person.ine, ""),
         "birthday": avoidNull(person.birthday, ""),
-        "gender": person.gender,
+        "gender": avoidNull(person.gender, 0),
         "idColony": avoidNull(person.id_colony, 0),
+        "idSectional": avoidNull(person.id_sectional, 0),
         "idStrategyLevel": avoidNull(strategicInformationPerson.id_strategy, 0)
       }
 
@@ -1094,6 +1162,21 @@ const FormPerson = (
                 required={true}
                 testRegex={new RegExp(/^\d{13}$/, 's')}
                 testMessage={"Tienen que ser 13 numeros exactos"}
+                />
+            </div>
+            <div className="flex mt-3 justify-center">
+              <Autocomplete
+                disablePortal
+                id="combo-box-demo"
+                onInputChange={(event: any, newInputValue: string | null) => 
+                  handleSearchSectional(event, newInputValue) }
+                onChange={(event: any, newValue: any) => handleSelectSectional(event, newValue) }
+                value={person.sectional_name}
+                options={ 
+                  arraySearchSectional.map((searchSectionals => searchSectionals.sectional_name)) 
+                }
+                sx={{ width: 300 }}
+                renderInput={(params) => <TextField {...params} label="Seccional" />}
                 />
             </div>
             <div className="flex flex-row mt-1">

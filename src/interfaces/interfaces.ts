@@ -95,6 +95,8 @@ export interface IMember {
   id_strategy: number;
   colony_name: string;
   postal_code: string;
+  id_sectional: number;
+  sectional_name: string;
 }
 
 export interface IPrivilege {
@@ -107,6 +109,12 @@ export interface IRequest<T> {
   message: string;
   code: number;
   data? : T
+}
+
+export interface ISectional {
+  id_sectional: number;
+  sectional_name: string;
+  sectional_address?: string;
 }
 
 export interface IStructure {

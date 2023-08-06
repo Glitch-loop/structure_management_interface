@@ -40,7 +40,9 @@ const emptyMember: IMember = {
   gender: 0,
   id_strategy: 0,
   colony_name: "",
-  postal_code: ""
+  postal_code: "",
+  id_sectional: 0,
+  sectional_name: ""
 }
 
 
@@ -216,7 +218,6 @@ const TablePersons = ({ action }:{ action:number }) => {
   }
 
   const getBasicMemberInformationById = async(idMember: number):Promise<IMember> => {
-
     try {
       const response:IRequest<IMember[]> = await requester({
         url: `/members/${idMember}`,

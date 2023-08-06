@@ -51,6 +51,8 @@ const initialMemberStrategyLevel:IMemberStrategyLevel = {
   id_strategy: 0,
   colony_name: "",
   postal_code: "",
+  id_sectional: 0,
+  sectional_name: "",
   number_follower: 0,
   number_followers_structure: 0,
   id_geographic_area: 0,
@@ -73,7 +75,9 @@ const emptyMember: IMember = {
   gender: 0,
   id_strategy: 0,
   colony_name: "",
-  postal_code: ""
+  postal_code: "",
+  id_sectional: 0,
+  sectional_name: ""
 }
 
 const emptyMemberStrategicInformation:IStructure = {
@@ -142,13 +146,12 @@ const OrganizationChartTable = () => {
       "stringToSearch": stringToSearch
     }
     try {
-      console.log(data)
       const response: IRequest<IMemberStrategyLevel[]> = await requester({
         url: `/data/structure/strategyLevel`,
         method: 'POST',
         data: data
       })
-      console.log(response)
+
       if(response.code === 200) 
         if(response.data !== undefined) 
           return response.data;
@@ -171,7 +174,7 @@ const OrganizationChartTable = () => {
         url: `/members/${idMember}`,
         method: 'GET'
       });
-      console.log("Member info: ", response)
+
       if(response.code === 200) 
         if(response.data !== undefined)
           return response.data[0];
@@ -193,7 +196,7 @@ const OrganizationChartTable = () => {
       const response:IRequest<IStructure[]> = await requester({
         url: `/members/strategicInformation/${idMember}`
       })
-      console.log("Strategic member info: ", response)
+
       if(response.code === 200)
         if(response.data !== undefined)
           return response.data[0]
@@ -231,10 +234,6 @@ const OrganizationChartTable = () => {
       
         
       if(nextStrategyLevel !== undefined) {
-        console.log("CONSULT DATA")
-        console.log("Next strategy level:", nextStrategyLevel.id_strategy)
-        console.log("idMember:", id_member)
-        console.log(await searchStrategyLevelsFollowers(nextStrategyLevel.id_strategy, id_member, ""))
         setMemberCurrentLevel(
           await searchStrategyLevelsFollowers(nextStrategyLevel.id_strategy, id_member, ""));      
         setCurrentLevel(nextStrategyLevel);
@@ -298,6 +297,8 @@ const OrganizationChartTable = () => {
           id_strategy: leaderStrategicInformation.id_strategy !== undefined ?     leaderStrategicInformation.id_strategy : 0,
           colony_name: "",
           postal_code: "",
+          id_sectional: 0,
+          sectional_name: "",
           number_follower: 0,
           number_followers_structure: 0,
           id_geographic_area: 0,
@@ -446,6 +447,12 @@ const OrganizationChartTable = () => {
                   Area geografica que administra: 
                   <span className='ml-2 italic font-bold'>
                       {currentLeader.geographic_area_name===null ? "No administra area geografica" : currentLeader.geographic_area_name}
+                  </span>
+                </p>
+                <p>
+                  Dirección: 
+                  <span className='ml-2 italic font-bold'>
+                    {currentLeader.street} #{currentLeader.ext_number}, {currentLeader.colony_name}
                   </span>
                 </p>
               </>
