@@ -336,8 +336,6 @@ const FormPerson = (
               data: basicData
             })
           } 
-          console.log(basicData)
-          console.log(response)
           /* Answers for the responses for basic information */
           if(response.code === 200) {
             dispatch(enqueueAlert({alertData: {
@@ -1001,7 +999,6 @@ const FormPerson = (
       }
 
       e.preventDefault();
-      console.log("person: ", person)
       const basicData = {
         "idMember": avoidNull(person.id_member, 0),
         "firstName": avoidNull(person.first_name, ""),

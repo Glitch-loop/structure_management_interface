@@ -30,14 +30,15 @@ const Searcher = (
     }
   }
 
-  const handleSelection = (idItemSelected:number):void => {
+  const handleSelection = (itemSelected:IOption):void => {
     if(onSelectOption !== undefined) {
-      onSelectOption(idItemSelected);
-      setItemToSearch('');
-    }
+      onSelectOption(itemSelected.id);
+      setItemToSearch(itemSelected.data);
+    } else setItemToSearch("");
   }
+  
   return (
-    <div className="flex flex-1 flex-col items-center gap-x-3 mb-3">
+    <div className="flex flex-1 flex-col items-center gap-x-3">
       <div className="flex w-[400px] items-center bg-slate-100 rounded-full pl-3 py-1">
         <HiOutlineSearch className='text-gray-500'/>
         <input 
@@ -55,7 +56,8 @@ const Searcher = (
         { optionsToShow !== undefined && 
           optionsToShow.map(element => 
             <button
-              onClick={() => handleSelection(element.id)}
+              onClick={() => { handleSelection(element) }
+              }
               key={element.id}
               className='p-3 bg-gray-100 hover:bg-gray-200'
             >

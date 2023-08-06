@@ -9,11 +9,10 @@ import Paper from '@mui/material/Paper';
 import { Dialog, Tooltip } from "@mui/material";
 import Searcher from "../UIcomponents/Searcher";
 import Button from "../UIcomponents/Button";
-import { IRequest, IActivity } from "../../interfaces/interfaces";
+import { IRequest, IActivity, IStructure } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { Dispatch, AnyAction } from 'redux';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
+import { useDispatch } from 'react-redux';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { BsFillClipboard2CheckFill } from "react-icons/bs";
@@ -23,13 +22,16 @@ import Forbbiden from "../Authorization/Forbbiden";
 import Input from "../UIcomponents/Input";
 import moment from 'moment';
 import MessageAlert from "../UIcomponents/MessageAlert";
+import SearchMember from "../Searchers/SearchMember";
+
 
 const initialActivity:IActivity = {
   id_activity: 0,
   name_activity: "",
   description_activity: "",
   expiration_date: "",
-  creation_date: ""
+  creation_date: "",
+  last_expiration_date: ""
 }
 
 const responseError:IRequest<undefined> = {
@@ -38,14 +40,35 @@ const responseError:IRequest<undefined> = {
   code: 500
 }
 
-const validExpirationDay = (date:string):any => {
-  if(date === "Invalid date") return undefined;
+const validExpirationDay = (expiration_date:string, last_expiration_date?:string):any => {
+  console.log(expiration_date)
+  let result = undefined;
+  if(expiration_date === "Invalid date" || expiration_date === "") result = undefined;
+  else {
+    //That means that there is a possible date
+    if(expiration_date !== "" || expiration_date !== undefined || expiration_date !== null) {
+      if(last_expiration_date !== undefined || last_expiration_date !== null) {
+        /*
+          If it's yes, then this means that there is a previous "expiration date", 
+          so we need to compare with it
+        */
+       //There isn't a new date
+        if(moment(last_expiration_date).diff(moment(expiration_date)) === 0) result = true; 
+        else {
+          //The validate that the new expiration date is before of "today"
+          if(moment().diff(moment(expiration_date)) < 0) result = true; 
+          else  result = false;
+        }
+      } else {
+        //The validate that the new expiration date is before of "today"
+        if(moment().diff(moment(expiration_date)) < 0) result = true; 
+        else  result = false;
+      }
+    } 
+    else result = false;
+  }
 
-  if(date !== "" || date !== undefined || date !== null) 
-    if(moment().diff(moment(date)) < 0) return true; 
-    else  return false
-  else return false;
-  
+  return result;
 }
 
 const ActivitiesComponent = () => {
@@ -61,10 +84,10 @@ const ActivitiesComponent = () => {
   const [dialogLeader, setDialogLeader] = useState<boolean>(false);
   const [typeOperation, setTypeOperation] = useState<number>(0);
   const [activitySelected, setActivitySelected] = useState<IActivity>(initialActivity);
+  const [memberToSearch, setMemberToSearch] = useState<IStructure|undefined>(undefined);
 
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
-  const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
     //Get create activity privilege
@@ -85,7 +108,14 @@ const ActivitiesComponent = () => {
 
     getAllActivities()
     .then(responseDB => {
-      console.log(responseDB)
+      
+      const activitiesWithLastExpirationDay:IActivity[] = [];
+
+      responseDB.forEach(activity => {
+        activitiesWithLastExpirationDay.push({...activity, last_expiration_date: activity.expiration_date})
+      })
+      
+      console.log(activitiesWithLastExpirationDay)
       setActivities(responseDB);
     });
     
@@ -164,7 +194,8 @@ const ActivitiesComponent = () => {
       const data = {
         nameActivity: activity.name_activity,
         descriptionActivity: activity.description_activity,
-        expiratioDate: activity.expiration_date
+        expiratioDate: activity.expiration_date,
+        lastExpirationDate: activity.last_expiration_date
       }
 
       
@@ -239,9 +270,11 @@ const ActivitiesComponent = () => {
   }
 
   const handleUpdateActivity = (activity:IActivity):void => {
-    setActivitySelected(activity);
+    let expirationDate = moment(activity.expiration_date).format("YYYY-MM-DD")
     setActivitySelected({...activity, 
-      expiration_date: moment(activity.expiration_date).format("YYYY-MM-DD")});
+      expiration_date: expirationDate,
+      last_expiration_date: expirationDate
+    });
     setDialog(true);
     setTypeOperation(2);
   }
@@ -262,6 +295,7 @@ const ActivitiesComponent = () => {
 
   const handleOnSubmit = async (e:any) => {
     e.preventDefault();
+  
     if(
       activitySelected.name_activity === '' ||
       activitySelected.description_activity === ''
@@ -272,6 +306,10 @@ const ActivitiesComponent = () => {
         return;
     }
     
+    if(activitySelected.expiration_date === "Invalid date") {
+      activitySelected.expiration_date = "";
+    }
+
     let response:IRequest<any> = responseError;
 
     if(typeOperation===1) {
@@ -311,11 +349,14 @@ const ActivitiesComponent = () => {
   }
 
   const handleOnOpenDialogMembers = ():void => {
-    console.log("HOLA")
     setDialogLeader(true);
   }
   const handleOnCloseDialogMembers = ():void => {
     setDialogLeader(false);
+  }
+
+  const handleSearchMember = ():void => {
+    console.log(memberToSearch)
   }
 
   //Auxiliar functions 
@@ -325,8 +366,10 @@ const ActivitiesComponent = () => {
     setActivitySelected(initialActivity);
   }
 
+
   return (
     <>
+      {/* Dialog for manage the activities */}
       <Dialog  onClose={handleOnCloseDialog} open={dialog}>
         <div className="w-72 p-5 flex flex-col justify-center text-center">
           <div className="text-lg font-bold">
@@ -361,7 +404,7 @@ const ActivitiesComponent = () => {
               placeholder={'Expiración de la actividad'}
               inputType={'date'}
               />
-            {(validExpirationDay(activitySelected.expiration_date) === false) && 
+            {(validExpirationDay(activitySelected.expiration_date, activitySelected.last_expiration_date) === false) && 
               <MessageAlert label="El dia de expiración debe de ser posterior a hoy"/>
             }
           </div>
@@ -371,14 +414,20 @@ const ActivitiesComponent = () => {
           </div>
         </div>
       </Dialog>
+      {/* Dialog for search the member */}
       <Dialog onClose={handleOnCloseDialogMembers} open={dialogLeader}>
-       <div className="p-5 flex flex-col justify-center text-center">
-        <p>Selecciona una opcion para </p>
-        <Searcher placeholder="Buscar lider" />
-        <div className="flex flex-row">
-            <Button label="Buscar lider" />
-            <Button label="Todos los miembros" />
-            <Button label="Miembros faltantes" />
+       <div className="w-auto p-4 flex flex-col justify-center text-center">
+        <p className="my-2">Selecciona una opcion para </p>
+        <div className="flex flex-row items-center my-2">
+            <SearchMember onSelectItem={setMemberToSearch}/>
+            <div>
+              <Button onClick={handleSearchMember} label="Buscar miembro" style="ml-5"/>
+            </div>
+        </div>
+      
+        <div className="flex flex-row justify-around my-2">
+          <Button label="Todos los miembros" />
+          <Button label="Miembros faltantes" />
         </div>
        </div>
       </Dialog>
@@ -417,7 +466,7 @@ const ActivitiesComponent = () => {
                               {activity.name_activity}
                             </TableCell>
                             <TableCell align="center">
-                              { activity.expiration_date !== null ?
+                              { (activity.expiration_date !== null && activity.expiration_date !== "") ?
                                 moment(activity.expiration_date).format("DD-MM-YYYY") :
                                 "No expira"}
                             </TableCell>

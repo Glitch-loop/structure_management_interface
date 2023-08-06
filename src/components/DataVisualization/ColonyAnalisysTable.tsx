@@ -41,7 +41,9 @@ const voidMember:IMember = {
   id_colony: 0,
   id_strategy: 0,
   colony_name: "",
-  postal_code: ""
+  postal_code: "",
+  sectional_name: "",
+  id_sectional: 0
 }
 
 //Auxiliar functions
@@ -295,7 +297,6 @@ const ColonyAnalisysTable = () => {
     if(findDataLeader!==undefined) setLeader(findDataLeader);
     setSearchMembers([]);
     setStoreResponseSearchMember([]);
-    
   }
 
   const onSearchTypeColony = async(stringToSearch: string) => {

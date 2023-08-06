@@ -6,6 +6,7 @@ export interface IActivity {
   description_activity: string;
   expiration_date: string;
   creation_date: string;
+  last_expiration_date?: string;
 }
 
 export interface IAlert {
