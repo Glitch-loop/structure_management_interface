@@ -15,6 +15,7 @@ import OrganizationChartTableVisualization from "../pages/OrganizationChartTable
 import ColonyAnalisysTableVisualization from "../pages/ColonyAnalisysTableVisualization";
 import MainMenu from "../pages/MainMenu";
 import Activities from "../pages/Activities";
+import SectionalsManage from "../pages/Sectionals";
 
 const AppRouter = () => {
   return (
@@ -31,6 +32,7 @@ const AppRouter = () => {
               <Route path="newCollaborator" element={<AddCollaborator />} />
               <Route path="manageCollaborator" element={<ManageCollaborator />} />
               <Route path="geographicArea" element={<GeographicArea />} />
+              <Route path="sectionals" element={<SectionalsManage />} />
               <Route path="geographicAreaData" element={<MapDataView />} />
               <Route path="strategy" element={<StrategyManagement />} />
               <Route path="data" element={<DataView />} />

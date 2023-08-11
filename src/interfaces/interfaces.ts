@@ -7,6 +7,14 @@ export interface IActivity {
   expiration_date: string;
   creation_date: string;
   last_expiration_date?: string;
+  members_done?: IActivityDone[];
+}
+
+export interface IActivityDone {
+  id_activity_done: number;
+  id_member: number;
+  id_activity: number;
+  performed_date: string;
 }
 
 export interface IAlert {
@@ -116,6 +124,7 @@ export interface ISectional {
   id_sectional: number;
   sectional_name: string;
   sectional_address?: string;
+  members_target?: number;
 }
 
 export interface IStructure {

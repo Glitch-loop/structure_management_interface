@@ -24,7 +24,9 @@ const Searcher = (
 
   const handleType = (e:any):void => {
     e.preventDefault();
+
     if(e.key=="Enter" && handleSearcher !== undefined){
+      console.log(itemToSearch)
       handleSearcher(itemToSearch);
       setItemToSearch('');
     }
@@ -36,7 +38,7 @@ const Searcher = (
       setItemToSearch(itemSelected.data);
     } else setItemToSearch("");
   }
-  
+
   return (
     <div className="flex flex-1 flex-col items-center gap-x-3">
       <div className="flex w-[400px] items-center bg-slate-100 rounded-full pl-3 py-1">
@@ -59,7 +61,7 @@ const Searcher = (
               onClick={() => { handleSelection(element) }
               }
               key={element.id}
-              className='p-3 bg-gray-100 hover:bg-gray-200'
+              className='p-3 px-8 bg-gray-100 hover:bg-gray-200'
             >
               {element.data}
             </button>

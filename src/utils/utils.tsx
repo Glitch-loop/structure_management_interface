@@ -9,7 +9,12 @@ const createRGBColor = (R:number, G:number, B:number):number[] => {
   return [color1, color2, color3];
 }
 
+const avoidNull = (data: any, replace: any):any => {
+  return data === null ? replace : data;
+}
+
 export {
   randomNumber,
-  createRGBColor
+  createRGBColor,
+  avoidNull
 }

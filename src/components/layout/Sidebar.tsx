@@ -12,7 +12,7 @@ import { userLogout } from "../../redux/slices/userSlice";
 import { AnyAction, Dispatch } from 'redux';
 import { IUser } from "../../interfaces/interfaces";
 import { HiUserGroup } from "react-icons/hi";
-import { FaTasks } from "react-icons/fa";
+import { FaTasks, FaMap } from "react-icons/fa";
 
 const itemsSideBar = [
   { label: 'Menu principal', icon: IoDesktopOutline, path: 'mainMenu' },
@@ -21,8 +21,9 @@ const itemsSideBar = [
   { label: 'Agrega colaborador', icon: HiUserAdd, path: 'newCollaborator' },
   { label: 'Administrar colaborador', icon: BsPersonFillGear, path: 'manageCollaborator' },
   { label: 'Areas geograficas', icon: BsGlobe, path: 'geographicArea' },
+  { label: 'Seccionales', icon: IoGolfOutline, path: 'sectionals' },
   { label: 'Administrar estrategia', icon: FaMapPin, path: 'strategy' },
-  { label: 'Visualizar areas geograficas', icon: IoGolfOutline, path: 'geographicAreaData' },
+  { label: 'Visualizar areas geograficas', icon: FaMap, path: 'geographicAreaData' },
   { label: 'Organigrama', icon: BsDiagram3Fill  , path: 'data' },
   { label: 'Información por lider', icon: HiUserGroup, path: 'organizationChartTable' },
   { label: 'Información por colonia', icon: IoLayersSharp, path: 'colonyAnalisysTable' },

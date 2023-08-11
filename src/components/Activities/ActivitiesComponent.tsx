@@ -6,10 +6,10 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Dialog, Tooltip } from "@mui/material";
+import { Dialog, Tooltip, Switch } from "@mui/material";
 import Searcher from "../UIcomponents/Searcher";
 import Button from "../UIcomponents/Button";
-import { IRequest, IActivity, IStructure } from "../../interfaces/interfaces";
+import { IRequest, IActivity, IStructure, IActivityDone } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch } from 'react-redux';
@@ -31,7 +31,8 @@ const initialActivity:IActivity = {
   description_activity: "",
   expiration_date: "",
   creation_date: "",
-  last_expiration_date: ""
+  last_expiration_date: "",
+  members_done: []
 }
 
 const responseError:IRequest<undefined> = {
@@ -40,8 +41,11 @@ const responseError:IRequest<undefined> = {
   code: 500
 }
 
+interface IStructureActivity extends IStructure {
+  activity_done: boolean;
+}
+
 const validExpirationDay = (expiration_date:string, last_expiration_date?:string):any => {
-  console.log(expiration_date)
   let result = undefined;
   if(expiration_date === "Invalid date" || expiration_date === "") result = undefined;
   else {
@@ -81,10 +85,15 @@ const ActivitiesComponent = () => {
   // Operational states
   const [activities, setActivities] = useState<IActivity[]>([]);
   const [dialog, setDialog] = useState<boolean>(false);
-  const [dialogLeader, setDialogLeader] = useState<boolean>(false);
+  const [dialogSearchMember, setSearchMember] = useState<boolean>(false);
   const [typeOperation, setTypeOperation] = useState<number>(0);
   const [activitySelected, setActivitySelected] = useState<IActivity>(initialActivity);
   const [memberToSearch, setMemberToSearch] = useState<IStructure|undefined>(undefined);
+  const [memberToEvalute, setMemberToEvalute] = useState<IStructureActivity[]>([]);
+  const [assessActivity, setAssessActivity] = useState<boolean>(false);
+
+  //Auxiliar state to re-render memberToEvaluate array 
+  const [helper, setHelper] = useState<boolean>(false);
 
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
@@ -115,7 +124,6 @@ const ActivitiesComponent = () => {
         activitiesWithLastExpirationDay.push({...activity, last_expiration_date: activity.expiration_date})
       })
       
-      console.log(activitiesWithLastExpirationDay)
       setActivities(responseDB);
     });
     
@@ -259,6 +267,134 @@ const ActivitiesComponent = () => {
     }
   }
 
+  const setMemberDoneActiviy = async(activity:IActivity, listMembers:IStructureActivity[]):Promise<IRequest<any>> => {
+    const wrongResponse:IRequest<any> = {
+      message: "There was an error",
+      code: 400,
+      data: undefined
+    }
+    try {      
+      const data:any = {
+        arrayMembers: listMembers
+      }
+      const response:IRequest<any> = await requester({
+        url: `activities/members/${activity.id_activity}`,
+        method: "PUT",
+        data: data
+      });
+
+      
+      if(response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se ha actualizado los registros de la actividad"}}));  
+        return response
+      }
+        
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar actualizar los registros de la actividad, intente nuevamente"}}));  
+      return wrongResponse;
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return wrongResponse;
+    }
+  }
+
+  const getActivityId = async (id_activity:number):Promise<IActivity> => {
+    try {
+        const response:IRequest<IActivity[]>  = await requester({
+          url: `/activities/${id_activity}`
+        })
+        
+        if(response.code === 200)
+          if(response.data !== undefined)
+            return response.data[0]
+  
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Hubo problemas al momento de obtener las actividades, intente nuevamente"}}));
+        return initialActivity;
+  
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar conectarse al servidor"}}));
+        return initialActivity;
+      }
+  }
+
+  const getStructure = async ():Promise<IStructure[]> => {
+  try {
+      const response:IRequest<IStructure[]>  = await requester({
+        url: '/data/structure'
+      })
+      
+      if(response.code === 200)
+      if(response.data !== undefined)
+        return response.data
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Hubo problemas al momento de obtener las actividades, intente nuevamente"}}));
+      return [];
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+
+  const getMemberStructure = async (id_leader:number) => {
+    try {
+      const response:IRequest<IStructure[]>  = await requester({
+        url: `/data/structure/strategyLevel/${id_leader}`
+      })
+      if(response.code === 200)
+      if(response.data !== undefined)
+        return response.data
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Hubo problemas al momento de obtener las actividades, intente nuevamente"}}));
+
+      return [];  
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];   
+    }
+  }
+
+  const getMembersDidNotPerformTask = async (id_activity:number) => {
+    try {
+      const response:IRequest<IStructure[]>  = await requester({
+        url: `/activities/members/notPerform/${id_activity}`
+      })
+      if(response.code === 200)
+      if(response.data !== undefined)
+        return response.data
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Hubo problemas al momento de obtener las actividades, intente nuevamente"}}));
+
+      return [];  
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];   
+    }
+  }
+  
   // Handlers
   const handleOnCloseDialog = ():void => {
     restartOperation();
@@ -349,14 +485,81 @@ const ActivitiesComponent = () => {
   }
 
   const handleOnOpenDialogMembers = ():void => {
-    setDialogLeader(true);
-  }
-  const handleOnCloseDialogMembers = ():void => {
-    setDialogLeader(false);
+    setSearchMember(true);
   }
 
-  const handleSearchMember = ():void => {
-    console.log(memberToSearch)
+  const handleOnCloseDialogMembers = ():void => {
+    setSearchMember(false);
+  }
+
+  const handleSearchMember = async (typeOfSearch:number):Promise<void> => {
+    let members:IStructure[] = [];
+    let activity:IActivity = initialActivity;
+    let membersToAssess:IStructureActivity[] = [];
+    let membersDone:IActivityDone[] = [];
+
+    if(typeOfSearch === 1) {
+      //Search in the structure
+      if(memberToSearch !== undefined) {
+        members = await getMemberStructure(memberToSearch.id_member);
+      }
+    } else if(typeOfSearch === 2) {
+      //All the members
+      members = await getStructure();
+    } else {
+      //Members that doesn't still make the activity
+      if(activitySelected.id_activity !== undefined)
+        members = await getMembersDidNotPerformTask(activitySelected.id_activity);
+    }
+
+    if(members[0] !== undefined) {
+      if(activitySelected.id_activity !== undefined)
+      activity = await getActivityId(activitySelected.id_activity);
+    }
+
+    if(activity.members_done !== undefined) {
+      membersDone = activity.members_done;
+      members.forEach(member => {
+        if(membersDone.find(memberDone => memberDone.id_member === member.id_member) !== undefined) {
+          membersToAssess.push({
+            ...member,
+            activity_done: true
+          });
+        } else {
+          membersToAssess.push({
+            ...member,
+            activity_done: false
+          });
+        }
+      }) 
+    }
+    console.log(membersToAssess)
+    setSearchMember(false);
+    setAssessActivity(true);
+    setMemberToEvalute(membersToAssess);
+  }
+
+  const handleChangeStatus = (idMember:number) => {
+    const newArrayMembers:IStructureActivity[] = [];
+    
+    const index:number|undefined = memberToEvalute
+      .findIndex(person => person.id_member === idMember)
+
+    memberToEvalute[index].activity_done =  !memberToEvalute[index].activity_done;
+
+    setHelper(!helper);
+  }
+
+  const handleFinshEvaluation = async():Promise<void> => {
+    const response:IRequest<any> = await setMemberDoneActiviy(activitySelected, memberToEvalute);
+
+    if(response.code===200) 
+      restartOperation();
+    
+  }
+
+  const handleCancelEvalutation = ():void => {
+    restartOperation();
   }
 
   //Auxiliar functions 
@@ -364,7 +567,11 @@ const ActivitiesComponent = () => {
     setDialog(false);
     setTypeOperation(0);
     setActivitySelected(initialActivity);
+    setAssessActivity(false);
+    setMemberToEvalute([]);
   }
+
+
 
 
   return (
@@ -415,24 +622,74 @@ const ActivitiesComponent = () => {
         </div>
       </Dialog>
       {/* Dialog for search the member */}
-      <Dialog onClose={handleOnCloseDialogMembers} open={dialogLeader}>
+      <Dialog onClose={handleOnCloseDialogMembers} open={dialogSearchMember}>
        <div className="w-auto p-4 flex flex-col justify-center text-center">
         <p className="my-2">Selecciona una opcion para </p>
         <div className="flex flex-row items-center my-2">
             <SearchMember onSelectItem={setMemberToSearch}/>
             <div>
-              <Button onClick={handleSearchMember} label="Buscar miembro" style="ml-5"/>
+              <Button onClick={() =>{ handleSearchMember(1) }} label="Buscar miembro" style="ml-5"/>
             </div>
         </div>
       
         <div className="flex flex-row justify-around my-2">
-          <Button label="Todos los miembros" />
-          <Button label="Miembros faltantes" />
+          <Button onClick={() => { handleSearchMember(2) }} label="Todos los miembros" />
+          <Button onClick={() => {handleSearchMember(3)}} label="Miembros faltantes" />
         </div>
        </div>
       </Dialog>
+      
+      {(memberToEvalute[0] !== undefined) &&
+        <div className="flex flex-col">
+          <p>Resultados de la busquesa</p>
+          <Paper sx={{overflow: 'hidden'}}>
+            <TableContainer sx={{ maxHeight: 440 }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="center">ID del miembro</TableCell>
+                    <TableCell align="center">Nombre del miembro</TableCell>
+                    <TableCell align="center">Rol del miembro</TableCell>
+                    <TableCell align="center">¿Realizo la actividad?</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {
+                    memberToEvalute.map(member => {
+                      return (
+                        <TableRow key={member.id_member}>
+                          <TableCell align="center">
+                            {member.id_member}
+                          </TableCell>
+                          <TableCell align="center">
+                            {member.first_name} {member.last_name}
+                          </TableCell>
+                          <TableCell align="center">
+                            {member.role}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Switch 
+                              checked={member.activity_done === true ? true : false}
+                              onChange={() => {handleChangeStatus(member.id_member)}}
+                              />
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  }
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper> 
+          <div className="mt-3 flex flex-row basis-1/2 justify-around">
+            <Button label="Aceptar" onClick={handleFinshEvaluation}/>
+            <Button label="Cancelar" colorButton={1} onClick={handleCancelEvalutation}/>
+          </div>
+        </div>
+      }
+
       {
-        (createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege) ?
+        ((createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege) && assessActivity === false) ?
         <div className="flex flex-col">
           <div className="flex flex-row items-align justify-between mb-3">
             <div className="mt-6">
@@ -484,6 +741,7 @@ const ActivitiesComponent = () => {
                               <button 
                                 onClick={() => {
                                   if(updateActivityPrivilege !== false) {
+                                    setActivitySelected(activity)
                                     handleOnOpenDialogMembers()
                                   }
                                 }}
@@ -544,11 +802,15 @@ const ActivitiesComponent = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-            </Paper>
-            
+            </Paper> 
           </div>
         </div> :
-        <Forbbiden />
+        <>
+          {(assessActivity===false) &&
+            <Forbbiden />
+          }
+        </>
+        
       }
     </>
   )

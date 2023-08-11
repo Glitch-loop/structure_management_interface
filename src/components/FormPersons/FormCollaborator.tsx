@@ -575,7 +575,7 @@ const FormCollaborator = (
           response = await  updatePassword(person.password)
       }
 
-      console.log("Hola")    
+
       if(response.code === 200) {
         setShowDialog(true);
         action == 1 &&
