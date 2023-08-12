@@ -40,13 +40,13 @@ import Button from "../UIcomponents/Button"
 import Searcher from "../UIcomponents/Searcher";
 import Forbbiden from "../Authorization/Forbbiden"
 import SearchSectionals from "../Searchers/SearchSectionals"
+import SearchSectionalsWithoutCoordinates from '../Searchers/SearchSectionalsWithoutCoordinates';
 // Import logic from utils
 import { avoidNull } from "../../utils/utils";
 // Import responses
 import { responseError } from '../../utils/responses';
 // Import constants
-import { 
-  initialGeographicAreaState, 
+import {  
   initialZoneType, 
   arrGeographicAreaType,
   getColorForPolygon,
@@ -55,6 +55,16 @@ import {
   getPolygonCoordinatesInUnmount,
   polygonVisible
 } from './ManageGeographicAreasMapRenderUtils';
+
+const initialGeographicAreaState:IGeographicArea = {
+  id_geographic_area: 0,
+  id_geographic_area_belongs: 0,
+  geographic_area_name: "",
+  id_member: 0,
+  id_strategy: 0,
+  coordinates: [],
+  edtiable: false,
+}
 
 /*
   Important
@@ -69,6 +79,15 @@ import {
   
   To identify that a geographic area is "sectional", was assinged in "idStrategy" -1 number.
 
+  The convertions between both interface will be: 
+  IGeographicArea: {
+    id_geographic_area = id_sectional + sectional_name <- parsed
+    geographic_area_name = sectional_name;
+    id_geographic_area_belongs = sectional.id_sectional;
+    id_member = target_members;
+    id_strategy = -1;
+    coordinates = coordinates;
+  }
 */
 
 function ManageGeographicAreasMapRender() {
@@ -106,7 +125,7 @@ function ManageGeographicAreasMapRender() {
   //Geographic area's strategy level 
   const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategyShow[]>([]);
   const [searchStrategyLevel, setSearchStrategyLevel] = useState<string>("");
-
+  
   //Geographic area itself
   const [geographicArea, setGeographicArea] = useState<IGeographicArea>(initialGeographicAreaState);
   const [sectional, setSectional] = useState<ISectional|undefined>(undefined);
@@ -179,6 +198,8 @@ function ManageGeographicAreasMapRender() {
         the geographic areas won't be rendered.
       */
       const strategyLevels:IStrategyShow[] = dataStrategyLevels.filter(level => level.zone_type !== "");
+
+      //State exclusive for select a zone type in geographic areas according to the strategy
       strategyLevels.push(
         {
           id_strategy: -1,
@@ -187,9 +208,9 @@ function ManageGeographicAreasMapRender() {
           cardinality_level: -1,
           show: false
         }
-        
       )
 
+      // arrayStrategyLevel.map(strategyLevel => strategyLevel.zone_type) 
       setArrayStrategyLevel(strategyLevels.map(strategyLevel => {
         strategyLevel.show = true;
         return strategyLevel
@@ -412,7 +433,7 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
-  const deleteGeographicArea = async (geographicArea: IGeographicArea):Promise<number> => {
+  const deleteGeographicArea = async (geographicArea: IGeographicArea):Promise<IRequest<undefined>> => {
     try {
       const response:IRequest<undefined> = await requester({
         url: `/geographicAreas/${geographicArea.id_geographic_area}`,
@@ -423,19 +444,19 @@ function ManageGeographicAreasMapRender() {
         dispatch(enqueueAlert({alertData: {
           alertType: EAlert.success, 
           message: "Se ha borrado exitosamente el area geográfica"}}));  
-        return response.code;
+        return response;
       }
 
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.warning, 
         message: "Ha habido un problema al intentar eliminar la area geográfica, intente nuevamente"}}));  
 
-      return response.code;
+      return response;
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));      
-      return 500;
+      return responseError;
     }
   }
 
@@ -549,7 +570,6 @@ function ManageGeographicAreasMapRender() {
     try {
       const response:IRequest<ISectional[]> = await requester({
         url: `/sectionals/areas/coordinates/`})
-        console.log(response)
       if(response.code === 200)
         if(response.data !== undefined) 
           return response.data;
@@ -563,6 +583,33 @@ function ManageGeographicAreasMapRender() {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
       return [];
+    }
+  }
+
+  const deleteSectionalCoordinates = async (geographicArea: IGeographicArea):Promise<IRequest<undefined>> => {
+    try {
+      const response:IRequest<undefined> = await requester({
+        url: `/sectionals/coordinates/${geographicArea.id_geographic_area_belongs}`,
+        method: 'DELETE'
+      })
+      
+      if (response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se ha borrado exitosamente las coordenadas del seccional"}}));  
+        return response;
+      }
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar eliminar las coordenadas del seccional, intente nuevamente"}}));  
+
+      return response;
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));      
+      return responseError;
     }
   }
   //Handlers
@@ -639,19 +686,18 @@ function ManageGeographicAreasMapRender() {
   const handleVisualizateAllGeographicArea = async ():Promise<void> => {
     const dataResponse:IGeographicArea[] = await getAllPolygons();
     const sectionalDataResponse:ISectional[] = await getAllSectionals();
-    console.log("Add data: ", sectionalDataResponse)
     if(sectionalDataResponse[0] !== undefined) {
       sectionalDataResponse.forEach(sectional => {
         dataResponse.push({
           id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name),
           geographic_area_name: sectional.sectional_name,
-          id_geographic_area_belongs: sectional.target_members,
+          id_geographic_area_belongs: sectional.id_sectional,
+          id_member: sectional.target_members,
           id_strategy: -1,
           coordinates: sectional.coordinates
         })
       })
     }
-    console.log("Final: ", dataResponse)
     setPolygons(dataResponse);
     setPolygonForWork(dataResponse);
     setShowAllGeographicAreas(true);
@@ -816,13 +862,10 @@ function ManageGeographicAreasMapRender() {
 
   //This function is when geographic area has been finished
   const handleOnSubmitAddGeographicArea = async ():Promise<void> => {
-    console.log("Sectional selected: ", sectional)
     if(sectional === undefined) {
-      console.log("Add geographic area")
-      await addNewGeographicAreaAccordingToStrategy()
+      await addNewGeographicAreaAccordingToStrategy();
     } else {
-      console.log("Adding sectional")
-      await addNewGeographicAreaSectional()
+      await addNewGeographicAreaSectional();
     }
 
     //Reset the variables (this for the next time that the user wants to create other. area)
@@ -830,7 +873,6 @@ function ManageGeographicAreasMapRender() {
     setLine([]);
     resetStates();
   }
-
 
   // Handlers -- POLYGON
   /*
@@ -860,33 +902,38 @@ function ManageGeographicAreasMapRender() {
     either to modify it or to delete it
   */
   const handleDbClickPolygon = async(e: any, polygon: IGeographicArea):Promise<void> => {
-    console.log("Polygon selected: ", polygon)
     if(polygon.id_strategy !== undefined && polygon.id_strategy !== null) {
-      /*
-        The polygon has a zone type assigned (in short, find the name of the zone type 
-        to be displayed in the dialog)
-      */
-      const index:number = arrayStrategyLevel
-        .findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy);
-      setSearchStrategyLevel(arrayStrategyLevel[index].zone_type);
-      
-      /*
-        Get geographic area that belongs the polygon (if the polygon belongs, we going to set in the geographic area belongs display )
-      */
-      
-      if (polygon.id_geographic_area_belongs !== 0 
-       && polygon.id_geographic_area_belongs !== undefined
-       && polygon.id_geographic_area_belongs !== null) {
-        const geographicAreaThatBelongs = await getGeographicAreaByID(polygon.id_geographic_area_belongs)
+      if(polygon.id_strategy !== -1) {
+        /* 
+          This block of code is just for those geographic areas that are created according
+          to the strategy
+        */
+        /*
+          The polygon has a zone type assigned (in short, find the name of the zone type 
+          to be displayed in the dialog)
+        */
+        const index:number = arrayStrategyLevel
+          .findIndex(strategyLevel => strategyLevel.id_strategy === polygon.id_strategy);
+        setSearchStrategyLevel(arrayStrategyLevel[index].zone_type);
         
-        if(geographicAreaThatBelongs[0].geographic_area_name !== undefined
-          && geographicAreaThatBelongs[0].geographic_area_name !== null)
-          setSearchGeographicAreaBelongsTo(
-            `${geographicAreaThatBelongs[0].geographic_area_name} - ${geographicAreaThatBelongs[0].id_geographic_area}`);
+        /*
+          Get geographic area that belongs the polygon (if the polygon belongs, we going to set in the geographic area belongs display )
+        */
+        
+        if (polygon.id_geographic_area_belongs !== 0 
+         && polygon.id_geographic_area_belongs !== undefined
+         && polygon.id_geographic_area_belongs !== null) {
+          const geographicAreaThatBelongs = await getGeographicAreaByID(polygon.id_geographic_area_belongs)
           
-      } else {
-        setSearchGeographicAreaBelongsTo("");
-        setArraySearchGeographicAreaBelongsTo([]);
+          if(geographicAreaThatBelongs[0].geographic_area_name !== undefined
+            && geographicAreaThatBelongs[0].geographic_area_name !== null)
+            setSearchGeographicAreaBelongsTo(
+              `${geographicAreaThatBelongs[0].geographic_area_name} - ${geographicAreaThatBelongs[0].id_geographic_area}`);
+            
+        } else {
+          setSearchGeographicAreaBelongsTo("");
+          setArraySearchGeographicAreaBelongsTo([]);
+        }
       }
     } else {
       setSearchStrategyLevel(""); // The polygon doesn't have a type zone assigned
@@ -910,9 +957,17 @@ function ManageGeographicAreasMapRender() {
     });
 
     // Activate the polygon mange mode
-    setManagePolygon(true)
-    // Show the dialog
-    setShowDialog(true)
+    setManagePolygon(true);
+    if(polygon.id_strategy !== -1) {
+      //That means that the type of geographic area is according to the strategy
+      // Show the dialog
+      setShowDialog(true);
+      setShowDialogSectional(false);
+    } else {
+      //That means that the geographic area is a sectional
+      setShowDialog(false);
+      setShowDialogSectional(true);
+    }
   }
 
   /*
@@ -1031,6 +1086,18 @@ function ManageGeographicAreasMapRender() {
   }
 
   const handleOnSubmitUpdateGeographicArea = async (e: any) => {
+    if(geographicArea.id_strategy !== -1) {
+      updateGeographicArea();
+    } else {
+      updateGeographicAreaSectional();
+    }
+
+    resetStates();
+    setShowDialog(false);
+    setPolygons(polygons);
+  }
+
+  const updateGeographicArea = async ():Promise<void> => {
     let responseUpdate:IRequest<undefined> = {
       message: "Update done successfully",
       code: 200,
@@ -1124,22 +1191,39 @@ function ManageGeographicAreasMapRender() {
         alertType: EAlert.success, 
         message: "Se ha actualizado exitosamente el area geográfica"}})); 
     }
+  }
 
-    resetStates();
-    setShowDialog(false);
-    setPolygons(polygons);
+  const updateGeographicAreaSectional = async ():Promise<void> => {
+    const response:IRequest<undefined> = await updateSectional(geographicArea);
+    if(response.code === 200) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.success, 
+        message: "Se a actualizado el seccional"}})); 
+    }
   }
 
   const handleOnSubmitDeleteGeographicArea = async (e: any) => {
+    let response:IRequest<undefined> = responseError;
     if(geographicArea.id_geographic_area!==0) {
-      if(await deleteGeographicArea(geographicArea) === 200) {
+      if(geographicArea.id_strategy === -1) {
+        //User is trying to delete a sectional
+        response = await deleteSectionalCoordinates(geographicArea);
+      } else {
+        //User is trying to delete a geographic area (from the strategy)
+        response = await deleteGeographicArea(geographicArea);
+      }
+
+      if(response.code === 200) {
         const newSetPolygons:IGeographicArea[] = polygonsForWork
         .filter(polygon => polygon.id_geographic_area !== geographicArea.id_geographic_area)
         setPolygonForWork(newSetPolygons);
         setPolygons(newSetPolygons);
         refCurrentPolygon.current = geographicArea;
       }
+
+      
       setGeographicArea(initialGeographicAreaState);
+      setShowDialogSectional(false);
       setShowDialog(false);
     }
   }
@@ -1209,14 +1293,14 @@ function ManageGeographicAreasMapRender() {
       geographicArea.coordinates = line; //Get the lines
 
       const response:IRequest<undefined> = await updateSectional(geographicArea);
-      console.log(response)
-      if(response.code === 200) {
-        polygonsForWork.push(geographicArea); //Save the new area to render.
-      }
+      
+      polygonsForWork.push(geographicArea); //Save the new area to render.
 
     }
 
   }
+
+
   //HANDLERS --- 
   //Handlers zone type autocomplete
   const handleSearchTypeZone = async (event: any, newInputValue: string | null) => {
@@ -1245,7 +1329,7 @@ function ManageGeographicAreasMapRender() {
 
   const handleOnSelectTypeZone = async(event: any) => {
     setShowDialogGeographicAreaType(false);
-  
+    resetStates();
     if(typeZone.id === 0) {
       //This means that the user is adding a geographic area accodring the strategy
       setShowDialog(true);
@@ -1411,13 +1495,25 @@ function ManageGeographicAreasMapRender() {
 
   // Auxiliar functions
   const resetStates = ():void => {
-    setGeographicArea(initialGeographicAreaState);
+    const restart = {
+      id_geographic_area: 0,
+      id_geographic_area_belongs: 0,
+      geographic_area_name: "",
+      id_member: 0,
+      id_strategy: 0,
+      coordinates: [],
+      edtiable: false,
+    }
+
+    setGeographicArea(restart);
     setArraySearchGeographicAreaBelongsTo([]);
     setSearchGeographicAreaBelongsTo("");
     setSectional(undefined);
     setShowDialogGeographicAreaType(false);
     setShowDialogSectional(false);
     setTypeZone(initialZoneType);
+    setSearchTypeZone("");
+
     
   }
 
@@ -1500,7 +1596,9 @@ function ManageGeographicAreasMapRender() {
                     value={
                       searchStrategyLevel
                     }
-                    options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.zone_type)) }
+                    options={ 
+                      (arrayStrategyLevel.filter(strategyLevel => strategyLevel.id_strategy > 0)).map(strategyLevel => strategyLevel.zone_type)
+                    }
                     sx={{ width: 300 }}
                     renderInput={(params) => <TextField {...params} label="Tipo de zona" />}
                     />
@@ -1556,12 +1654,28 @@ function ManageGeographicAreasMapRender() {
       </div>
     </Dialog>
 
-    {/* This dialog is for assing to the geographic area a sectional */}
+    {/* This dialog is for assign to the geographic area a sectional */}
     <Dialog onClose={handleCloseDialogSectional} open={showDialogSectional}>
       <div className="p-10 flex flex-col overscroll-none">
-        <h1 className="mb-3">Escoge el seccional al que pertenece el area geografica</h1>
-        <SearchSectionals onSelectItem={onSelectSectional}/>
-        <Button onClick={handleOnSubmitAddGeographicArea} label="Aceptar" style="mt-3"/>
+        {managePolygon ?
+          <p className='text-lg font-bold'>Administrar seccional</p>:
+          <p className='text-lg font-bold'>Agregar seccional</p>
+        }
+        {managePolygon ? 
+          <p className='text-lg'>Seccional: {geographicArea.geographic_area_name}</p> :
+          <div>
+            <h1 className="mb-3 text-lg">Escoge el seccional al que pertenece el area geografica</h1>
+            <SearchSectionalsWithoutCoordinates onSelectItem={onSelectSectional}/>
+          </div>
+        }
+        { managePolygon ?
+          <div className='flex flex-row justify-around'>
+            <Button onClick={handleOnSubmitUpdateGeographicArea} label="Actualizar" style="mt-3"/> 
+            <Button onClick={handleOnSubmitDeleteGeographicArea} label="Eliminar" colorButton={1} style="mt-3 ml-4"/>
+          </div>:
+          <Button onClick={handleOnSubmitAddGeographicArea} label="Agregar" style="mt-3"/>
+          
+        }
       </div>
     </Dialog>
 

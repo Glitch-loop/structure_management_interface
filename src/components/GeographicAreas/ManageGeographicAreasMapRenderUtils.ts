@@ -12,16 +12,6 @@ import {
 import { randomNumber } from "../../utils/utils"
 
 //Constants
-const initialGeographicAreaState:IGeographicArea = {
-  id_geographic_area: 0,
-  id_geographic_area_belongs: 0,
-  geographic_area_name: "",
-  id_member: 0,
-  id_strategy: 0,
-  coordinates: [],
-  edtiable: false,
-}
-
 const initialZoneType:IZoneType = {
   name: "Area geografica de estrategia",
   id: 0  
@@ -110,7 +100,6 @@ function polygonVisible(
 }
 
 export {
-  initialGeographicAreaState,
   initialZoneType,
   arrGeographicAreaType,
   getColorForPolygon,
