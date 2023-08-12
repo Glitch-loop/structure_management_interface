@@ -61,7 +61,6 @@ const SectionalManageComponent = () => {
     sectional.sectional_address = avoidNull(sectional.sectional_address, "");
     sectional.target_members = avoidNull(sectional.target_members, 0);
     
-    console.log(sectional)
     setSectionalSelected(sectional)
   }
 

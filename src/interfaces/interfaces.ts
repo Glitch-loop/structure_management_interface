@@ -124,7 +124,8 @@ export interface ISectional {
   id_sectional: number;
   sectional_name: string;
   sectional_address?: string;
-  members_target?: number;
+  target_members?: number;
+  coordinates?: LatLng[];
 }
 
 export interface IStructure {
@@ -161,3 +162,12 @@ export interface IUser {
   sessionToken?: string;
 }
 
+// Special Interfaces for GEOGRAPHIC AREAS
+export interface IStrategyShow extends IStrategy {
+  show?: boolean
+}
+
+export interface IZoneType {
+  id: number;
+  name: string;
+}
