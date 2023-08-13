@@ -167,6 +167,11 @@ export interface IStrategyShow extends IStrategy {
   show?: boolean
 }
 
+export interface IOption {
+  id: number;
+  data: string;
+}
+
 export interface IZoneType {
   id: number;
   name: string;

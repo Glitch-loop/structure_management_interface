@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { HiOutlineSearch } from "react-icons/hi";
+import { IOption } from '../../interfaces/interfaces';
 
-interface IOption {
-  id: number;
-  data: string;
-}
 
 const Searcher = (
   {

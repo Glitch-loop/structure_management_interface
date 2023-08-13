@@ -122,6 +122,7 @@ const Home = () => {
           />
           { showAlert && <MessageAlert label={messageAlert} /> }
           <Button 
+            style="mt-3"
             label="Iniciar sesión"
             onClick={(e:any) => {handleSubmit(e)}}
           />

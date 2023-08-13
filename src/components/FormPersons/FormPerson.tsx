@@ -696,6 +696,8 @@ const FormPerson = (
 
     //Handlers for sectional autocomplete
     const handleSearchSectional = async (event: any, newInputValue: string | null) => {
+      console.log(arraySearchSectional)
+      console.log(newInputValue)
       if(newInputValue !== null) {
         //Save the current user's search
         setPerson({...person, sectional_name: newInputValue}) 
@@ -712,6 +714,7 @@ const FormPerson = (
     }
 
     const handleSelectSectional = async (event: any, newInputValue: string | null) => {
+      console.log("HOLA MUNDO")
       // Search through the name, the colony that the user selected
       const sectionalSelected:ISectional|undefined = arraySearchSectional
       .find(searchSectional => searchSectional.sectional_name === newInputValue);
@@ -721,11 +724,14 @@ const FormPerson = (
         save the ID and name of the colony selected
       */
       if(sectionalSelected===undefined) setPerson({...person, id_sectional: 0, sectional_name: ""});
-      else 
+      else {
+        console.log("SELECT SECTIONAL")        
+        console.log(sectionalSelected)        
         setPerson({
           ...person, 
           id_sectional: sectionalSelected.id_sectional, 
           sectional_name: sectionalSelected.sectional_name});
+      }
     }
 
     const handleChangeGender = (e:any) => {
@@ -1164,10 +1170,11 @@ const FormPerson = (
             <div className="flex mt-3 justify-center">
               <Autocomplete
                 disablePortal
-                id="combo-box-demo"
+                id="selection-sectional-member"
                 onInputChange={(event: any, newInputValue: string | null) => 
                   handleSearchSectional(event, newInputValue) }
-                onChange={(event: any, newValue: any) => handleSelectSectional(event, newValue) }
+                onChange={(event: any, newValue: any) => 
+                  handleSelectSectional(event, newValue) }
                 value={person.sectional_name}
                 options={ 
                   arraySearchSectional.map((searchSectionals => searchSectionals.sectional_name)) 
@@ -1337,10 +1344,15 @@ const FormPerson = (
           
         </div>
         <div className="flex flex-row justify-center">
-          <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
+          <Button 
+          label="Aceptar" 
+          onClick={(e:any) => {handleOnSubmit(e)}}
+          style="mr-3 mt-3"
+          />
         {
           (action===1 || action===3) && 
             <Button 
+              style="mt-3"
               label="Cancelar" 
               onClick={() => {
                 handleSubmit(true)

@@ -33,16 +33,14 @@ import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
+
 // Local components
 import Input from "../UIcomponents/Input"
 import Button from "../UIcomponents/Button"
-import Searcher from "../UIcomponents/Searcher";
 import Forbbiden from "../Authorization/Forbbiden"
-import SearchSectionals from "../Searchers/SearchSectionals"
 import SearchSectionalsWithoutCoordinates from '../Searchers/SearchSectionalsWithoutCoordinates';
 // Import logic from utils
-import { avoidNull } from "../../utils/utils";
+import { avoidNull, randomNumber } from "../../utils/utils";
 // Import responses
 import { responseError } from '../../utils/responses';
 // Import constants
@@ -55,6 +53,8 @@ import {
   getPolygonCoordinatesInUnmount,
   polygonVisible
 } from './ManageGeographicAreasMapRenderUtils';
+import SearchGeographicArea from '../Searchers/SearchGeographicArea';
+import SearchAllTypesGeographicAreas from '../Searchers/SearchAllTypesGeographicAreas';
 
 const initialGeographicAreaState:IGeographicArea = {
   id_geographic_area: 0,
@@ -64,6 +64,27 @@ const initialGeographicAreaState:IGeographicArea = {
   id_strategy: 0,
   coordinates: [],
   edtiable: false,
+}
+
+const initialSectional:ISectional = {
+  id_sectional: 0,
+  sectional_name: "",
+  sectional_address: "",
+  target_members: 0,
+  coordinates: [] 
+}
+
+const convertISectionalToIGeographicArea = (sectional: ISectional):IGeographicArea => {
+  const geographicArea:IGeographicArea = {
+    id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name) + randomNumber(10000),
+    geographic_area_name: sectional.sectional_name,
+    id_geographic_area_belongs: sectional.id_sectional,
+    id_member: sectional.target_members,
+    id_strategy: -1,
+    coordinates: sectional.coordinates
+  };
+  console.log("Return cast: ", geographicArea);
+  return geographicArea;
 }
 
 /*
@@ -144,17 +165,12 @@ function ManageGeographicAreasMapRender() {
   //Logic areas visualization
   const [showVisualizationForm, setShowVisualizationForm] = useState<boolean>(false)
   
-  //States for searcher
-  const [searchGeographicAreas, setSearchGeographicAreas] = useState<IStructure[]>([]);
-  const [storeResponseSearchGeographicAreas, setStoreResponseSearchGeographicAreas] = useState<IStructure[]>([]);
-
   const refCurrentPolygon = useRef<IGeographicArea|undefined>(undefined);
 
   const [polygonColor, setPolygonColor] = useState<any[]>([]);
 
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
-  const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
     //Get privileges
@@ -285,6 +301,7 @@ function ManageGeographicAreasMapRender() {
         geographicAreaName: geographicArea.geographic_area_name,
         geographicAreaCoordinates: geographicArea.coordinates
       }
+
       if(data.geographicAreaName !== "") {
         const response:IRequest<any> = await requester({
           url: "/geographicAreas",
@@ -504,28 +521,6 @@ function ManageGeographicAreasMapRender() {
     }
   }
 
-  const searchGeographicArea = async(stringToSearch: string):Promise<IStructure[]> =>{
-    try {
-      const response: IRequest<IStructure[]> = await requester({
-        url: `/geographicAreas/search/${stringToSearch}`,
-        method: 'GET',
-      })
-      if(response.code === 200) {
-        if(response.data !== undefined) return response.data;
-      } else {
-        dispatch(enqueueAlert({alertData: {
-          alertType: EAlert.error, 
-          message: "Hubo un error al intentar buscar las areas geograficas, intente mas tarde"}})); 
-      }
-      return [];
-    } catch (error) {
-      dispatch(enqueueAlert({alertData: {
-        alertType: EAlert.error, 
-        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
-      return [];
-    }
-  }
-
   const getGeographicAreasInside = async(idGeographicArea: number):Promise<IStructure[]> =>{
     try {
       const response: IRequest<IStructure[]> = await requester({
@@ -560,7 +555,18 @@ function ManageGeographicAreasMapRender() {
         data: data
       })
 
-      return response
+      if(response.code === 200) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.success, 
+          message: "Se ha guardado exitosamente las coordenadas del seccional"}}));  
+        return response
+      }
+  
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar guardar el seccional, intente nuevamente"}}));  
+
+      return responseError;
     } catch (error) {
       return responseError;
     }
@@ -612,6 +618,29 @@ function ManageGeographicAreasMapRender() {
       return responseError;
     }
   }
+
+  const getSectionalByID = async(idSectional: number):Promise<ISectional[]> => {
+    try {
+      const response: IRequest<ISectional[]> = await requester({
+        url: `/sectionals/${idSectional}`,
+        method: 'GET',
+      })
+      if(response.code === 200) {
+        if(response.data !== undefined) return response.data;
+      } else {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las areas geograficas, intente mas tarde"}})); 
+      }
+      return [ initialSectional ];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+      return [initialSectional];
+    }
+  }
+
   //Handlers
   //Handlres of MAP
   const handleClickMap = async (e: any) => {
@@ -689,7 +718,7 @@ function ManageGeographicAreasMapRender() {
     if(sectionalDataResponse[0] !== undefined) {
       sectionalDataResponse.forEach(sectional => {
         dataResponse.push({
-          id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name),
+          id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name) + randomNumber(10000),
           geographic_area_name: sectional.sectional_name,
           id_geographic_area_belongs: sectional.id_sectional,
           id_member: sectional.target_members,
@@ -858,7 +887,6 @@ function ManageGeographicAreasMapRender() {
     
     }
   }
-
 
   //This function is when geographic area has been finished
   const handleOnSubmitAddGeographicArea = async ():Promise<void> => {
@@ -1294,7 +1322,9 @@ function ManageGeographicAreasMapRender() {
 
       const response:IRequest<undefined> = await updateSectional(geographicArea);
       
-      polygonsForWork.push(geographicArea); //Save the new area to render.
+      if(response.code === 200) {
+        polygonsForWork.push(geographicArea); //Save the new area to render.
+      }
 
     }
 
@@ -1336,6 +1366,23 @@ function ManageGeographicAreasMapRender() {
     } else if(typeZone.id === 1) {
       setShowDialogSectional(true);
       //This means that the user is adding a geographic area of type sectional
+    }
+  }
+
+  const handleOnCanelOperation = (typeOperation: boolean) => {
+    if(typeOperation === true) {
+      //It means that the user is modfying an existing geographic area
+      handleCloseDialog();
+      setShowDialog(false);
+      setShowDialogSectional(false);
+      setManagePolygon(false);
+      setShowDialogGeographicAreaType(false);
+    } else {
+      //It means that the user is creating an existing area
+      setShowDialogSectional(false);
+      setShowDialog(false);
+      setShowDialogGeographicAreaType(true);
+
     }
   }
 
@@ -1428,7 +1475,6 @@ function ManageGeographicAreasMapRender() {
     setManagePolygon(false)
   }
   
-
   /*
     This function is to determine which kind of zones the user want to see.
   */
@@ -1445,52 +1491,29 @@ function ManageGeographicAreasMapRender() {
   }
 
   //Handlers for searcher
-  const onSearchTypeGeographicArea = async(stringToSearch: string) => {
-    if(stringToSearch === "") {
-      setStoreResponseSearchGeographicAreas([]);
-      setSearchGeographicAreas([]);
-    } else {
-      if(storeResponseSearchGeographicAreas[0] !== undefined) {
-        const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
+  const selectOption = async (geographicArea: IStructure&ISectional|undefined) => {
+    console.log("Selected: ", geographicArea?.id_sectional)
+    if(geographicArea !== undefined)  {
       
-        const geographicAreaToShow:IStructure[] = storeResponseSearchGeographicAreas.filter(geographicArea => {
-            const name = `${geographicArea.first_name} ${geographicArea.last_name}`;
-            const geographic_area_name = `${geographicArea.geographic_area_name}`;
-            
-            if(
-                re.test(name.toLocaleLowerCase()) === true ||
-                re.test(geographic_area_name.toLocaleLowerCase()) === true
-              ) 
-              return geographicArea;
-          })
-        
-        if(geographicAreaToShow !== undefined) setSearchGeographicAreas(geographicAreaToShow);
-        else setSearchGeographicAreas([]);  
+      if(geographicArea.id_sectional === undefined) {
+        //User is try to find a geographic area of the strategy
+        //Find geographic area coordinates
+        if(geographicArea.id_geographic_area !== undefined) {
+          const dataResponse:IGeographicArea[] = 
+            await getGeographicAreasInside(geographicArea.id_geographic_area);
+          setPolygons(dataResponse);
+          setPolygonForWork(dataResponse);
+          setShowAllGeographicAreas(false);
+        }
       } else {
-        const responseData:IStructure[] = await searchGeographicArea(stringToSearch);
-        setStoreResponseSearchGeographicAreas(responseData);
-        setSearchGeographicAreas(responseData);
-      }
-    }
-  }
+        //User is try to find a sectional
+        const dataResponse:ISectional[] = await getSectionalByID(geographicArea.id_sectional);
 
-  const selectOptionMember = async (idGeographicArea: number) => {
-    const findGeographicArea:undefined|IStructure = storeResponseSearchGeographicAreas
-      .find(geographicArea => geographicArea.id_geographic_area === idGeographicArea);
-
-    //Ask the geographic area
-    if(findGeographicArea !== undefined) 
-      if(findGeographicArea.id_geographic_area !== undefined) {
-        const dataResponse:IGeographicArea[] = 
-          await getGeographicAreasInside(findGeographicArea.id_geographic_area);
-        setPolygons(dataResponse);
+        setPolygons([convertISectionalToIGeographicArea(dataResponse[0])]);
         setPolygonForWork(dataResponse);
         setShowAllGeographicAreas(false);
       }
-
-
-    setSearchGeographicAreas([]);
-    setStoreResponseSearchGeographicAreas([]);
+    }
   }
 
   // Auxiliar functions
@@ -1646,6 +1669,7 @@ function ManageGeographicAreasMapRender() {
               <Button 
                 style="mt-3 mr-3"
                 label="Cancelar" 
+                onClick={() => handleOnCanelOperation(managePolygon)}
                 colorButton={1}/>
             </div>
           </> :
@@ -1671,10 +1695,17 @@ function ManageGeographicAreasMapRender() {
         { managePolygon ?
           <div className='flex flex-row justify-around'>
             <Button onClick={handleOnSubmitUpdateGeographicArea} label="Actualizar" style="mt-3"/> 
-            <Button onClick={handleOnSubmitDeleteGeographicArea} label="Eliminar" colorButton={1} style="mt-3 ml-4"/>
+            <Button onClick={handleOnSubmitDeleteGeographicArea} label="Eliminar" colorButton={1} style="mt-3 mx-3"/>
+            <Button 
+              style="mt-3" label="Cancelar" colorButton={1}
+              onClick={() => handleOnCanelOperation(managePolygon)}/>
           </div>:
-          <Button onClick={handleOnSubmitAddGeographicArea} label="Agregar" style="mt-3"/>
-          
+          <div className='flex flex-row justify-around'>
+            <Button onClick={handleOnSubmitAddGeographicArea} label="Agregar" style="mt-3"/>
+            <Button 
+              style="mt-3" label="Cancelar" colorButton={1}
+              onClick={() => handleOnCanelOperation(managePolygon)}/>
+          </div>
         }
       </div>
     </Dialog>
@@ -1717,27 +1748,8 @@ function ManageGeographicAreasMapRender() {
         {/* Searcher to search for geographic areas */}
         <div className="absolute flex-col w-full h-full justify-center">
           <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
-            <div className="z-10 bg-white mr-44 px-4 pt-2 rounded-lg">
-              <div className="mt-1 "></div>
-              <Searcher 
-                placeholder="Buscar por area geografica o administrador"
-                optionsToShow={searchGeographicAreas.map(element => {
-                  const option = {
-                    id: element.id_geographic_area !== undefined ? 
-                      element.id_geographic_area : 0,
-                    data: `${element.geographic_area_name} | ${
-                      element.zone_type===null ? "No tiene tipo de zona" : element.zone_type
-                    } - ${
-                      (element.first_name === null && element.last_name === null) ? "No tiene administrador" : `${element.first_name} ${element.last_name}`
-                    } - ${
-                      element.id_geographic_area
-                    }`
-                  }
-                  return option;
-                })}
-                onSelectOption={selectOptionMember}
-                onType={onSearchTypeGeographicArea}
-                />
+            <div className="z-10 bg-white mr-44 p-3 rounded-lg">
+              <SearchAllTypesGeographicAreas onSelectItem={selectOption}/>
             </div>
           </div>
         </div>

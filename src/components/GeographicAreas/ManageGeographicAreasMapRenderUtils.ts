@@ -1,10 +1,6 @@
 import { 
   IColor, 
   IGeographicArea, 
-  IRequest, 
-  ISectional, 
-  IStrategy, 
-  IStructure, 
   IStrategyShow, 
   IZoneType,
   LatLng, 
