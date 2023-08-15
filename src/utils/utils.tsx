@@ -13,8 +13,21 @@ const avoidNull = (data: any, replace: any):any => {
   return data === null ? replace : data;
 }
 
+const getPercentage = (basis: number|undefined, target: number|undefined):number => {
+  let result = 0;
+
+  if(basis !== undefined && target !== undefined) {
+    result = target * 100 / basis
+  }
+
+  if(result > 100) result = 100;
+
+  return result;
+}
+
 export {
   randomNumber,
   createRGBColor,
-  avoidNull
+  avoidNull,
+  getPercentage
 }

@@ -125,6 +125,7 @@ export interface ISectional {
   sectional_name: string;
   sectional_address?: string;
   target_members?: number;
+  current_members?: number;
   coordinates?: LatLng[];
 }
 

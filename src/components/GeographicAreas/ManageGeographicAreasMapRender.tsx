@@ -43,17 +43,18 @@ import SearchSectionalsWithoutCoordinates from '../Searchers/SearchSectionalsWit
 import { avoidNull, randomNumber } from "../../utils/utils";
 // Import responses
 import { responseError } from '../../utils/responses';
-// Import constants
+// Import constants and functions
 import {  
   initialZoneType, 
+  initialSectional,
   arrGeographicAreaType,
   getColorForPolygon,
   getPolygonColor,
   getCoordinate,
   getPolygonCoordinatesInUnmount,
-  polygonVisible
+  polygonVisible,
+  convertISectionalToIGeographicArea
 } from './ManageGeographicAreasMapRenderUtils';
-import SearchGeographicArea from '../Searchers/SearchGeographicArea';
 import SearchAllTypesGeographicAreas from '../Searchers/SearchAllTypesGeographicAreas';
 
 const initialGeographicAreaState:IGeographicArea = {
@@ -66,26 +67,7 @@ const initialGeographicAreaState:IGeographicArea = {
   edtiable: false,
 }
 
-const initialSectional:ISectional = {
-  id_sectional: 0,
-  sectional_name: "",
-  sectional_address: "",
-  target_members: 0,
-  coordinates: [] 
-}
 
-const convertISectionalToIGeographicArea = (sectional: ISectional):IGeographicArea => {
-  const geographicArea:IGeographicArea = {
-    id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name) + randomNumber(10000),
-    geographic_area_name: sectional.sectional_name,
-    id_geographic_area_belongs: sectional.id_sectional,
-    id_member: sectional.target_members,
-    id_strategy: -1,
-    coordinates: sectional.coordinates
-  };
-  console.log("Return cast: ", geographicArea);
-  return geographicArea;
-}
 
 /*
   Important
@@ -226,7 +208,6 @@ function ManageGeographicAreasMapRender() {
         }
       )
 
-      // arrayStrategyLevel.map(strategyLevel => strategyLevel.zone_type) 
       setArrayStrategyLevel(strategyLevels.map(strategyLevel => {
         strategyLevel.show = true;
         return strategyLevel
@@ -717,14 +698,7 @@ function ManageGeographicAreasMapRender() {
     const sectionalDataResponse:ISectional[] = await getAllSectionals();
     if(sectionalDataResponse[0] !== undefined) {
       sectionalDataResponse.forEach(sectional => {
-        dataResponse.push({
-          id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name) + randomNumber(10000),
-          geographic_area_name: sectional.sectional_name,
-          id_geographic_area_belongs: sectional.id_sectional,
-          id_member: sectional.target_members,
-          id_strategy: -1,
-          coordinates: sectional.coordinates
-        })
+        dataResponse.push( convertISectionalToIGeographicArea(sectional))
       })
     }
     setPolygons(dataResponse);
@@ -1459,6 +1433,7 @@ function ManageGeographicAreasMapRender() {
     sectional.target_members = avoidNull(sectional.target_members, 0);
     setSectional(sectional)
   }
+
   // Other handlers
   const handleCloseDialog = ():void => {
     setShowDialog(!showDialog)
@@ -1492,7 +1467,6 @@ function ManageGeographicAreasMapRender() {
 
   //Handlers for searcher
   const selectOption = async (geographicArea: IStructure&ISectional|undefined) => {
-    console.log("Selected: ", geographicArea?.id_sectional)
     if(geographicArea !== undefined)  {
       
       if(geographicArea.id_sectional === undefined) {
@@ -1734,8 +1708,7 @@ function ManageGeographicAreasMapRender() {
                     checked={strategyLevel.show}
                     onChange={(e:any) => handleSwitchShowZoneType(e, strategyLevel)}
                   />
-                </div>
-                
+                </div>    
               </div>
             }
           })
