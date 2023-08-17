@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
+import { useDispatch } from 'react-redux';
+
 import requester from "../../helpers/Requester";
 import { IGeographicArea, IMember, IRequest, IStructure } from "../../interfaces/interfaces";
 import Table from '@mui/material/Table';
@@ -51,7 +51,9 @@ const emptyMember: IMember = {
   gender: 0,
   id_strategy: 0,
   colony_name: "",
-  postal_code: ""
+  postal_code: "",
+  sectional_name: "",
+  id_sectional: 0
 }
 
 //Configuration for age histogram
@@ -126,7 +128,6 @@ const MainMenuComponent = () => {
 
   //Reducers for alerts message
   const dispatch:Dispatch<AnyAction> = useDispatch();
-  const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
     // Get privilege colony ranking
@@ -534,7 +535,6 @@ const MainMenuComponent = () => {
     if(strategyLevelSelected !== undefined) {
       setMemberStructure(await getRankingIndividualStructure(strategyLevelSelected.id_strategy));
     }
-    
   }
 
   const handleSearchStrategyLevelColony = async (event: any, newInputValue: string | null) => {
@@ -548,7 +548,6 @@ const MainMenuComponent = () => {
     if(strategyLevelSelected !== undefined) {
       setRankingColonies(await getColoniesRanking(strategyLevelSelected.id_strategy));
     }
-    
   }
 
   return (

@@ -9,13 +9,13 @@ import Paper from '@mui/material/Paper';
 import { Dialog, Tooltip, Switch } from "@mui/material";
 import Searcher from "../UIcomponents/Searcher";
 import Button from "../UIcomponents/Button";
-import { IRequest, IActivity, IStructure, IActivityDone } from "../../interfaces/interfaces";
+import { IRequest, IActivity, IStructure, IActivityDone, IStrategy } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch } from 'react-redux';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
-import { BsFillClipboard2CheckFill } from "react-icons/bs";
+import { BsFillClipboard2CheckFill, BsPieChartFill } from "react-icons/bs";
 import { MdEditDocument, MdDeleteForever } from "react-icons/md";
 import { FaInfoCircle } from "react-icons/fa";
 import Forbbiden from "../Authorization/Forbbiden";
@@ -23,6 +23,20 @@ import Input from "../UIcomponents/Input";
 import moment from 'moment';
 import MessageAlert from "../UIcomponents/MessageAlert";
 import SearchMember from "../Searchers/SearchMember";
+import { Chart as ChartJS, Legend, Tooltip as TooltipChart } from 'chart.js'; //Chart in general
+import { ArcElement,  } from 'chart.js'; //Pie chart
+import { CategoryScale, LinearScale, BarElement, Title } from 'chart.js'; //Pie chart
+import { Pie } from "react-chartjs-2";
+import StrategyAutocomplete from "../Autocompletes/StrategyAutocomplete";
+
+
+ChartJS.register(ArcElement, TooltipChart, Legend); // Register for Pie Chart
+
+const errorResponse:IRequest<any> = {
+  code: 500,
+  data: undefined,
+  message: "error"
+}
 
 
 const initialActivity:IActivity = {
@@ -86,11 +100,17 @@ const ActivitiesComponent = () => {
   const [activities, setActivities] = useState<IActivity[]>([]);
   const [dialog, setDialog] = useState<boolean>(false);
   const [dialogSearchMember, setSearchMember] = useState<boolean>(false);
+  const [statisticsView, setStatisticsView] = useState<boolean>(false);
   const [typeOperation, setTypeOperation] = useState<number>(0);
   const [activitySelected, setActivitySelected] = useState<IActivity>(initialActivity);
   const [memberToSearch, setMemberToSearch] = useState<IStructure|undefined>(undefined);
   const [memberToEvalute, setMemberToEvalute] = useState<IStructureActivity[]>([]);
-  const [assessActivity, setAssessActivity] = useState<boolean>(false);
+  const [currentActivity, setCurrentActivity] = useState<number>(1);
+
+  //Chart states
+  const [currentStateOfTheActivity, setCurrentStateOfTheActivity] = useState<number[]>([]);
+  const [currentStateOfTheActivityByStrucure, setCurrentStateOfTheActivityByStrucure] = useState<any[]|undefined>(undefined);
+
 
   //Auxiliar state to re-render memberToEvaluate array 
   const [helper, setHelper] = useState<boolean>(false);
@@ -350,7 +370,6 @@ const ActivitiesComponent = () => {
     }
   }
 
-
   const getMemberStructure = async (id_leader:number) => {
     try {
       const response:IRequest<IStructure[]>  = await requester({
@@ -392,6 +411,65 @@ const ActivitiesComponent = () => {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
       return [];   
+    }
+  }
+
+  const getCurrentStateOfActivity = async(id_activity:number):Promise<IRequest<any>> => {
+    const defaultData = {
+      "members_done": 0,
+      "members_not_done": 0,
+      "total": 0
+    }
+    errorResponse.data = defaultData;
+
+    try {
+      const response:IRequest<any> = await requester({
+        url: `/activities/results/${id_activity}`
+      })
+      if(response.code === 200)
+        if(response.data !== undefined)
+          return response
+
+      response.data = defaultData;
+      if(response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Hubo problemas al momento consultar el estado de la actividad, intente nuevamente"}}));
+        return response
+      }
+
+      return response;
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return errorResponse;
+    }
+  }
+
+  const getCurrentStateOfActivityByStructure = async(id_activity:number, id_strategy:number):Promise<any[]> =>{
+    try {
+      const response:IRequest<any> = await requester({
+        url: `/activities/results/${id_activity}/${id_strategy}`
+      })
+      if(response.code === 200)
+        if(response.data !== undefined)
+          return response.data;
+
+      if(response.code === 400) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.warning, 
+          message: "Hubo problemas al momento consultar el estado de la actividad por estructura, intente nuevamente"}}));
+      }
+
+      return [];
+
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
     }
   }
   
@@ -488,6 +566,20 @@ const ActivitiesComponent = () => {
     setSearchMember(true);
   }
 
+  const handleOnOpenStatistics = (activity: IActivity):void => {
+    setStatisticsView(true);
+    setCurrentActivity(3);
+    setActivitySelected(activity);
+    //Get general statistics
+    getCurrentStateOfActivity(activity.id_activity)
+    .then(response => {
+      const {code, data} = response;
+      console.log(data)
+      // if(code !== 403) setAllStructureCountPrivilege(true);
+      setCurrentStateOfTheActivity([data.members_done, data.members_not_done]);
+    });
+  }
+
   const handleOnCloseDialogMembers = ():void => {
     setSearchMember(false);
   }
@@ -533,9 +625,8 @@ const ActivitiesComponent = () => {
         }
       }) 
     }
-    console.log(membersToAssess)
     setSearchMember(false);
-    setAssessActivity(true);
+    setCurrentActivity(2);
     setMemberToEvalute(membersToAssess);
   }
 
@@ -562,17 +653,24 @@ const ActivitiesComponent = () => {
     restartOperation();
   }
 
+  const handleSearchByAcitivy = async (strategy:IStrategy|undefined):Promise<void> => {
+    if(strategy!==undefined) {
+      const responseDB = await getCurrentStateOfActivityByStructure(activitySelected.id_activity, strategy.id_strategy)
+      console.log(responseDB)
+      setCurrentStateOfTheActivityByStrucure(responseDB)
+    } else {
+      setCurrentStateOfTheActivityByStrucure(undefined)
+    }
+  }
+
   //Auxiliar functions 
   const restartOperation = () => {
     setDialog(false);
     setTypeOperation(0);
     setActivitySelected(initialActivity);
-    setAssessActivity(false);
+    setCurrentActivity(1);
     setMemberToEvalute([]);
   }
-
-
-
 
   return (
     <>
@@ -639,9 +737,10 @@ const ActivitiesComponent = () => {
        </div>
       </Dialog>
       
-      {(memberToEvalute[0] !== undefined) &&
+      {/* Table to select who carried out the activity */}
+      {(memberToEvalute[0] !== undefined && currentActivity === 2) &&
         <div className="flex flex-col">
-          <p>Resultados de la busquesa</p>
+          <p>Resultados de la busquesa (lider y seguidores)</p>
           <Paper sx={{overflow: 'hidden'}}>
             <TableContainer sx={{ maxHeight: 440 }}>
               <Table>
@@ -688,8 +787,98 @@ const ActivitiesComponent = () => {
         </div>
       }
 
+      {/* Table to show statistics */}
+      {(statisticsView === true && currentActivity === 3) &&
+        <div className="flex flex-col">
+          <div className="flex justify-center mb-5 font-bold text-2xl">
+            <p>Estadisticas de la actividad</p>
+          </div>
+          <div className="flex flex-row">
+          <div>
+            <div className="flex justify-center">
+              Grafico general de "toda" la estructura 
+            </div>
+            <Pie data={
+                      {
+                        labels: ['Han hecho la actividad', 'No han hecho la actividad'],
+                        datasets: [
+                          {
+                            label: `# miembros`,
+                            data: currentStateOfTheActivity,
+                            backgroundColor: [
+                              'rgba(54, 162, 235, 0.2)',
+                              'rgba(255, 99, 132, 0.2)',
+                            ],
+                            borderColor: [
+                              'rgba(54, 162, 235, 1)',
+                              'rgba(255, 99, 132, 1)',
+                            ],
+                            borderWidth: 1,
+                          },
+                        ],
+                      }
+            }/>
+          </div>
+            <div>
+              <div className="flex justify-center">
+                Grafico por lider
+              </div>
+              <div className="flex justify-center mb-3">
+                <StrategyAutocomplete onSelect={handleSearchByAcitivy} />
+              </div>
+              {currentStateOfTheActivityByStrucure !== undefined &&
+                <>
+                  {currentStateOfTheActivityByStrucure[0] !== undefined &&
+                    <Paper sx={{overflow: 'hidden'}}>
+                    <TableContainer sx={{ maxHeight: 440 }}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell align="center">Nombre de lider</TableCell>
+                            <TableCell align="center">Seguidores que han cumplido</TableCell>
+                            <TableCell align="center">Total de su estructura</TableCell>
+                            <TableCell align="center">Compromiso de estructura</TableCell> 
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {
+                            currentStateOfTheActivityByStrucure.map(activity => {
+                              return (
+                                <TableRow key={activity.id_member}>
+                                  <TableCell align="center">
+                                    {activity?.first_name} {activity?.last_name} 
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {activity?.structure_done}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {activity?.total_structure}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {activity?.structure_compromise}%
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })
+                          }
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Paper> 
+                  }
+                </>
+              }
+            </div>
+          </div>
+          <div className="mt-3 flex flex-row basis-1/2 justify-around">
+            
+            <Button label="Volver" colorButton={0} onClick={handleCancelEvalutation}/>
+          </div>
+        </div>
+      }
+
       {
-        ((createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege) && assessActivity === false) ?
+        ((createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege) && currentActivity === 1) ?
         <div className="flex flex-col">
           <div className="flex flex-row items-align justify-between mb-3">
             <div className="mt-6">
@@ -709,6 +898,7 @@ const ActivitiesComponent = () => {
                       <TableCell align="center">Fecha de vencimineto</TableCell>
                       <TableCell align="center">Fecha de creación</TableCell>
                       <TableCell align="center">Descripción</TableCell> 
+                      <TableCell align="center">Estadisticas</TableCell> 
                       <TableCell align="center">Miembros que han cumplido</TableCell>
                       <TableCell align="center">Actualizar tarea</TableCell>
                       <TableCell align="center">Eliminar</TableCell>
@@ -738,7 +928,19 @@ const ActivitiesComponent = () => {
                               </Tooltip>
                             </TableCell>
                             <TableCell align="center">
-                              <button 
+                              <button
+                                onClick={() => {
+                                  if(updateActivityPrivilege !== false) {
+                                    handleOnOpenStatistics(activity)
+                                  }
+                                }}>
+                                <div className="text-2xl flex flex-row justify-center">
+                                  <BsPieChartFill />
+                                </div>
+                              </button>
+                            </TableCell>
+                            <TableCell align="center">
+                              <button
                                 onClick={() => {
                                   if(updateActivityPrivilege !== false) {
                                     setActivitySelected(activity)
@@ -806,7 +1008,7 @@ const ActivitiesComponent = () => {
           </div>
         </div> :
         <>
-          {(assessActivity===false) &&
+          {(currentActivity===1) &&
             <Forbbiden />
           }
         </>
