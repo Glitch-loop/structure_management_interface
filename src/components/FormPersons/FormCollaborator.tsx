@@ -816,7 +816,33 @@ const FormCollaborator = (
                             privilege.id_privilege === 7 ||
                             privilege.id_privilege === 8 ||
                             privilege.id_privilege === 17 ||
-                            privilege.id_privilege === 18
+                            privilege.id_privilege === 18 ||
+                            privilege.id_privilege === 34
+                            ) return privilege
+                        })
+                        .map(privilege => 
+                          <div 
+                          key={privilege.id_privilege} 
+                          className="flex flex-row items-center">
+                            <Checkbox     
+                              onClick={()=>{handleClick(privilege.id_privilege)}}
+                              checked={privilege.assigned}
+                            />
+                            <p className="text-sm">{privilege.name_privilege}</p>
+                          </div>
+                          )
+                      }
+                    </div>
+                  </div>
+                  <div className="max-w-lg">
+                    <p className="text-lg font-medium">Privilegios de administrador de actividades</p>
+                    <div className="flex flex-row flex-wrap">
+                      {
+                        privileges.filter(privilege => {
+                          if(
+                            privilege.id_privilege === 31 ||
+                            privilege.id_privilege === 32 ||
+                            privilege.id_privilege === 33
                             ) return privilege
                         })
                         .map(privilege => 
@@ -874,7 +900,13 @@ const FormCollaborator = (
                             privilege.id_privilege === 27 ||
                             privilege.id_privilege === 28 ||
                             privilege.id_privilege === 29 ||
-                            privilege.id_privilege === 30 
+                            privilege.id_privilege === 30 ||
+                            privilege.id_privilege === 35 ||
+                            privilege.id_privilege === 36 ||
+                            privilege.id_privilege === 37 ||
+                            privilege.id_privilege === 38 ||
+                            privilege.id_privilege === 39 ||
+                            privilege.id_privilege === 40 
                             ) return privilege
                         })
                         .map(privilege => 
