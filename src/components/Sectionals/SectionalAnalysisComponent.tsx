@@ -237,10 +237,26 @@ const SectionalAnalysisComponent = () => {
   
         leaderRows.font = { bold: true, size: 16 }
         leaderRows.alignment = { horizontal: 'center' }
-  
+        
+        const currentLeaderReportSecitionalsSorted = currentLeader.leaderReport.sort(function(a,b) {
+          if (a.sectional_name > b.sectional_name) {
+              return 1;
+          }
+          if (a.sectional_name < b.sectional_name) {
+              return -1;
+          }
+          // a must be equal to b
+          return 0;
+        });
+
         //Iteration for secctionals where the leader has followers
-        for(let j = 0; j < currentLeader.leaderReport.length; j++) {
-          const currentSectional = currentLeader.leaderReport[j]
+        for(let j = 0; j < currentLeaderReportSecitionalsSorted.length; j++) {
+
+          if(j > 0) {
+            worksheet.addRow([]);
+          }
+
+          const currentSectional = currentLeaderReportSecitionalsSorted[j]
           
           if(currentSectional.sectional_address === undefined 
             || currentSectional.sectional_address === null 
@@ -266,8 +282,20 @@ const SectionalAnalysisComponent = () => {
           sectionalHeadersRows.alignment = { horizontal: 'center' };
 
           // Iteration for followers in the sectional
-          for(let k = 0; k < currentSectional.followers.length; k++) {
-            const currentFollower = currentSectional.followers[k];
+          const currentSectionalFollowersSorted = currentSectional.followers.sort(function(a,b) {
+            if (a.first_name > b.first_name) {
+                return 1;
+            }
+            if (a.first_name < b.first_name) {
+                return -1;
+            }
+            // a must be equal to b
+            return 0;
+          });
+
+          // Iteration for followers in the sectional
+          for(let k = 0; k < currentSectionalFollowersSorted.length; k++) {
+            const currentFollower = currentSectionalFollowersSorted[k];
             worksheet.addRow([
               `${currentFollower.first_name} ${currentFollower.last_name}`, 
               currentFollower.cell_phone_number,
@@ -313,20 +341,35 @@ const SectionalAnalysisComponent = () => {
         leaderRows.font = { bold: true, size: 16 }
         leaderRows.alignment = { horizontal: 'center' }
   
+        const currentLeaderReportSecitionalsSorted = currentLeader.leaderReport.sort(function(a,b) {
+          if (a.sectional_name > b.sectional_name) {
+              return 1;
+          }
+          if (a.sectional_name < b.sectional_name) {
+              return -1;
+          }
+          // a must be equal to b
+          return 0;
+        });
+
         //Iteration for secctionals where the leader has followers
-        for(let j = 0; j < currentLeader.leaderReport.length; j++) {
-          const currentSectional = currentLeader.leaderReport[j]
-          
+        for(let j = 0; j < currentLeaderReportSecitionalsSorted.length; j++) {
+          const currentSectional = currentLeaderReportSecitionalsSorted[j]
+
+          if(j > 0) {
+            worksheet.addRow([]);
+          }
+
           if(currentSectional.sectional_address === undefined 
             || currentSectional.sectional_address === null 
             || currentSectional.sectional_address === "") 
             currentSectional.sectional_address = "Aún no han registrado la direccion del seccional";
-          
+            
           const sectionalRows = worksheet.addRow([
             currentSectional.sectional_name, 
             currentSectional.sectional_address
           ]);
-  
+          
           sectionalRows.font = { bold: true, size: 14 };
           sectionalRows.alignment = { horizontal: 'center' };
           
@@ -341,8 +384,19 @@ const SectionalAnalysisComponent = () => {
           sectionalHeadersRows.alignment = { horizontal: 'center' };
 
           // Iteration for followers in the sectional
-          for(let k = 0; k < currentSectional.followers.length; k++) {
-            const currentFollower = currentSectional.followers[k];
+          const currentSectionalFollowersSorted = currentSectional.followers.sort(function(a,b) {
+            if (a.first_name > b.first_name) {
+                return 1;
+            }
+            if (a.first_name < b.first_name) {
+                return -1;
+            }
+            // a must be equal to b
+            return 0;
+          });
+
+          for(let k = 0; k < currentSectionalFollowersSorted.length; k++) {
+            const currentFollower = currentSectionalFollowersSorted[k];
             worksheet.addRow([
               `${currentFollower.first_name} ${currentFollower.last_name}`, 
               currentFollower.cell_phone_number,
