@@ -842,7 +842,8 @@ const FormCollaborator = (
                           if(
                             privilege.id_privilege === 31 ||
                             privilege.id_privilege === 32 ||
-                            privilege.id_privilege === 33
+                            privilege.id_privilege === 33 ||
+                            privilege.id_privilege === 42
                             ) return privilege
                         })
                         .map(privilege => 
@@ -993,7 +994,7 @@ const FormCollaborator = (
                 </div>
               }
             </div>
-            <div className="flex flex-row justify-center">
+            <div className="flex flex-row justify-around mt-6">
             <Button label="Aceptar" onClick={(e:any) => {handleOnSubmit(e)}}/>          
             {
               (action===1) && 

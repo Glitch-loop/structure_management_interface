@@ -95,6 +95,7 @@ const ActivitiesComponent = () => {
   const [createActivityPrivilege, setCreateActivityPrivilege] = useState<boolean>(false);
   const [updateActivityPrivilege, setUpdateActivityPrivilege] = useState<boolean>(false);
   const [deleteActivityPrivilege, setDeleteActivityPrivilege] = useState<boolean>(false);
+  const [visualizateStatisticsPrivilege, setVisualizateStatisticsPrivilege] = useState<boolean>(false);
 
   // Operational states
   const [activities, setActivities] = useState<IActivity[]>([]);
@@ -106,6 +107,8 @@ const ActivitiesComponent = () => {
   const [memberToSearch, setMemberToSearch] = useState<IStructure|undefined>(undefined);
   const [memberToEvalute, setMemberToEvalute] = useState<IStructureActivity[]>([]);
   const [currentActivity, setCurrentActivity] = useState<number>(1);
+  const [memberToSearchPrevention, setMemberToSearchPrevention] = useState<boolean>(false);
+
 
   //Chart states
   const [currentStateOfTheActivity, setCurrentStateOfTheActivity] = useState<number[]>([]);
@@ -133,6 +136,11 @@ const ActivitiesComponent = () => {
     requester({url: '/privileges/user/[33]', method: "GET"})
     .then(response => {
       setDeleteActivityPrivilege(response.data.privilege);
+    });
+    //Get statistics vizualization privilege
+    requester({url: '/privileges/user/[42]', method: "GET"})
+    .then(response => {
+      setVisualizateStatisticsPrivilege(response.data.privilege);
     });
 
     getAllActivities()
@@ -466,6 +474,7 @@ const ActivitiesComponent = () => {
       return [];
 
     } catch (error) {
+      console.log(error)
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
@@ -590,10 +599,15 @@ const ActivitiesComponent = () => {
     let membersToAssess:IStructureActivity[] = [];
     let membersDone:IActivityDone[] = [];
 
+    // Determine which kind of searched want the user 
     if(typeOfSearch === 1) {
       //Search in the structure
       if(memberToSearch !== undefined) {
+        setMemberToSearchPrevention(false);
         members = await getMemberStructure(memberToSearch.id_member);
+      } else {
+        setMemberToSearchPrevention(true);
+        return;
       }
     } else if(typeOfSearch === 2) {
       //All the members
@@ -604,14 +618,32 @@ const ActivitiesComponent = () => {
         members = await getMembersDidNotPerformTask(activitySelected.id_activity);
     }
 
-    if(members[0] !== undefined) {
+    //Sort the result by "first name"
+    const membersFiltered = members.sort(function(a,b) {
+      if(a.first_name !== undefined && b.first_name !== undefined) {
+        if (a.first_name > b.first_name) {
+            return 1;
+        }
+        if (a.first_name < b.first_name) {
+            return -1;
+        }
+      }
+      // a must be equal to b
+      return 0;
+    });
+
+    //If there are members in the results of the search
+    if(membersFiltered[0] !== undefined) {
+      //Get the activity to evaluate
       if(activitySelected.id_activity !== undefined)
       activity = await getActivityId(activitySelected.id_activity);
     }
 
+    // Just narrowing
     if(activity.members_done !== undefined) {
+      // Determine who carried out the activity and whi didn't
       membersDone = activity.members_done;
-      members.forEach(member => {
+      membersFiltered.forEach(member => {
         if(membersDone.find(memberDone => memberDone.id_member === member.id_member) !== undefined) {
           membersToAssess.push({
             ...member,
@@ -625,9 +657,10 @@ const ActivitiesComponent = () => {
         }
       }) 
     }
+
     setSearchMember(false);
-    setCurrentActivity(2);
     setMemberToEvalute(membersToAssess);
+    setCurrentActivity(2);
   }
 
   const handleChangeStatus = (idMember:number) => {
@@ -670,6 +703,8 @@ const ActivitiesComponent = () => {
     setActivitySelected(initialActivity);
     setCurrentActivity(1);
     setMemberToEvalute([]);
+    setMemberToSearch(undefined);
+    setMemberToSearchPrevention(false);
   }
 
   return (
@@ -713,21 +748,27 @@ const ActivitiesComponent = () => {
               <MessageAlert label="El dia de expiración debe de ser posterior a hoy"/>
             }
           </div>
-          <div className="flex flex-row justify-center">
+          <div className="flex flex-row justify-around mt-3">
             <Button label="Aceptar" onClick={handleOnSubmit}/>
             <Button label="Cancelar" colorButton={1} onClick={handleCancelOperation}/>
           </div>
         </div>
       </Dialog>
+
       {/* Dialog for search the member */}
       <Dialog onClose={handleOnCloseDialogMembers} open={dialogSearchMember}>
        <div className="w-auto p-4 flex flex-col justify-center text-center">
         <p className="my-2">Selecciona una opcion para </p>
-        <div className="flex flex-row items-center my-2">
-            <SearchMember onSelectItem={setMemberToSearch}/>
-            <div>
-              <Button onClick={() =>{ handleSearchMember(1) }} label="Buscar miembro" style="ml-5"/>
-            </div>
+        <div className="flex flex-col">
+          <div className="flex flex-row items-center my-2">
+              <SearchMember onSelectItem={setMemberToSearch}/>
+              <div>
+                <Button onClick={() =>{ handleSearchMember(1) }} label="Buscar miembro" style="ml-5"/>
+              </div>
+          </div>
+          { memberToSearchPrevention &&
+            <MessageAlert label="Debes escoger un miembro para proceder con la busqueda" />
+          }
         </div>
       
         <div className="flex flex-row justify-around my-2">
@@ -738,53 +779,62 @@ const ActivitiesComponent = () => {
       </Dialog>
       
       {/* Table to select who carried out the activity */}
-      {(memberToEvalute[0] !== undefined && currentActivity === 2) &&
-        <div className="flex flex-col">
-          <p>Resultados de la busquesa (lider y seguidores)</p>
-          <Paper sx={{overflow: 'hidden'}}>
-            <TableContainer sx={{ maxHeight: 440 }}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="center">ID del miembro</TableCell>
-                    <TableCell align="center">Nombre del miembro</TableCell>
-                    <TableCell align="center">Rol del miembro</TableCell>
-                    <TableCell align="center">¿Realizo la actividad?</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {
-                    memberToEvalute.map(member => {
-                      return (
-                        <TableRow key={member.id_member}>
-                          <TableCell align="center">
-                            {member.id_member}
-                          </TableCell>
-                          <TableCell align="center">
-                            {member.first_name} {member.last_name}
-                          </TableCell>
-                          <TableCell align="center">
-                            {member.role}
-                          </TableCell>
-                          <TableCell align="center">
-                            <Switch 
-                              checked={member.activity_done === true ? true : false}
-                              onChange={() => {handleChangeStatus(member.id_member)}}
-                              />
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  }
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper> 
+      { currentActivity === 2 &&
+        <>
+          {(memberToEvalute[0] !== undefined) ?
+            <div className="flex flex-col">
+              <p className="font-bold text-lg text-center mb-3">
+                Resultados de la busquesa (lider y seguidores)
+              </p>
+              <Paper sx={{overflow: 'hidden'}}>
+                <TableContainer sx={{ maxHeight: 440 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell align="center">ID del miembro</TableCell>
+                        <TableCell align="center">Nombre del miembro</TableCell>
+                        <TableCell align="center">Rol del miembro</TableCell>
+                        <TableCell align="center">¿Realizo la actividad?</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {
+                        memberToEvalute.map(member => {
+                          return (
+                            <TableRow key={member.id_member}>
+                              <TableCell align="center">
+                                {member.id_member}
+                              </TableCell>
+                              <TableCell align="center">
+                                {member.first_name} {member.last_name}
+                              </TableCell>
+                              <TableCell align="center">
+                                {member.role}
+                              </TableCell>
+                              <TableCell align="center">
+                                <Switch 
+                                  checked={member.activity_done === true ? true : false}
+                                  onChange={() => {handleChangeStatus(member.id_member)}}
+                                  />
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      }
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper> 
+            </div> : 
+            <p className="text-center font-bold text-lg">
+              No se encontro ningun miembro
+            </p>
+          }
           <div className="mt-3 flex flex-row basis-1/2 justify-around">
             <Button label="Aceptar" onClick={handleFinshEvaluation}/>
             <Button label="Cancelar" colorButton={1} onClick={handleCancelEvalutation}/>
           </div>
-        </div>
+        </>
       }
 
       {/* Table to show statistics */}
@@ -796,7 +846,7 @@ const ActivitiesComponent = () => {
           <div className="flex flex-row">
           <div>
             <div className="flex justify-center">
-              Grafico general de "toda" la estructura 
+              Grafico general de "toda" la estructura
             </div>
             <Pie data={
                       {
@@ -834,10 +884,18 @@ const ActivitiesComponent = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell align="center">Nombre de lider</TableCell>
-                            <TableCell align="center">Seguidores que han cumplido</TableCell>
-                            <TableCell align="center">Total de su estructura</TableCell>
-                            <TableCell align="center">Compromiso de estructura</TableCell> 
+                            <TableCell align="center">
+                              Nombre de lider
+                            </TableCell>
+                            <TableCell align="center">
+                              Seguidores que han cumplido (contando al lider)
+                            </TableCell>
+                            <TableCell align="center">
+                              Total de su estructura (contando al lider)
+                            </TableCell>
+                            <TableCell align="center">
+                              Compromiso de estructura (contando al lider)
+                            </TableCell> 
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -878,7 +936,7 @@ const ActivitiesComponent = () => {
       }
 
       {
-        ((createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege) && currentActivity === 1) ?
+        ((createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege || visualizateStatisticsPrivilege) && currentActivity === 1) ?
         <div className="flex flex-col">
           <div className="flex flex-row items-align justify-between mb-3">
             <div className="mt-6">
@@ -930,11 +988,15 @@ const ActivitiesComponent = () => {
                             <TableCell align="center">
                               <button
                                 onClick={() => {
-                                  if(updateActivityPrivilege !== false) {
+                                  if(visualizateStatisticsPrivilege !== false) {
                                     handleOnOpenStatistics(activity)
                                   }
                                 }}>
-                                <div className="text-2xl flex flex-row justify-center">
+                                <div 
+                                className={
+                                  (visualizateStatisticsPrivilege)  ?
+                                  "text-2xl" : "text-2xl text-slate-400"
+                                  }>
                                   <BsPieChartFill />
                                 </div>
                               </button>
