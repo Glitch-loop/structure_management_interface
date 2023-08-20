@@ -138,7 +138,28 @@ const SectionalAnalysisComponent = () => {
   const getReportFollowersBySectional = async (idStrategy:number):Promise<IReportSectionals[]> => {
     try {
       const response:IRequest<IReportSectionals[]> = await requester({
-        url: `/sectionals/report/members/${idStrategy}`})
+        url: `/sectionals/report/members/strategy/${idStrategy}`})
+      
+      if(response.code === 200)
+        if(response.data !== undefined) 
+          return response.data;
+      
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar obtener la información, intente nuevamente"}}));  
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+  
+  const getReportFollowersByLeader = async (idMember:number):Promise<IReportSectionals[]> => {
+    try {
+      const response:IRequest<IReportSectionals[]> = await requester({
+        url: `/sectionals/report/members/leader/${idMember}`})
       
       if(response.code === 200)
         if(response.data !== undefined) 
@@ -195,12 +216,9 @@ const SectionalAnalysisComponent = () => {
   }
 
   const handleDownloadByStrategyLevel = async ():Promise<void> => {
-    console.log(strategyLevelToGenerateReport)
     if(strategyLevelToGenerateReport === undefined) {
       setReportErrorStrateLevel(true);
-      console.log("no")
     } else {
-      console.log("ok")
       setReportErrorStrateLevel(false);
   
       const responsLeaders:IReportSectionals[] = 
@@ -208,17 +226,13 @@ const SectionalAnalysisComponent = () => {
   
       const zip = new JSZip();
 
-      
       //Iteration for leaders
       for(let i = 0; i < responsLeaders.length; i++) {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Sheet 1');
 
         const currentLeader = responsLeaders[i];
-        //Header for the leader
-        if(i > 0 ) {
-          worksheet.addRow([``]);  
-        }
+
         const leaderRows = worksheet.addRow(["Lider: ",`${currentLeader.first_name} ${currentLeader.last_name}`]);  
   
         leaderRows.font = { bold: true, size: 16 }
@@ -240,7 +254,17 @@ const SectionalAnalysisComponent = () => {
   
           sectionalRows.font = { bold: true, size: 14 };
           sectionalRows.alignment = { horizontal: 'center' };
-  
+          
+          //Headers for each seciontal
+          const sectionalHeadersRows = worksheet.addRow([
+            "Nombre de miembro", 
+            "Telefono",
+            "INE"
+          ]);
+          
+          sectionalHeadersRows.font = { italic: true, size: 11 };
+          sectionalHeadersRows.alignment = { horizontal: 'center' };
+
           // Iteration for followers in the sectional
           for(let k = 0; k < currentSectional.followers.length; k++) {
             const currentFollower = currentSectional.followers[k];
@@ -257,7 +281,6 @@ const SectionalAnalysisComponent = () => {
         zip.file(`${currentLeader.first_name}_${currentLeader.last_name}_seccionales.xlsx`, excelBuffer);
       }
       
-  
       // Create a Blob object and trigger the download
       const zipBlob = await zip.generateAsync({type: 'blob'})
       const url = URL.createObjectURL(zipBlob);
@@ -269,6 +292,77 @@ const SectionalAnalysisComponent = () => {
     }
   };
 
+  const handleDownloadBySpecificLeader = async ():Promise<void> => {
+    if(leaderToGenerateReport === undefined) {
+      setReportErrorMember(true);
+    } else {
+      setReportErrorMember(false);
+  
+      const responsLeaders:IReportSectionals[] = 
+        await getReportFollowersByLeader(leaderToGenerateReport.id_member);
+  
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Sheet 1');
+
+      //Iteration for leaders
+      for(let i = 0; i < responsLeaders.length; i++) {
+        const currentLeader = responsLeaders[i];
+        
+        const leaderRows = worksheet.addRow(["Lider: ",`${currentLeader.first_name} ${currentLeader.last_name}`]);  
+  
+        leaderRows.font = { bold: true, size: 16 }
+        leaderRows.alignment = { horizontal: 'center' }
+  
+        //Iteration for secctionals where the leader has followers
+        for(let j = 0; j < currentLeader.leaderReport.length; j++) {
+          const currentSectional = currentLeader.leaderReport[j]
+          
+          if(currentSectional.sectional_address === undefined 
+            || currentSectional.sectional_address === null 
+            || currentSectional.sectional_address === "") 
+            currentSectional.sectional_address = "Aún no han registrado la direccion del seccional";
+          
+          const sectionalRows = worksheet.addRow([
+            currentSectional.sectional_name, 
+            currentSectional.sectional_address
+          ]);
+  
+          sectionalRows.font = { bold: true, size: 14 };
+          sectionalRows.alignment = { horizontal: 'center' };
+          
+          //Headers for each seciontal
+          const sectionalHeadersRows = worksheet.addRow([
+            "Nombre de miembro", 
+            "Telefono",
+            "INE"
+          ]);
+          
+          sectionalHeadersRows.font = { italic: true, size: 11 };
+          sectionalHeadersRows.alignment = { horizontal: 'center' };
+
+          // Iteration for followers in the sectional
+          for(let k = 0; k < currentSectional.followers.length; k++) {
+            const currentFollower = currentSectional.followers[k];
+            worksheet.addRow([
+              `${currentFollower.first_name} ${currentFollower.last_name}`, 
+              currentFollower.cell_phone_number,
+              currentFollower.ine
+            ]);
+          }
+        }
+      }
+      
+      // Create a Blob object and trigger the download
+      const blob = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${leaderToGenerateReport.first_name}_${leaderToGenerateReport.last_name}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
 
 
   return (
@@ -285,9 +379,10 @@ const SectionalAnalysisComponent = () => {
           { reportErrorStrateLevel && <MessageAlert label='Tienes que escoger un nivel jeraquico'/>}
           <span className='text-center font-bold mb-3 mt-6'>Descargar por lider</span>
           <div className='flex flex-row justify-around'>
-            <SearchMember onSelectItem={setStrategyLevelToGenerateReport}/>
-            {/* <Button onClick={handleDownload} label='Descargar'/> */}
+            <SearchMember onSelectItem={setLeaderToGenerateReport}/>
+            <Button onClick={handleDownloadBySpecificLeader} label='Descargar'/>
           </div>
+          { reportErrorMember && <MessageAlert label='Tienes que escoger un nivel lider'/>}
         </div>
         <div>
           <p className='mb-3 text-center font-bold'>
