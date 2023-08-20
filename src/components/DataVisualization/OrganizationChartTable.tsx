@@ -499,7 +499,7 @@ const OrganizationChartTable = () => {
         </div>
         :
         <Paper sx={{overflow: 'hidden'}}>
-          <TableContainer sx={{ maxHeight: 440 }}>
+          <TableContainer sx={{ maxHeight: 440, maxWidth: 1200 }}>
             <Table>
               <TableHead>
                 <TableRow>
