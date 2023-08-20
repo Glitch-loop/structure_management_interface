@@ -7,6 +7,7 @@ import { useDispatch } from 'react-redux';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { randomNumber } from '../../utils/utils';
+import moment from 'moment';
 
 const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
   const [searchItem, setSearchItem] = useState<IStructure[] & ISectional[]>([]);
@@ -114,7 +115,8 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
           for(let i = 0; i < responseDataSectionals.length; i++) {
             const item:IStructure&ISectional = responseDataSectionals[i];
             fullResponse.push({
-              id_geographic_area: item.id_sectional + JSON.parse(item.sectional_name) + randomNumber(10000),
+              id_geographic_area: 
+                (Math.ceil(item.id_sectional + JSON.parse(item.sectional_name) + randomNumber(10000)) / performance.now()),
               ...item
             });
           }
