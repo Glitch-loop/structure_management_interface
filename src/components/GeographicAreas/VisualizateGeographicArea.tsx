@@ -49,6 +49,8 @@ const VisualizateGeographicArea = () => {
   //Privilege states
   const [searchGeographicAreaPrivilege, setSearchGeographicAreaPrivilege] = useState<boolean>(false);
   const [viewAllGeographicAreaPrivilege, setViewAllGeographicAreaPrivilege] = useState<boolean>(false);
+  const [searchSectionalAreaPrivilege, setSearchSectionalAreaPrivilege] = useState<boolean>(false);
+  const [viewAllSectionalAreasPrivilege, setViewAllSectionalAreaPrivilege] = useState<boolean>(false);
 
   //Operational states
   const [centerMap, setCenterMap] = useState<LatLng>({lat:20.64125680004875, lng: -105.22139813464167});
@@ -90,8 +92,21 @@ const VisualizateGeographicArea = () => {
       setViewAllGeographicAreaPrivilege(response.data.privilege);
     });
 
+    //Get search sectional areas privilege
+    requester({url: '/privileges/user/[35]', method: "GET"})
+    .then(response => {
+      setSearchSectionalAreaPrivilege(response.data.privilege);
+    });
+
+    //Get view all sectional areas privilege
+    requester({url: '/privileges/user/[36]', method: "GET"})
+    .then(response => {
+      setViewAllSectionalAreaPrivilege(response.data.privilege);
+    });
+
 
     getAllMembers();
+
     getStrategy()
     .then((dataStrategyLevels:IStrategy[]) => {
       /*
@@ -300,12 +315,20 @@ const VisualizateGeographicArea = () => {
 
   }
 
-  //Handler to visualizate geographic areas
+  //Handler to visualizate geographic areas (all types)
   const handleVisualizateAllGeographicArea = async ():Promise<void> => {
-    const dataResponse:IGeographicArea[] = await getAllPolygons();
-    const sectionalDataResponse:ISectional[] = await getAllSectionals();
-    setSectionalPolygons(sectionalDataResponse);
-    setPolygons(dataResponse);
+    // Get geographic areas according to the strategy
+    if(viewAllGeographicAreaPrivilege === true) {
+      const dataResponse:IGeographicArea[] = await getAllPolygons();
+      setPolygons(dataResponse);
+    }
+
+    // Get sectionals 
+    if(viewAllSectionalAreasPrivilege === true) {
+      const sectionalDataResponse:ISectional[] = await getAllSectionals();
+      setSectionalPolygons(sectionalDataResponse);
+    }
+
     setShowAllGeographicAreas(true);
   }
   
@@ -442,9 +465,13 @@ const VisualizateGeographicArea = () => {
         </div>
       </div>
     </Dialog>
-    { searchGeographicAreaPrivilege === true || viewAllGeographicAreaPrivilege === true ? 
+    { (searchGeographicAreaPrivilege === true 
+    || viewAllGeographicAreaPrivilege === true
+    || searchSectionalAreaPrivilege === true
+    || viewAllSectionalAreasPrivilege === true) ? 
       <>
-        { searchGeographicAreaPrivilege === true &&
+        { (searchGeographicAreaPrivilege === true
+        || searchSectionalAreaPrivilege === true) &&
           <div className="absolute flex-col w-full h-full justify-center">
             <div className="absolute  inset-x-0 top-0 mt-3 flex row justify-center items-center">
               <div className="z-10 bg-white mr-44 p-4 rounded-lg">
@@ -453,7 +480,8 @@ const VisualizateGeographicArea = () => {
             </div>
           </div>
         }
-        { viewAllGeographicAreaPrivilege === true &&
+        { (viewAllGeographicAreaPrivilege === true
+        || viewAllSectionalAreasPrivilege === true) &&
         <div className="absolute flex-col w-full h-full justify-center">
           <Tooltip title="Visualizar todas las areas geográficas">
             <button
