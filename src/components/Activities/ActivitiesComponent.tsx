@@ -25,10 +25,9 @@ import MessageAlert from "../UIcomponents/MessageAlert";
 import SearchMember from "../Searchers/SearchMember";
 import { Chart as ChartJS, Legend, Tooltip as TooltipChart } from 'chart.js'; //Chart in general
 import { ArcElement,  } from 'chart.js'; //Pie chart
-import { CategoryScale, LinearScale, BarElement, Title } from 'chart.js'; //Pie chart
 import { Pie } from "react-chartjs-2";
 import StrategyAutocomplete from "../Autocompletes/StrategyAutocomplete";
-
+import SearchActivity from "../Searchers/SearchActivity";
 
 ChartJS.register(ArcElement, TooltipChart, Legend); // Register for Pie Chart
 
@@ -108,7 +107,7 @@ const ActivitiesComponent = () => {
   const [memberToEvalute, setMemberToEvalute] = useState<IStructureActivity[]>([]);
   const [currentActivity, setCurrentActivity] = useState<number>(1);
   const [memberToSearchPrevention, setMemberToSearchPrevention] = useState<boolean>(false);
-
+  const [searchActivityByName, setSearchActivityByName] = useState<boolean>(false);
 
   //Chart states
   const [currentStateOfTheActivity, setCurrentStateOfTheActivity] = useState<number[]>([]);
@@ -321,7 +320,8 @@ const ActivitiesComponent = () => {
         
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.warning, 
-        message: "Ha habido un problema al intentar actualizar los registros de la actividad, intente nuevamente"}}));  
+        message: "Ha habido un problema al intentar actualizar los registros de la actividad, intente nuevamente"}}));
+
       return wrongResponse;
 
     } catch (error) {
@@ -474,7 +474,6 @@ const ActivitiesComponent = () => {
       return [];
 
     } catch (error) {
-      console.log(error)
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.error, 
         message: "Hubo un error al intentar conectarse al servidor"}}));
@@ -583,8 +582,6 @@ const ActivitiesComponent = () => {
     getCurrentStateOfActivity(activity.id_activity)
     .then(response => {
       const {code, data} = response;
-      console.log(data)
-      // if(code !== 403) setAllStructureCountPrivilege(true);
       setCurrentStateOfTheActivity([data.members_done, data.members_not_done]);
     });
   }
@@ -688,12 +685,26 @@ const ActivitiesComponent = () => {
 
   const handleSearchByAcitivy = async (strategy:IStrategy|undefined):Promise<void> => {
     if(strategy!==undefined) {
-      const responseDB = await getCurrentStateOfActivityByStructure(activitySelected.id_activity, strategy.id_strategy)
-      console.log(responseDB)
-      setCurrentStateOfTheActivityByStrucure(responseDB)
+      const responseDB = 
+        await getCurrentStateOfActivityByStructure(activitySelected.id_activity, strategy.id_strategy);
+      setCurrentStateOfTheActivityByStrucure(responseDB);
     } else {
-      setCurrentStateOfTheActivityByStrucure(undefined)
+      setCurrentStateOfTheActivityByStrucure(undefined);
     }
+  }
+
+  const handleSearchActivityByName = async (activity:IActivity|undefined) => {
+    if(activity !== undefined) {
+      const responseDB:IActivity = await getActivityId(activity.id_activity);
+      setActivities([ responseDB ]);
+      setSearchActivityByName(true);
+    }
+  }
+
+  const handleCancelSearchByName = async() => {
+    setSearchActivityByName(false)
+    const responseDB = await getAllActivities();
+    setActivities(responseDB);
   }
 
   //Auxiliar functions 
@@ -938,13 +949,17 @@ const ActivitiesComponent = () => {
       {
         ((createActivityPrivilege || updateActivityPrivilege || deleteActivityPrivilege || visualizateStatisticsPrivilege) && currentActivity === 1) ?
         <div className="flex flex-col">
-          <div className="flex flex-row items-align justify-between mb-3">
-            <div className="mt-6">
-              <Searcher 
-                placeholder="Buscar tarea"
-              />
+          <div className="flex flex-row items-align justify-between my-3">
+            <div className="flex flex-row">
+              <SearchActivity onSelectItem={handleSearchActivityByName}/>
+              <div className="ml-3">
+                { searchActivityByName &&
+                  <Button label="Cancelar busqueda" colorButton={1} onClick={handleCancelSearchByName}/>
+                }
+              </div>
             </div>
-            {createActivityPrivilege && <Button onClick={handleCreateNewAcitivy} label="Crear tarea"/>}
+            {createActivityPrivilege && 
+              <Button onClick={handleCreateNewAcitivy} label="Crear tarea"/>}
           </div>
           <div className="flex flex-col">
             <Paper sx={{overflow: 'hidden'}}>

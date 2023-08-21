@@ -467,7 +467,8 @@ const ColonyAnalisysTable = () => {
             </div>
           }
           <div>
-            <Button 
+            <Button
+              style='mt-3'
               label='Buscar'
               onClick={handleSearch}
               />
@@ -476,6 +477,7 @@ const ColonyAnalisysTable = () => {
               || membersByColonyArray[0] !== undefined
               || leaderConsulted !== undefined) &&
               <Button 
+                style='ml-3'
                 label='Borrar busqueda'
                 colorButton={1}
                 onClick={handleDeleteSearch}

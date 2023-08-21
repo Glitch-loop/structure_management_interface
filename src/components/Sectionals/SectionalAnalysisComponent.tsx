@@ -20,6 +20,7 @@ import SearchMember from '../Searchers/SearchMember';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import MessageAlert from '../UIcomponents/MessageAlert';
+import Forbbiden from '../Authorization/Forbbiden';
 
 interface ISecctionalReport extends ISectional {
   followers: IMember[];
@@ -36,9 +37,21 @@ const SectionalAnalysisComponent = () => {
     code: 500
   }
 
-    // Data analytics state
-    const [ sectionalsOverview, setSectionalsOverview ] = 
-    useState<ISectional[]|undefined>(undefined);
+  // Privileges states
+  const [allSectionalOverviewPrivilege, setAllSectionalOverviewPrivilege] = useState<boolean>(false);
+  const [leadersDistributionInSectionalPrivilege, setLeadersDistributionInSectionalPrivilege] = 
+  useState<boolean>(false);
+  const [
+    leaderFollowersDistributionInSectionalPrivilege, 
+    setLeaderFollowersDistributionInSectionalPrivilege
+  ] = useState<boolean>(false);
+  const [ downloadReportOfALeaderPrivilege, setAownloadReportOfALeaderPrivilege 
+  ] = useState<boolean>(false);
+  const [ downloadReportOfAStrategyPrivilege, setDownloadReportOfAStrategyPrivilege 
+  ] = useState<boolean>(false);
+
+  // Data analytics state
+  const [ sectionalsOverview, setSectionalsOverview ] = useState<ISectional[]|undefined>(undefined);
   const [ generalMembersObjetive, setGeneralMembersObjetive ] = useState<number[]>([]);
   const [ strategyLevelSelectedSD, setStrategyLevelSelectedSD ] = useState<IStrategy|undefined>(undefined);
   const [ sectionalSelectedSD, setSectionalSelectedSD ] = useState<ISectional|undefined>(undefined);
@@ -52,27 +65,58 @@ const SectionalAnalysisComponent = () => {
   const dispatch:Dispatch<AnyAction> = useDispatch();
   
   useEffect(() => {
-    getAllSectionals().then(response => {
-      //Get general objetive
-      let targetMembers = 0;
-      let currentMembers = 0;
-      response.forEach(sectional => {
-        if(sectional.target_members !== undefined)
-          targetMembers += sectional.target_members;
-        
-        if(sectional.current_members !== undefined)
-          currentMembers += sectional.current_members;
-      });
+    //Get privileges    
+    //Get leader's followers distribution between sectional 
+    requester({url: '/privileges/user/[38]', method: "GET"})
+    .then(response => {
+      setLeaderFollowersDistributionInSectionalPrivilege(response.data.privilege)
+    })
+    //Get distribution of leaders by sectional
+    requester({url: '/privileges/user/[39]', method: "GET"})
+    .then(response => {
+      setLeadersDistributionInSectionalPrivilege(response.data.privilege)
+    })
+    //Get report of A leader's followers between sectionals
+    requester({url: '/privileges/user/[40]', method: "GET"})
+    .then(response => {
+      setAownloadReportOfALeaderPrivilege(response.data.privilege)
+    })
+    //Get report of ALL leader's followers between sectionals (in other words by strategy level)
+    requester({url: '/privileges/user/[41]', method: "GET"})
+    .then(response => {
+      setDownloadReportOfAStrategyPrivilege(response.data.privilege)
+    })
+    //Get all sectionals statistics
+    requester({url: '/privileges/user/[37]', method: "GET"})
+    .then(response => {
+      console.log("Hola mundo: ", response.data.privilege)
+      setAllSectionalOverviewPrivilege(response.data.privilege)
+      if(response.data.privilege === true) {
+        console.log(response.data.privilege)
+        getAllSectionals().then(response => {
+          //Get general objetive
+          let targetMembers = 0;
+          let currentMembers = 0;
+          response.forEach(sectional => {
+            if(sectional.target_members !== undefined)
+              targetMembers += sectional.target_members;
+            
+            if(sectional.current_members !== undefined)
+              currentMembers += sectional.current_members;
+          });
+    
+          //Store values
+          setGeneralMembersObjetive([
+            targetMembers,
+            currentMembers,
+            Math.floor(getPercentage(targetMembers, currentMembers))
+          ]);
+    
+          setSectionalsOverview(response);
+        });
+      }
+    })
 
-      //Store values
-      setGeneralMembersObjetive([
-        targetMembers,
-        currentMembers,
-        Math.floor(getPercentage(targetMembers, currentMembers))
-      ]);
-
-      setSectionalsOverview(response);
-    });
   }, []);
 
   //API calls
@@ -418,37 +462,203 @@ const SectionalAnalysisComponent = () => {
     }
   };
 
-
   return (
     <>
-      <div className='flex flex-row'>
-      {/* Sectionals overview */}
-      <div className='flex flex-col'>
-        <div className='flex flex-col mb-6'>
-          <span className='text-center font-bold mb-3'>Descargar por nivel jerarquíco</span>
-          <div className='flex flex-row justify-around'>
-            <StrategyAutocomplete onSelect={setStrategyLevelToGenerateReport}/>
-            <Button label='Descargar' onClick={handleDownloadByStrategyLevel}/>
+      { (allSectionalOverviewPrivilege
+          || leadersDistributionInSectionalPrivilege
+          || leaderFollowersDistributionInSectionalPrivilege
+          || downloadReportOfALeaderPrivilege
+          || downloadReportOfAStrategyPrivilege
+      ) ?
+        <div className='flex flex-row'>
+        {/* Sectionals overview */}
+        <div className='flex flex-col'>
+          <div className='flex flex-col mb-6'>
+            <span className='text-center font-bold mb-3'>Descargar por nivel jerarquíco</span>
+            { downloadReportOfAStrategyPrivilege ? 
+              <div className='flex flex-row justify-around'>
+                <StrategyAutocomplete onSelect={setStrategyLevelToGenerateReport}/>
+                <Button label='Descargar' onClick={handleDownloadByStrategyLevel}/>
+              </div> :
+              <div className='flex justify-center'>
+                <Forbbiden />
+              </div>
+            
+            }
+            { reportErrorStrateLevel && <MessageAlert label='Tienes que escoger un nivel jeraquico'/>}
+            <span className='text-center font-bold mb-3 mt-6'>Descargar por lider</span>
+            { downloadReportOfALeaderPrivilege ?
+              <div className='flex flex-row justify-around items-center'>
+                <SearchMember onSelectItem={setLeaderToGenerateReport}/>
+                <div className='ml-3'>
+                  <Button onClick={handleDownloadBySpecificLeader} label='Descargar'/>
+                </div>
+              </div> : 
+              <div className='flex justify-center'>
+                <Forbbiden />
+              </div>
+            }
+            { reportErrorMember && <MessageAlert label='Tienes que escoger un nivel lider'/>}
           </div>
-          { reportErrorStrateLevel && <MessageAlert label='Tienes que escoger un nivel jeraquico'/>}
-          <span className='text-center font-bold mb-3 mt-6'>Descargar por lider</span>
-          <div className='flex flex-row justify-around'>
-            <SearchMember onSelectItem={setLeaderToGenerateReport}/>
-            <Button onClick={handleDownloadBySpecificLeader} label='Descargar'/>
+          <div>
+            <p className='mb-3 text-center font-bold'>
+              Total todos los seccionales
+            </p>
+            { allSectionalOverviewPrivilege ? 
+              <>
+                <div className='flex flex-row justify-around mb-3'>
+                  <p>Meta lograda:  {generalMembersObjetive[1]}/{generalMembersObjetive[0]} (miembros)</p>
+                  <p>Progreso: {generalMembersObjetive[2]}%</p>
+                </div>
+                { sectionalsOverview !== undefined &&
+                  <Paper sx={{overflow: 'hidden'}}>
+                      <TableContainer sx={{ maxHeight: 400 }}>
+                        <Table >
+                          <TableHead>
+                            <TableRow>
+                              <TableCell align="center">
+                                <span className='font-bold'>
+                                  Seccional
+                                </span>
+                              </TableCell>
+                              <TableCell align="center">
+                                <span className='font-bold'>
+                                  Miembros objetivo
+                                </span>
+                              </TableCell>
+                              <TableCell align="center">
+                                <span className='font-bold'>
+                                  Miembros actuales
+                                </span>
+                              </TableCell>
+                              <TableCell align="center">
+                                <span className='font-bold'>
+                                  Porcentaje de objetivo
+                                </span>
+                              </TableCell> 
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {
+                              sectionalsOverview.map(sectional => {
+                                return (
+                                  <TableRow key={sectional.id_sectional}>
+                                    <TableCell align="center">
+                                      {sectional.sectional_name}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      {sectional.target_members}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      {sectional.current_members}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      {sectional.goal_percentage}%
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              })
+                            }
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                  </Paper> 
+                }
+              </> :
+              <div className='flex justify-center'>
+                <Forbbiden />
+              </div>
+            }
           </div>
-          { reportErrorMember && <MessageAlert label='Tienes que escoger un nivel lider'/>}
         </div>
-        <div>
-          <p className='mb-3 text-center font-bold'>
-            Total todos los seccionales
-          </p>
-          <div className='flex flex-row justify-around mb-3'>
-            <p>Meta lograda:  {generalMembersObjetive[1]}/{generalMembersObjetive[0]} (miembros)</p>
-            <p>Progreso: {generalMembersObjetive[2]}%</p>
+        <div className='ml-6 flex flex-col'>
+          <div className='my-6'>
+            <p className='mb-3 text-center font-bold'>
+              Distribución de lideres en seccional
+            </p>
+            { leadersDistributionInSectionalPrivilege ?
+              <div className='flex flex-col justify-center'>
+                <SearchSectionals onSelectItem={ onSelectSectionalSD }/>
+                <div className='my-3 flex justify-center'>
+                  <StrategyAutocomplete onSelect={ onSelectStrategySD }/>
+                </div>
+              </div> :
+              <div className='flex justify-center'>
+                <Forbbiden />
+              </div>
+            }
+
+            { dataSectionalDistribution !== undefined &&
+              <>     
+                { dataSectionalDistribution[0] !== undefined &&
+                  <>
+                    <div className='flex flex-row justify-around my-3'>
+                      <p>Miembros objetivo: { dataSectionalDistribution[0].target_members }</p>
+                      <p>Miembros actuales: 
+                        { 
+                          dataSectionalDistribution[0].currrent_members===undefined ? 0 : dataSectionalDistribution[0].currrent_members
+                        }
+                      </p>
+                    </div>
+                    { dataSectionalDistribution[0].leaders[0] !== undefined ?
+                      <Paper sx={{overflow: 'hidden'}}>
+                        <TableContainer sx={{ maxHeight: 200 }}>
+                          <Table >
+                            <TableHead>
+                              <TableRow>
+                                <TableCell align="center">
+                                  <span className='font-bold'>
+                                    Nombre lider
+                                  </span>
+                                </TableCell>
+                                <TableCell align="center">
+                                  <span className='font-bold'>
+                                    Seguidores en el seccional
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {
+                                dataSectionalDistribution[0].leaders.map((leader:any) => {
+                                  return (
+                                    <TableRow key={ leader.id_member }>
+                                      <TableCell align="center">
+                                        { leader.first_name } { leader.last_name }
+                                      </TableCell>
+                                      <TableCell align="center">
+                                        {leader.current_member_sectional}
+                                      </TableCell>
+                                    </TableRow>
+                                  )
+                                })
+                              }
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Paper> :
+                      <p className='text-center mt-3 font-bold'>El seccional no tiene miembros aún.</p>
+                    }
+                  </>
+                }
+              </>
+            }
           </div>
-          { sectionalsOverview !== undefined &&
-            <Paper sx={{overflow: 'hidden'}}>
-                <TableContainer sx={{ maxHeight: 400 }}>
+          <div className='mt-3'>
+            <p className='mb-3 text-center font-bold'>
+              Distribucion de seguidores entre seccionales de un líder
+            </p>
+            { leaderFollowersDistributionInSectionalPrivilege ?
+              <div className='my-3'>
+                <SearchMember onSelectItem={onSearchMember} />
+              </div>  :
+              <div className='flex justify-center'>
+                <Forbbiden />
+              </div>
+            }
+            { dataLeaderFollowersSectionals[0] !== undefined &&
+              <Paper sx={{overflow: 'hidden'}}>
+                <TableContainer sx={{ maxHeight: 200, maxWidth: 600 }}>
                   <Table >
                     <TableHead>
                       <TableRow>
@@ -464,23 +674,23 @@ const SectionalAnalysisComponent = () => {
                         </TableCell>
                         <TableCell align="center">
                           <span className='font-bold'>
-                            Miembros actuales
+                            Miembros actuales en seccional
                           </span>
                         </TableCell>
                         <TableCell align="center">
                           <span className='font-bold'>
-                            Porcentaje de objetivo
+                            Cantidad de seguidores de lider en el seccional (contando al lider)
                           </span>
                         </TableCell> 
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {
-                        sectionalsOverview.map(sectional => {
+                        dataLeaderFollowersSectionals.map((sectional:any) => {
                           return (
-                            <TableRow key={sectional.id_sectional}>
+                            <TableRow key={ sectional.id_sectional }>
                               <TableCell align="center">
-                                {sectional.sectional_name}
+                                { sectional.sectional_name }
                               </TableCell>
                               <TableCell align="center">
                                 {sectional.target_members}
@@ -489,7 +699,7 @@ const SectionalAnalysisComponent = () => {
                                 {sectional.current_members}
                               </TableCell>
                               <TableCell align="center">
-                                {sectional.goal_percentage}%
+                                {sectional.amount_followers}
                               </TableCell>
                             </TableRow>
                           )
@@ -498,141 +708,13 @@ const SectionalAnalysisComponent = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-            </Paper> 
-          }
-        </div>
-      </div>
-      <div className='ml-6 flex flex-col'>
-        <div className='my-6'>
-          <p className='mb-3 text-center font-bold'>
-            Distribución de lideres en seccional
-          </p>
-          <div className='flex flex-col justify-center'>
-            <SearchSectionals onSelectItem={ onSelectSectionalSD }/>
-            <div className='my-3 flex justify-center'>
-              <StrategyAutocomplete onSelect={ onSelectStrategySD }/>
-            </div>
+              </Paper>
+            }
           </div>
-          { dataSectionalDistribution !== undefined &&
-            <>     
-              { dataSectionalDistribution[0] !== undefined &&
-                <>
-                  <div className='flex flex-row justify-around my-3'>
-                    <p>Miembros objetivo: { dataSectionalDistribution[0].target_members }</p>
-                    <p>Miembros actuales: 
-                      { 
-                        dataSectionalDistribution[0].currrent_members===undefined ? 0 : dataSectionalDistribution[0].currrent_members
-                      }
-                    </p>
-                  </div>
-                  { dataSectionalDistribution[0].leaders[0] !== undefined ?
-                    <Paper sx={{overflow: 'hidden'}}>
-                      <TableContainer sx={{ maxHeight: 200 }}>
-                        <Table >
-                          <TableHead>
-                            <TableRow>
-                              <TableCell align="center">
-                                <span className='font-bold'>
-                                  Nombre lider
-                                </span>
-                              </TableCell>
-                              <TableCell align="center">
-                                <span className='font-bold'>
-                                  Seguidores en el seccional
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {
-                              dataSectionalDistribution[0].leaders.map((leader:any) => {
-                                return (
-                                  <TableRow key={ leader.id_member }>
-                                    <TableCell align="center">
-                                      { leader.first_name } { leader.last_name }
-                                    </TableCell>
-                                    <TableCell align="center">
-                                      {leader.current_member_sectional}
-                                    </TableCell>
-                                  </TableRow>
-                                )
-                              })
-                            }
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Paper> :
-                    <p className='text-center mt-3 font-bold'>El seccional no tiene miembros aún.</p>
-                  }
-                </>
-              }
-            </>
-          }
         </div>
-        <div className='mt-3'>
-          <p className='mb-3 text-center font-bold'>
-            Distribucion de seguidores entre seccionales de un líder
-          </p>
-          <div className='my-3'>
-            <SearchMember onSelectItem={onSearchMember} />
-          </div>
-          { dataLeaderFollowersSectionals[0] !== undefined &&
-            <Paper sx={{overflow: 'hidden'}}>
-              <TableContainer sx={{ maxHeight: 200, maxWidth: 600 }}>
-                <Table >
-                  <TableHead>
-                    <TableRow>
-                      <TableCell align="center">
-                        <span className='font-bold'>
-                          Seccional
-                        </span>
-                      </TableCell>
-                      <TableCell align="center">
-                        <span className='font-bold'>
-                          Miembros objetivo
-                        </span>
-                      </TableCell>
-                      <TableCell align="center">
-                        <span className='font-bold'>
-                          Miembros actuales en seccional
-                        </span>
-                      </TableCell>
-                      <TableCell align="center">
-                        <span className='font-bold'>
-                          Cantidad de seguidores de lider en el seccional (contando al lider)
-                        </span>
-                      </TableCell> 
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {
-                      dataLeaderFollowersSectionals.map((sectional:any) => {
-                        return (
-                          <TableRow key={ sectional.id_sectional }>
-                            <TableCell align="center">
-                              { sectional.sectional_name }
-                            </TableCell>
-                            <TableCell align="center">
-                              {sectional.target_members}
-                            </TableCell>
-                            <TableCell align="center">
-                              {sectional.current_members}
-                            </TableCell>
-                            <TableCell align="center">
-                              {sectional.amount_followers}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                    }
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          }
-        </div>
-      </div>
-      </div>
+        </div> :
+        <Forbbiden />
+      }
     </>
   )
 }

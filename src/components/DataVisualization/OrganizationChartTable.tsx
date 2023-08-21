@@ -409,7 +409,7 @@ const OrganizationChartTable = () => {
           <p>
             Resultados encontrados para: <span>{memberSearched}</span>
           </p>
-          <div className='mx-3'>
+          <div className='m-3'>
             <Button 
                 label='Cancelar busqueda'
                 colorButton={1}
@@ -484,6 +484,7 @@ const OrganizationChartTable = () => {
               && memberSearched === ""
             ) && 
               <Button 
+              style='mt-3'
               label='Volver'
               onClick={() => { handleOnReturnLevel(currentLeader) }}
               />

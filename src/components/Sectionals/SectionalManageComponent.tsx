@@ -1,23 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ISectional, IRequest, IStrategy, IMember } from "../../interfaces/interfaces"
 import SearchSectionals from "../Searchers/SearchSectionals"
 import Button from '../UIcomponents/Button';
 import Input from '../UIcomponents/Input';
-import { avoidNull, getPercentage } from '../../utils/utils';
+import { avoidNull } from '../../utils/utils';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
 import { useDispatch } from 'react-redux';
 import requester from '../../helpers/Requester';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
-import StrategyAutocomplete from '../Autocompletes/StrategyAutocomplete';
-import SearchMember from '../Searchers/SearchMember';
 
 const responseError:IRequest<undefined> = {
   message: "Internal error",

@@ -355,7 +355,7 @@ const FormCollaborator = (
           method: 'PUT',
           data: {password: password}
         })
-        console.log(response)
+
         if(response.code === 200) {
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.success, 
@@ -434,8 +434,6 @@ const FormCollaborator = (
     //Handle password
     const handleOnSubmit = async(e: any) => {
       e.preventDefault();
-      console.log(person.password)
-      console.log(confirmPassword.password)
       //Verify all the data is in the body to be send
       if(
         person.first_name === '' ||
@@ -532,7 +530,6 @@ const FormCollaborator = (
           const responsePrivilege:IRequest<any> 
           = await updatePrivileges(basicData.idCollaborator, 
             getArrPrivilegesSelected(privileges));
-          console.log(responsePrivilege)
           if(response.code === 200) {
               resetAllStates();
               handleSubmit(true)
@@ -558,7 +555,6 @@ const FormCollaborator = (
         if(person.id_collaborator !== undefined)
          response = await resetPassword(person.id_collaborator);
       } else {
-        console.log(person.password)
         if(person.password === undefined){
           dispatch(enqueueAlert({alertData: {
             alertType: EAlert.warning, 
@@ -907,7 +903,8 @@ const FormCollaborator = (
                             privilege.id_privilege === 37 ||
                             privilege.id_privilege === 38 ||
                             privilege.id_privilege === 39 ||
-                            privilege.id_privilege === 40 
+                            privilege.id_privilege === 40 ||
+                            privilege.id_privilege === 41 
                             ) return privilege
                         })
                         .map(privilege => 
