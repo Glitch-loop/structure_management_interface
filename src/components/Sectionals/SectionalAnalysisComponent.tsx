@@ -89,10 +89,8 @@ const SectionalAnalysisComponent = () => {
     //Get all sectionals statistics
     requester({url: '/privileges/user/[37]', method: "GET"})
     .then(response => {
-      console.log("Hola mundo: ", response.data.privilege)
       setAllSectionalOverviewPrivilege(response.data.privilege)
       if(response.data.privilege === true) {
-        console.log(response.data.privilege)
         getAllSectionals().then(response => {
           //Get general objetive
           let targetMembers = 0;
@@ -143,7 +141,7 @@ const SectionalAnalysisComponent = () => {
   const getSectionalDistributionLeaders = async(idSeccional: number, idStrategy: number):Promise<any[]> => {
     try {
       const response:IRequest<ISectional[]> = await requester({
-        url: `/sectionals/leaders/${idSeccional}/${idStrategy}`})
+        url: `/sectionals/leaders/${idSeccional}/${idStrategy}`});
       if(response.code === 200)
         if(response.data !== undefined) 
           return response.data;
@@ -239,8 +237,6 @@ const SectionalAnalysisComponent = () => {
     if(strategyLevel !== undefined) {
       setStrategyLevelSelectedSD(strategyLevel);
       if(sectionalSelectedSD !== undefined) {
-        console.log("sectionalSelectedSD: ", sectionalSelectedSD)
-        console.log("strategyLevel: ", strategyLevel)
         getSectionalDistributionLeaders(sectionalSelectedSD.id_sectional, 
           strategyLevel.id_strategy)
           .then(response => {
@@ -596,7 +592,11 @@ const SectionalAnalysisComponent = () => {
                       <p>Miembros objetivo: { dataSectionalDistribution[0].target_members }</p>
                       <p>Miembros actuales: 
                         { 
-                          dataSectionalDistribution[0].currrent_members===undefined ? 0 : dataSectionalDistribution[0].currrent_members
+                          dataSectionalDistribution[0].current_members===undefined ? 
+                          <span className='ml-3'>0</span> : 
+                          <span className='ml-3'>
+                            {dataSectionalDistribution[0].current_members}
+                          </span>
                         }
                       </p>
                     </div>

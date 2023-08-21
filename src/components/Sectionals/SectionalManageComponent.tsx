@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ISectional, IRequest, IStrategy, IMember } from "../../interfaces/interfaces"
+import { ISectional, IRequest } from "../../interfaces/interfaces"
 import SearchSectionals from "../Searchers/SearchSectionals"
 import Button from '../UIcomponents/Button';
 import Input from '../UIcomponents/Input';
