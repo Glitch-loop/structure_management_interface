@@ -10,7 +10,7 @@ const SectionalsManage = () => {
     requester({url: '/privileges/user/[34]', method: "GET"})
     .then(response => {
       setAccess(response.data.privilege)
-    })
+    });
   }, []);
 
   return (

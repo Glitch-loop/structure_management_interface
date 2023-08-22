@@ -12,6 +12,10 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
   // Privileges stares
   const [searchGeographicAreaPrivilege, setSearchGeographicAreaPrivilege] = useState<boolean>(false);
   const [searchSectionalAreaPrivilege, setSearchSectionalAreaPrivilege] = useState<boolean>(false);
+  const [addGeographicAreaPrivilege, setAddGeographicAreaPrivilege] = useState<boolean>(false);
+  const [updateGeographicAreaPrivilege, setUpdateGeographicAreaPrivilege] = useState<boolean>(false);
+  const [deleteGeographicAreaPrivilege, setDeleteGeographicAreaPrivilege] = useState<boolean>(false);
+  const [updateSectionalArea, setUpdateSectionalArea] = useState<boolean>(false);
 
   // Operatonal states
   const [searchItem, setSearchItem] = useState<IStructure[] & ISectional[]>([]);
@@ -21,12 +25,37 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
   const dispatch:Dispatch<AnyAction> = useDispatch();
 
   useEffect(() => {
+    //add geographic area privilege
+    requester({url: '/privileges/user/[14]', method: "GET"})
+    .then(response => {
+      setAddGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //update geographic area privilege
+    requester({url: '/privileges/user/[15]', method: "GET"})
+    .then(response => {
+      setUpdateGeographicAreaPrivilege(response.data.privilege);
+    });
+
+    //delete geographic area privilege
+    requester({url: '/privileges/user/[16]', method: "GET"})
+    .then(response => {
+      setDeleteGeographicAreaPrivilege(response.data.privilege);
+    });
+
     //Get search geographic area privilege
     requester({url: '/privileges/user/[29]', method: "GET"})
     .then(response => {
       console.log("Search geographic area: ", response.data.privilege)
       setSearchGeographicAreaPrivilege(response.data.privilege);
     });
+
+    //Update sectional area
+    requester({url: '/privileges/user/[34]', method: "GET"})
+    .then(response => {
+      setUpdateSectionalArea(response.data.privilege)
+    });
+
 
     //Get view all geographic areas privilege
     requester({url: '/privileges/user/[35]', method: "GET"})
@@ -117,7 +146,10 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
         if(itemSelected === false) {
           const fullResponse:IStructure[]&ISectional[] = [];
 
-          if(searchGeographicAreaPrivilege === true) {
+          if(searchGeographicAreaPrivilege === true
+            || addGeographicAreaPrivilege === true
+            || updateGeographicAreaPrivilege === true
+            || deleteGeographicAreaPrivilege === true) {
             //Search for geographic area according to the strategy
             const responseDataStrategy:IStructure[]&ISectional[] = 
               await searchItemByNameOption1(stringToSearch);
@@ -128,7 +160,8 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
             }
           }
           
-          if(searchSectionalAreaPrivilege === true) {
+          if(searchSectionalAreaPrivilege === true
+          || updateSectionalArea === true) {
             //Search for sectionals
             const responseDataSectionals:IStructure[]&ISectional[] = 
               await searchItemByNameOption2(stringToSearch);

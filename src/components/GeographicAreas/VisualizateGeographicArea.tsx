@@ -1,23 +1,21 @@
 import { useEffect, useState } from 'react';
-import { IStructure, IRequest, IGeographicArea, LatLng, IStrategy, IMember, IColor, ISectional } from '../../interfaces/interfaces';
+import { IStructure, IRequest, IGeographicArea, LatLng, IStrategy, ISectional } from '../../interfaces/interfaces';
 import requester from '../../helpers/Requester';
 import { GoogleMap, PolygonF } from "@react-google-maps/api";
 import { Dialog, DialogTitle, Tooltip, Switch } from "@mui/material"
 import { FiEye } from "react-icons/fi"
-import { getPercentage, randomNumber } from "../../utils/utils"
+import { getPercentage } from "../../utils/utils"
 import TreeNode from '../../alghoritms/TreeNode';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
+import { useDispatch } from 'react-redux';
 import { IoAppsSharp } from "react-icons/io5";
 import Forbbiden from '../Authorization/Forbbiden';
 import SearchAllTypesGeographicAreas from '../Searchers/SearchAllTypesGeographicAreas';
 // Import constants and functions
 import { 
   initialSectional,
-  convertISectionalToIGeographicArea,
   getColorForPolygon,
   polygonVisible,
   getPolygonColor,
@@ -77,7 +75,6 @@ const VisualizateGeographicArea = () => {
 
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
-  const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
     //Get search geographic area privilege

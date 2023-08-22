@@ -18,8 +18,7 @@ const responseError:IRequest<undefined> = {
 
 const SectionalManageComponent = () => {
   // Operational state
-  const [ sectionalSelected, setSectionalSelected ] = 
-    useState<ISectional|undefined>(undefined);
+  const [ sectionalSelected, setSectionalSelected ] = useState<ISectional|undefined>(undefined);
 
   const dispatch:Dispatch<AnyAction> = useDispatch();
 

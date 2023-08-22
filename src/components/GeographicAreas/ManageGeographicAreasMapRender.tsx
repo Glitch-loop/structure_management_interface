@@ -95,12 +95,21 @@ const initialGeographicAreaState:IGeographicArea = {
 
 function ManageGeographicAreasMapRender() {
   //Privileges states
+  /*
+    In this case we ensure the actions "add, delete and update" for both geographic areas and
+    sectionals.
+    It is justified that the editor can see all the geographic and sectional areas, this in order
+    to take the better desition for the area that he is editing.
+    So it isn't necessary protect the search a specific geographic area (or sectional) and the
+    botton to see all the geographic areas.
+  */
   const [addGeographicAreaPrivilege, setAddGeographicAreaPrivilege] = useState<boolean>(false);
   const [updateGeographicAreaPrivilege, setUpdateGeographicAreaPrivilege] = useState<boolean>(false);
   const [deleteGeographicAreaPrivilege, setDeleteGeographicAreaPrivilege] = useState<boolean>(false);
   const [addStrategicInformationGeographicAreaPrivilege, setAddStrategicInformationGeographicAreaPrivilege] = useState<boolean>(false);
   const [updateStrategicInformationGeographicAreaPrivilege, setUpdateStrategicInformationGeographicAreaPrivilege] = useState<boolean>(false);
 
+  const [updateSectionalAreaPrivilege, setUpdateSectionalAreaPrivilege] = useState<boolean>(false);
 
   //General States
   const [line, setLine] = useState<LatLng[]|undefined>(undefined);
@@ -186,7 +195,11 @@ function ManageGeographicAreasMapRender() {
       setUpdateStrategicInformationGeographicAreaPrivilege(response.data.privilege);
     });
 
-
+    //Update sectional area
+    requester({url: '/privileges/user/[34]', method: "GET"})
+    .then(response => {
+      setUpdateSectionalAreaPrivilege(response.data.privilege)
+    });
 
     getStrategy()
     .then((dataStrategyLevels:IStrategy[]) => {
@@ -1553,10 +1566,12 @@ function ManageGeographicAreasMapRender() {
       </div>
     </Dialog>
 
-    {/* This dialog is for the geographic area's information */}
+    {/* This dialog is to manage the geographic areas information */}
     <Dialog onClose={handleCloseDialog} open={showDialog}>
       <div className="p-5 pb-10 flex flex-col justify-center text-center">
-        { (updateGeographicAreaPrivilege || deleteGeographicAreaPrivilege || addGeographicAreaPrivilege) ?
+        { (addGeographicAreaPrivilege 
+          || updateGeographicAreaPrivilege 
+          || deleteGeographicAreaPrivilege) ?
           <>  
             <DialogTitle>
               { managePolygon ? 'Administrar area geográfica' : 'Agregar area geográfica' }
@@ -1623,15 +1638,24 @@ function ManageGeographicAreasMapRender() {
             }
 
             <div className="flex flex-row justify-center">
-              { ((updateGeographicAreaPrivilege && managePolygon) || (addGeographicAreaPrivilege && managePolygon === false)) &&
+              { ((updateGeographicAreaPrivilege && managePolygon) 
+              || (addGeographicAreaPrivilege && managePolygon === false)) ?
                 <Button 
                   style="mt-3 mr-3"
                   label={managePolygon ? "Actualizar" : "Agregar"}
                   onClick={
                     managePolygon ? handleOnSubmitUpdateGeographicArea : handleOnSubmitAddGeographicArea
                   }
-                  />
+                  /> :
+                  <>
+                  { managePolygon ? 
+                    <p className='mt-3 mr-3 flex items-center'>No puedes actualizar un area</p>:
+                    <p className='mt-3 mr-3 flex items-center'>No puedes agregar un area</p>
+                  }
+                  </>
               }
+
+              {/* This button is to delete a geographic area or sectional*/}
               { (managePolygon && deleteGeographicAreaPrivilege) &&
                 <Button 
                   style="mt-3 mr-3"
@@ -1655,31 +1679,36 @@ function ManageGeographicAreasMapRender() {
     {/* This dialog is for assign to the geographic area a sectional */}
     <Dialog onClose={handleCloseDialogSectional} open={showDialogSectional}>
       <div className="p-10 flex flex-col overscroll-none">
-        {managePolygon ?
-          <p className='text-lg font-bold'>Administrar seccional</p>:
-          <p className='text-lg font-bold'>Agregar seccional</p>
-        }
-        {managePolygon ? 
-          <p className='text-lg'>Seccional: {geographicArea.geographic_area_name}</p> :
-          <div>
-            <h1 className="mb-3 text-lg">Escoge el seccional al que pertenece el area geografica</h1>
-            <SearchSectionalsWithoutCoordinates onSelectItem={onSelectSectional}/>
-          </div>
-        }
-        { managePolygon ?
-          <div className='flex flex-row justify-around'>
-            <Button onClick={handleOnSubmitUpdateGeographicArea} label="Actualizar" style="mt-3"/> 
-            <Button onClick={handleOnSubmitDeleteGeographicArea} label="Eliminar" colorButton={1} style="mt-3 mx-3"/>
-            <Button 
-              style="mt-3" label="Cancelar" colorButton={1}
-              onClick={() => handleOnCanelOperation(managePolygon)}/>
-          </div>:
-          <div className='flex flex-row justify-around'>
-            <Button onClick={handleOnSubmitAddGeographicArea} label="Agregar" style="mt-3"/>
-            <Button 
-              style="mt-3" label="Cancelar" colorButton={1}
-              onClick={() => handleOnCanelOperation(managePolygon)}/>
-          </div>
+        {updateSectionalAreaPrivilege ?
+          <>
+            {managePolygon ?
+              <p className='text-lg font-bold'>Administrar seccional</p>:
+              <p className='text-lg font-bold'>Agregar seccional</p>
+            }
+            {managePolygon ? 
+              <p className='text-lg'>Seccional: {geographicArea.geographic_area_name}</p> :
+              <div>
+                <h1 className="mb-3 text-lg">Escoge el seccional al que pertenece el area geografica</h1>
+                <SearchSectionalsWithoutCoordinates onSelectItem={onSelectSectional}/>
+              </div>
+            }
+            { managePolygon ?
+              <div className='flex flex-row justify-around'>
+                <Button onClick={handleOnSubmitUpdateGeographicArea} label="Actualizar" style="mt-3"/> 
+                <Button onClick={handleOnSubmitDeleteGeographicArea} label="Eliminar" colorButton={1} style="mt-3 mx-3"/>
+                <Button 
+                  style="mt-3" label="Cancelar" colorButton={1}
+                  onClick={() => handleOnCanelOperation(managePolygon)}/>
+              </div>:
+              <div className='flex flex-row justify-around'>
+                <Button onClick={handleOnSubmitAddGeographicArea} label="Agregar" style="mt-3"/>
+                <Button 
+                  style="mt-3" label="Cancelar" colorButton={1}
+                  onClick={() => handleOnCanelOperation(managePolygon)}/>
+              </div>
+            }
+          </> : 
+          <p>Accesso no permitido</p>
         }
       </div>
     </Dialog>
@@ -1715,8 +1744,12 @@ function ManageGeographicAreasMapRender() {
         }
       </div>
     </Dialog>
-        
-    { (addGeographicAreaPrivilege || updateGeographicAreaPrivilege || deleteGeographicAreaPrivilege) ?
+    
+    {/*If the user has any of these privileges, then the user can see the map for manage*/}
+    { (addGeographicAreaPrivilege 
+    || updateGeographicAreaPrivilege 
+    || deleteGeographicAreaPrivilege
+    || updateSectionalAreaPrivilege) ?
       <>
         {/* Searcher to search for geographic areas */}
         <div className="absolute flex-col w-full h-full justify-center">
@@ -1728,7 +1761,7 @@ function ManageGeographicAreasMapRender() {
         </div>
 
         {/* This button is to add a new geographic area */}
-        { addGeographicAreaPrivilege &&
+        { (addGeographicAreaPrivilege || updateSectionalAreaPrivilege) &&
           <div className="absolute flex-col w-full h-full justify-center">
             <Tooltip title="Crear nueva area">
               <button
