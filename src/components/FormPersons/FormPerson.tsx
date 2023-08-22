@@ -696,8 +696,6 @@ const FormPerson = (
 
     //Handlers for sectional autocomplete
     const handleSearchSectional = async (event: any, newInputValue: string | null) => {
-      console.log(arraySearchSectional)
-      console.log(newInputValue)
       if(newInputValue !== null) {
         //Save the current user's search
         setPerson({...person, sectional_name: newInputValue}) 
@@ -714,7 +712,6 @@ const FormPerson = (
     }
 
     const handleSelectSectional = async (event: any, newInputValue: string | null) => {
-      console.log("HOLA MUNDO")
       // Search through the name, the colony that the user selected
       const sectionalSelected:ISectional|undefined = arraySearchSectional
       .find(searchSectional => searchSectional.sectional_name === newInputValue);
@@ -725,8 +722,6 @@ const FormPerson = (
       */
       if(sectionalSelected===undefined) setPerson({...person, id_sectional: 0, sectional_name: ""});
       else {
-        console.log("SELECT SECTIONAL")        
-        console.log(sectionalSelected)        
         setPerson({
           ...person, 
           id_sectional: sectionalSelected.id_sectional, 

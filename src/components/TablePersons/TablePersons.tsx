@@ -399,7 +399,6 @@ const TablePersons = ({ action }:{ action:number }) => {
           if(basicMemberInformation.int_number === null) 
             basicMemberInformation.int_number = ""
         
-        console.log(basicMemberInformation)
         setMemberBasicInfoToUpdate(basicMemberInformation);
         //Get strategic information
         const strategicMemberInformation:IStructure 

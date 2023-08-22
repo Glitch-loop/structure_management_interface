@@ -130,7 +130,6 @@ const StrategyForms = () => {
         data: data
       })
 
-      console.log(response)
       if(response.message === "There is another level with the same name for the zone_type"
       && response.code === 400) {
         dispatch(enqueueAlert({alertData: {

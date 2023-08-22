@@ -46,7 +46,6 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
     //Get search geographic area privilege
     requester({url: '/privileges/user/[29]', method: "GET"})
     .then(response => {
-      console.log("Search geographic area: ", response.data.privilege)
       setSearchGeographicAreaPrivilege(response.data.privilege);
     });
 

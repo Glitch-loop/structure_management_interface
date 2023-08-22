@@ -73,7 +73,6 @@ const SectionalManageComponent = () => {
       const response:IRequest<undefined> = await updateSectional(sectionalSelected);
 
       if(response.code === 200) {
-        console.log(sectionalSelected)
         setSectionalSelected(undefined);
       }
     }

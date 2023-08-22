@@ -23,7 +23,6 @@ const Searcher = (
     e.preventDefault();
 
     if(e.key=="Enter" && handleSearcher !== undefined){
-      console.log(itemToSearch)
       handleSearcher(itemToSearch);
       setItemToSearch('');
     }

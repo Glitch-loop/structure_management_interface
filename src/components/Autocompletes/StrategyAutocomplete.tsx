@@ -58,7 +58,6 @@ const StrategyAutocomplete = ({onSelect}:{onSelect:any}) => {
     const strategyLevelSelected: IStrategy|undefined = 
     arrayStrategyLevel.find(strategyLevel => strategyLevel.role === newValue);
     if(strategyLevelSelected !== undefined) {
-      console.log("Selecting", strategyLevelSelected)
       onSelect(strategyLevelSelected);
     }
   }

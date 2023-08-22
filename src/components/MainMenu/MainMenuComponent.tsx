@@ -403,7 +403,6 @@ const MainMenuComponent = () => {
       if (idStrategy === undefined) endpoint = `/data/structure/colony/ranking/0`
       else endpoint = `/data/structure/colony/ranking/${idStrategy}`
       
-      console.log(endpoint)
       const response:IRequest<any> = await requester({
         url: endpoint
       })
