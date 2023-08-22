@@ -870,7 +870,8 @@ function ManageGeographicAreasMapRender() {
         line[vertexInLine] = swap;
         setLastPointAdded(undefined);
         setLine(line);
-      } else console.log("there isn't necessity to re-order")
+      }
+      //  else console.log("there isn't necessity to re-order")
     
     }
   }
@@ -1495,9 +1496,8 @@ function ManageGeographicAreasMapRender() {
       } else {
         //User is try to find a sectional
         const dataResponse:ISectional[] = await getSectionalByID(geographicArea.id_sectional);
-
         setPolygons([convertISectionalToIGeographicArea(dataResponse[0])]);
-        setPolygonForWork(dataResponse);
+        setPolygonForWork([convertISectionalToIGeographicArea(dataResponse[0])]);
         setShowAllGeographicAreas(false);
       }
     }
