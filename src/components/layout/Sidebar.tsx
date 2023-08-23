@@ -53,13 +53,13 @@ const SideBar = () => {
         )
       }
       <Button
+        style="mt-2"
         label="logout" 
         onClick={() => {
           dispatch(userLogout());
           navigate('/home', {replace: true});
         }}
         />
-
     </div>
   )
 }

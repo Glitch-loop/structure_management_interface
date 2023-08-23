@@ -97,8 +97,18 @@ interface IMemberRankingStructure extends IMember {
   followers: number
 }
 
-const MainMenuComponent = () => {
+/*
+  This component is where is the general (or the overview) information of the structure.
+  Avarege, some basic data analytics, etc.
 
+  Also, as it is the first view that the user sees, here is where is the "care helpers",
+  that is basically a tables which informs to the user if there is data missing either
+  in the members themselves (like ine, leader, etc) or the geographic areas (it's important
+  to mention that here are only take account those that follows the current strategy, so 
+  specials geographic areas like sectinals won't be apper here).
+*/
+
+const MainMenuComponent = () => {
   //Privileges states
   const [updateMemberPrivilege, setUpdatePrivilege] = useState<boolean>(false);
   const [updateGeographicAreaPrivilege, setUpdateGeographicAreaPrivilege] = useState<boolean>(false);

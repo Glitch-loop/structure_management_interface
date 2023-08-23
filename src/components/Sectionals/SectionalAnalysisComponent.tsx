@@ -30,13 +30,14 @@ interface IReportSectionals extends IMember {
   leaderReport: ISecctionalReport[];
 } 
 
-const SectionalAnalysisComponent = () => {
-  const responseError:IRequest<undefined> = {
-    message: "Internal error",
-    data: undefined,
-    code: 500
-  }
+/*
+  This is a special view to see both in a general and in a specific way the status of the sectionals.
+  This component display graphs and tables to get a better understanding if the situation in a perticular
+  secional is good or if there is work to do.
 
+*/
+
+const SectionalAnalysisComponent = () => {
   // Privileges states
   const [allSectionalOverviewPrivilege, setAllSectionalOverviewPrivilege] = useState<boolean>(false);
   const [leadersDistributionInSectionalPrivilege, setLeadersDistributionInSectionalPrivilege] = 
@@ -59,6 +60,8 @@ const SectionalAnalysisComponent = () => {
   const [ dataLeaderFollowersSectionals, setDataLeaderFollowersSectionals ] = useState<any[]>([]);
   const [ strategyLevelToGenerateReport, setStrategyLevelToGenerateReport ] = useState<IStrategy|undefined>(undefined);
   const [ leaderToGenerateReport, setLeaderToGenerateReport ] = useState<IStructure|undefined>(undefined);
+  
+  // Error handling states
   const [reportErrorStrateLevel, setReportErrorStrateLevel] = useState<boolean>(false);
   const [reportErrorMember, setReportErrorMember] = useState<boolean>(false);
 
@@ -220,6 +223,14 @@ const SectionalAnalysisComponent = () => {
   }
 
   //Handlers 
+  /*
+    These handlers "onSelectSectionalSD" and "onSelectStrategySD" work together, bascially what the do,
+    are options to display data, in this case for a particular sectional and in which level of the strategy
+    the system will search to show the data.
+
+    The data that displays is the distribution of leaders in a sectional (remember that "leader" is relative
+    to which strategy the user chose).
+  */
   const onSelectSectionalSD = async(sectional:ISectional|undefined):Promise<void> => {
     if(sectional !== undefined) {
       setSectionalSelectedSD(sectional);
@@ -246,6 +257,11 @@ const SectionalAnalysisComponent = () => {
     }
   }
 
+  /*
+    This handler is only to manage the leader that chose, to get the followers that he has
+    in each sectional (it's going to be displayed just those sectionals where the leader
+    has followers)
+  */
   const onSearchMember = async(member:IMember|undefined) => {
     if(member !== undefined) {
       if(member.id_member !== undefined) {
@@ -255,6 +271,10 @@ const SectionalAnalysisComponent = () => {
     }
   }
 
+
+  /*
+    Get report of all the strategy for Day D
+  */
   const handleDownloadByStrategyLevel = async ():Promise<void> => {
     if(strategyLevelToGenerateReport === undefined) {
       setReportErrorStrateLevel(true);
@@ -360,6 +380,9 @@ const SectionalAnalysisComponent = () => {
     }
   };
 
+  /*
+    Get report for a specific leader for Day D
+  */
   const handleDownloadBySpecificLeader = async ():Promise<void> => {
     if(leaderToGenerateReport === undefined) {
       setReportErrorMember(true);

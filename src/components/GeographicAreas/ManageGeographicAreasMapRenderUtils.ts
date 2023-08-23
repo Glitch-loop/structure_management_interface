@@ -118,7 +118,7 @@ function polygonVisible(
 
 const convertISectionalToIGeographicArea = (sectional: ISectional):IGeographicArea => {
   const geographicArea:IGeographicArea = {
-    id_geographic_area: sectional.id_sectional + JSON.parse(sectional?.sectional_name) + randomNumber(10000),
+    id_geographic_area: sectional.id_sectional * -1,
     geographic_area_name: sectional.sectional_name,
     id_geographic_area_belongs: sectional.id_sectional,
     id_member: sectional.target_members,

@@ -16,6 +16,11 @@ const responseError:IRequest<undefined> = {
   code: 500
 }
 
+/*
+  This sectional is just to manage the sectionals (if where the members where they need to go
+  to vote change or if the amount of members to have grow or decreses)
+*/
+
 const SectionalManageComponent = () => {
   // Operational state
   const [ sectionalSelected, setSectionalSelected ] = useState<ISectional|undefined>(undefined);
@@ -57,7 +62,6 @@ const SectionalManageComponent = () => {
         return responseError;
     }
   }
-
 
   //Handlers
   const onSelectSectional = async (sectional: ISectional):Promise<void> => {

@@ -1,5 +1,4 @@
 import Axios, { AxiosError, AxiosResponse } from "axios";
-import { redirect } from "react-router-dom";
 
 const requester = async <T>(
   {url, method = 'GET', data = {}, params = {}, extraHeaders = {}}: 

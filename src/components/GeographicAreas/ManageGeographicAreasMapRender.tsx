@@ -17,7 +17,6 @@ import {FiPlus, FiEye } from "react-icons/fi"
 import { IoAppsSharp } from "react-icons/io5";
 // Interfaces
 import { 
-  IColor, 
   IGeographicArea, 
   IRequest, 
   ISectional, 
@@ -32,7 +31,7 @@ import requester from "../../helpers/Requester"
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
 // Local components
 import Input from "../UIcomponents/Input"
@@ -40,7 +39,7 @@ import Button from "../UIcomponents/Button"
 import Forbbiden from "../Authorization/Forbbiden"
 import SearchSectionalsWithoutCoordinates from '../Searchers/SearchSectionalsWithoutCoordinates';
 // Import logic from utils
-import { avoidNull, randomNumber } from "../../utils/utils";
+import { avoidNull } from "../../utils/utils";
 // Import responses
 import { responseError } from '../../utils/responses';
 // Import constants and functions
@@ -82,15 +81,19 @@ const initialGeographicAreaState:IGeographicArea = {
   
   To identify that a geographic area is "sectional", was assinged in "idStrategy" -1 number.
 
-  The convertions between both interface will be: 
+  The convertions between "IGeographicArea" and "ISectional" interface will be: 
   IGeographicArea: {
-    id_geographic_area = id_sectional + sectional_name <- parsed
+    id_geographic_area = id_sectional * -1;
     geographic_area_name = sectional_name;
     id_geographic_area_belongs = sectional.id_sectional;
     id_member = target_members;
     id_strategy = -1;
     coordinates = coordinates;
   }
+
+  Note: A consideration to make is that the sectionals are going to have its own ID, but
+  they will be in the negative range (this to avoid overloaping when they'll be displayed
+  in the interface [id of the component]).
 */
 
 function ManageGeographicAreasMapRender() {
