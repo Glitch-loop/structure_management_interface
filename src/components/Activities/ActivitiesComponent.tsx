@@ -492,7 +492,7 @@ const ActivitiesComponent = () => {
   }
 
   const handleUpdateActivity = (activity:IActivity):void => {
-    let expirationDate = moment(activity.expiration_date).format("YYYY-MM-DD")
+    let expirationDate = moment(activity.expiration_date).format("YYYY-MM-DD");
     setActivitySelected({...activity, 
       expiration_date: expirationDate,
       last_expiration_date: expirationDate
@@ -540,7 +540,7 @@ const ActivitiesComponent = () => {
       //If the operation was a success, update the current data.
       if(response.code === 201) {
         //Remeber that the data is sorted from the new activity to the oldest
-        //That means that we need to shift the data
+        //That means that we need to shift the arrray.
         const newArrActivities = [];
 
         activitySelected.creation_date = moment().format();
@@ -559,11 +559,12 @@ const ActivitiesComponent = () => {
       response = await updateActivity(activitySelected);
 
       if(response.code === 200) {
-        //Update in the state with the new data
+        //Find the index of the activity that was just updated
         const index = activities
           .findIndex(activity => activity.id_activity === activitySelected.id_activity)
 
-        activities[index] = activitySelected;
+        // In the position of the "index" in the array, update the state with the new data 
+        activities[index] = activitySelected; 
         setActivities(activities);
       }
       restartOperation();
@@ -578,7 +579,8 @@ const ActivitiesComponent = () => {
     setStatisticsView(true);
     setCurrentActivity(3);
     setActivitySelected(activity);
-    //Get general statistics
+
+    //Get general statistics of an activity
     getCurrentStateOfActivity(activity.id_activity)
     .then(response => {
       const {code, data} = response;
@@ -638,7 +640,7 @@ const ActivitiesComponent = () => {
 
     // Just narrowing
     if(activity.members_done !== undefined) {
-      // Determine who carried out the activity and whi didn't
+      // Determine who carried out the activity and who didn't
       membersDone = activity.members_done;
       membersFiltered.forEach(member => {
         if(membersDone.find(memberDone => memberDone.id_member === member.id_member) !== undefined) {
@@ -660,9 +662,12 @@ const ActivitiesComponent = () => {
     setCurrentActivity(2);
   }
 
+
   const handleChangeStatus = (idMember:number) => {
-    const newArrayMembers:IStructureActivity[] = [];
-    
+    /* 
+      This function helps to change the status between done and haven't done to a user
+      respecting to an acitivty
+    */
     const index:number|undefined = memberToEvalute
       .findIndex(person => person.id_member === idMember)
 

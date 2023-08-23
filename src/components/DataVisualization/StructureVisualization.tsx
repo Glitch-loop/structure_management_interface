@@ -149,25 +149,41 @@ const StructureVisualization = () => {
   } ,[])
 
   //Calls to API
-  //The dara is order ascedently taken cardinality level as factor
-  //Ej: 1, 2, 3, 4
-  const getStructure = async () => {
-    const actualStructure:IRequest<IStructure[]>  = await requester({
-      url: '/data/structure'
-    })
-
-    if(actualStructure.data !== undefined) {
-      setDataInNode(actualStructure.data)      
+  //The data is order ascedently taken cardinality level as factor
+  /*
+    The sense of the image is given by the cardinality level (and it depends in the 
+    current strategy that the manager created).
+    
+    Always the highes level is 1 and the lowest is n, so the order is ascendelty:
+    1, 2, 3, 4... n
+    
+  */ 
+  const getStructure = async ():Promise<void> => {
+    try {
+      const actualStructure:IRequest<IStructure[]>  = await requester({
+        url: '/data/structure'
+      })
+  
+      if(actualStructure.data !== undefined) {
+        setDataInNode(actualStructure.data)
+      }
+      
+    } catch (error) {
+      setDataInNode([])
     }
   }
 
-  const getMemberStructure = async (id_leader:number) => {
-    const actualStructure:IRequest<IStructure[]>  = await requester({
-      url: `/data/structure/strategyLevel/${id_leader}`
-    })
-
-    if(actualStructure.data !== undefined) {
-      setDataInNode(actualStructure.data);
+  const getMemberStructure = async (id_leader:number):Promise<void> => {
+    try {
+      const actualStructure:IRequest<IStructure[]>  = await requester({
+        url: `/data/structure/strategyLevel/${id_leader}`
+      })
+  
+      if(actualStructure.data !== undefined) {
+        setDataInNode(actualStructure.data);
+      }
+    } catch (error) {
+      setDataInNode([]);
     }
   }
 
@@ -250,6 +266,12 @@ const StructureVisualization = () => {
   
   }
 
+  /*
+    This handlers is to handle when the user type in the searcher.
+    If in the state (where the opcions are stored), is empty or didn't match by
+    what the user is searching, then it makes a request to the backend.
+    With the current input
+  */
   const onSearchTypeMember = async(stringToSearch: string) => {
     if(stringToSearch === "") {
       setStoreResponseSearchMember([]);
@@ -280,6 +302,9 @@ const StructureVisualization = () => {
     }
   }
 
+  /*
+    This function is to handle when the user select the option that was searching
+  */
   const selectOptionMember = async (idLeader: number) => {
     setShowAllTheStructure(false);
     const findDataLeader:undefined|IStructure = storeResponseSearchMember

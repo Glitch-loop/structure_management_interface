@@ -50,8 +50,13 @@ const voidMember:IMember = {
 const getOldestYear = (arrayMembers:IMember[]):number => {
   let oldestYear = 0;
   if(arrayMembers.length > 0) {
+    //Get the first birthday of the first member
     let birthAge = moment(arrayMembers[0].birthday).format("YYYY");
-  
+    
+    /*
+      This for iterates in the array an update with the new oldest age founded
+      in "birthAge" variable
+    */
     for(let i = 1; i < arrayMembers.length; i++) {
       const actualAge = moment(arrayMembers[i].birthday).format("YYYY")
       if(birthAge !== undefined && actualAge !== undefined) {
@@ -61,6 +66,7 @@ const getOldestYear = (arrayMembers:IMember[]):number => {
       }
     }
 
+    // Just get the age substracting the "day" when he born to today
     const actualYear = moment().format("YYYY");
     if(birthAge !== undefined && actualYear !== undefined) {
       oldestYear = JSON.parse(actualYear) - JSON.parse(birthAge);
@@ -73,8 +79,14 @@ const getOldestYear = (arrayMembers:IMember[]):number => {
 const getYoungestYear = (arrayMembers:IMember[]):number => {
   let youngestYear = 0;
   if(arrayMembers.length > 0) {
+
+    //Get the birthday of the first member
     let birthAge = moment(arrayMembers[0].birthday).format("YYYY");
   
+    /*
+      This for iterates in the array an update with the new youngest age founded
+      in "birthAge" variable
+    */
     for(let i = 1; i < arrayMembers.length; i++) {
       const actualAge = moment(arrayMembers[i].birthday).format("YYYY")
       if(birthAge !== undefined && actualAge !== undefined) {
@@ -84,6 +96,7 @@ const getYoungestYear = (arrayMembers:IMember[]):number => {
       }
     }
 
+    // Just get the age substracting the "day" when he born to today
     const actualYear = moment().format("YYYY");
     if(birthAge !== undefined && actualYear !== undefined) {
       youngestYear = JSON.parse(actualYear) - JSON.parse(birthAge);

@@ -11,9 +11,12 @@ const StrategyAutocomplete = ({onSelect}:{onSelect:any}) => {
   const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
   const [searchStrategyLevelStructure, setSearchStrategyLevelStructure] = useState<string>("");
 
-
-  //Use context
   const dispatch:Dispatch<AnyAction> = useDispatch();
+
+  /*
+    This autocomplete is to show the strategy as a selectable options without the
+    last level
+  */
 
   useEffect(() => {
     getStrategy()

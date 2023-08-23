@@ -16,6 +16,12 @@ const Graphos = ({
     dataSetEdges: any,
     options: any,
 }) => {
+  /*
+    This component calls to the API to make the graphs.
+    We can see this component sa the engine that we use to get
+    the image of the "tree" (o graph)
+  */
+
   useEffect(() => {
     //This is the first option to create the graph
     // const { ref, network } = useVisNetwork({
@@ -25,7 +31,10 @@ const Graphos = ({
     // });
 
     //This is the second option
+    // Set nodes and edges
     const data = {nodes: dataSetNodes, edges: dataSetEdges};
+    
+    // Create a manipulable element to set our "image"
     let container = document.getElementById('network');
   
     if(container !== null) {

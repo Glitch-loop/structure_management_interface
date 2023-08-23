@@ -13,6 +13,18 @@ export interface UseVisNetworkOptions {
   edges: Edge[];
 }
 
+/*
+  In this component we use the API to generete the "image" of the nodes.
+
+  The result is the current structure as tree (that is naturally the structure
+  that the members are organized).
+
+  Remember:
+    - Nodes = members themselves
+    - Edges = The relation "leader <- follower" (Read it as leader of the follower)
+    - options = Options that is going to have the image
+*/
+
 export default (props: UseVisNetworkOptions) => {
   const { edges, nodes, options } = props;
 

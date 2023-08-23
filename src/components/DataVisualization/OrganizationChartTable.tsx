@@ -94,6 +94,16 @@ const getLeaderRole = (id_strategy: number, arrayStrategyLevel: IStrategy[]):str
   
 }
 
+/*
+  This component display the same information that the "tree of nodes" (that is in the component of "Structure visualization").
+
+  In this case the data is displayed in a table format and the user "navigates" between the tree using the column "see followers", so when the user click on a leader, he'll see the followers of that leader (that in fact, they now are the leaders because they may have followers).
+
+  It work in a recursive sense.
+
+  This table follows the current "strategy", we can see it as the level that the user can navigate (if you see vertically the table).
+*/
+
 const OrganizationChartTable = () => {
 
   const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
@@ -280,6 +290,7 @@ const OrganizationChartTable = () => {
   
         const { geographic_area_name } = leaderStrategicInformation;
         
+        // Create this variable to save in the state (he's the leader at a level)
         const leader:IMemberStrategyLevel = {
           id_member: leaderBasicInformation.id_member,
           first_name: leaderBasicInformation.first_name,
@@ -372,6 +383,7 @@ const OrganizationChartTable = () => {
     setStrategyLevelToSearch(initialStrategy);
 
   }   
+  
   //Auxiliar functions
   const strategyLevelAutocompleteOptions = ():string[] => {
     const lastElementArray = arrayStrategyLevel.length - 1;

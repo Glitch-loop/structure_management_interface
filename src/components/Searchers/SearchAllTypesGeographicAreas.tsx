@@ -6,7 +6,6 @@ import { Dispatch, AnyAction } from 'redux';
 import { useDispatch } from 'react-redux';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
-import { randomNumber } from '../../utils/utils';
 
 const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
   // Privileges stares
@@ -113,13 +112,19 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
   }
 
 
+  /*
+    This function is to handle the event when the user "type" a new letter
+  */
   const onSearchType = async(stringToSearch: string) => {
     if(stringToSearch === "") {
       setStoreResponseSearchItem([]);
       setSearchItem([]);
-
       setItemSelected(false); //User erase the item selected
     } else {
+      /* 
+        If there is items in the array which we store the database's result, then 
+        filter taking as a parameter the current input of the user
+      */
       if(storeResponseSearchItem[0] !== undefined) {
         const re = new RegExp(`^${stringToSearch.toLowerCase()}[a-zA-Z0-9\ \d\D]*`);
         
@@ -135,14 +140,17 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
               re.test(geographicAreaName.toLocaleLowerCase()) || 
               re.test(sectionalName.toLocaleLowerCase())
             ) {
+              /* It may be the option that the user is searching */ 
               itemToShow.push(storeResponseSearchItem[i]);
             }
         }
 
-        if(itemToShow[0] !== undefined) setSearchItem(itemToShow);
-        else setSearchItem([]);  
+        if(itemToShow[0] !== undefined) setSearchItem(itemToShow); //Show items
+        else setSearchItem([]);  // There wasn't coincidences
       } else {
+        // If the user doesn't still choose a option
         if(itemSelected === false) {
+          // Search in DB according the current value of the input 
           const fullResponse:IStructure[]&ISectional[] = [];
 
           if(searchGeographicAreaPrivilege === true
@@ -166,11 +174,24 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
               await searchItemByNameOption2(stringToSearch);
 
             // Set in the fullResponse the backend's response 
+            /*
+              To show the options we need to set an id for the sectional, this id
+              can't overlap with geographic areas strategy id.
+
+              At the moment, it was decided that it's going to use the negative numbers for
+              secional areas options.
+
+              The second option was an attempt to get a randomized number but it doesn't work
+              
+              A feature of the sectionals is that they area finte, opposite to the geographic areas
+              that there is not a limit for create them
+            */
             for(let i = 0; i < responseDataSectionals.length; i++) {
               const item:IStructure&ISectional = responseDataSectionals[i];
               fullResponse.push({
-                id_geographic_area: 
-                  (Math.ceil(item.id_sectional + JSON.parse(item.sectional_name) + randomNumber(10000)) / performance.now()),
+                id_geographic_area: item.id_sectional * -1
+                  // (Math.ceil(item.id_sectional + JSON.parse(item.sectional_name) + randomNumber(10000)) / performance.now())
+                  ,
                 ...item
               });
             }
@@ -198,6 +219,10 @@ const SearchAllTypesGeographicAreas = ({onSelectItem}:{onSelectItem:any}) => {
     onSelectItem(findDataItem);
   }
 
+  /* 
+    This function helps to "set" the information that the user is going to see 
+    in the inputs
+   */
   const optionsToDisplay = ():IOption[] => {
     const itemsToDisplay:IOption[] = [];
     for(let i = 0; i < searchItem.length; i++) {
