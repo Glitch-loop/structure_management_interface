@@ -1,12 +1,9 @@
 import { useState } from "react";
 import Input from "../components/UIcomponents/Input";
 import Button from "../components/UIcomponents/Button";
-import { EAlert } from "../interfaces/enums";
-import { enqueueAlert } from "../redux/slices/appSlice";
 import { setCurrentUser } from "../redux/slices/userSlice";
 import { Dispatch, AnyAction } from 'redux';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../redux/store';
+import { useDispatch } from 'react-redux';
 import { IRequest, IUser } from "../interfaces/interfaces";
 import requester from "../helpers/Requester";
 import { useNavigate } from "react-router-dom";

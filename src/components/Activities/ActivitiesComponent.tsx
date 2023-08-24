@@ -7,7 +7,6 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { Dialog, Tooltip, Switch } from "@mui/material";
-import Searcher from "../UIcomponents/Searcher";
 import Button from "../UIcomponents/Button";
 import { IRequest, IActivity, IStructure, IActivityDone, IStrategy } from "../../interfaces/interfaces";
 import requester from "../../helpers/Requester";
