@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IStructure, IRequest, ISectional } from '../../interfaces/interfaces';
+import { IRequest, ISectional } from '../../interfaces/interfaces';
 import requester from '../../helpers/Requester';
 import Searcher from '../UIcomponents/Searcher';
 import { Dispatch, AnyAction } from 'redux';

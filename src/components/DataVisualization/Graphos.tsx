@@ -1,11 +1,16 @@
-import { Options, Edge, Node, DataSet, Network } from "vis-network";
+import { 
+  // Options, 
+  Edge, 
+  Node, 
+  // DataSet, 
+  Network } from "vis-network";
 import { useEffect, useState } from "react";
-import useVisNetwork from "./useVisNetwork";
+// import useVisNetwork from "./useVisNetwork";
 
 
 const Graphos = ({
-    edges, 
-    nodes, 
+    // edges, 
+    // nodes, 
     options,
     dataSetNodes,
     dataSetEdges

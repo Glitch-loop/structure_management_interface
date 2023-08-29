@@ -16,8 +16,7 @@ import FormCollaborator from "../FormPersons/FormCollaborator";
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 import { Dispatch, AnyAction } from 'redux';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
+import { useDispatch } from 'react-redux';
 import Forbbiden from "../Authorization/Forbbiden";
 
 const emptyMemberStrategicInformation:IStructure = {
@@ -88,7 +87,6 @@ const TablePersons = ({ action }:{ action:number }) => {
 
   //Reducer for alert message
   const dispatch:Dispatch<AnyAction> = useDispatch();
-  const userData = useSelector((state: RootState) => state.userReducer);
 
   useEffect(() => {
     //Get privileges depending the action that the user is performing
