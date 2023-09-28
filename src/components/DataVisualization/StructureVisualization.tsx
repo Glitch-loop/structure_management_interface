@@ -163,7 +163,7 @@ const StructureVisualization = () => {
       const actualStructure:IRequest<IStructure[]>  = await requester({
         url: '/data/structure'
       })
-  
+      
       if(actualStructure.data !== undefined) {
         setDataInNode(actualStructure.data)
       }
@@ -346,7 +346,7 @@ const StructureVisualization = () => {
       }
       { viewAllStructurePrivilege === true &&
         <div className="absolute flex-col w-full h-full justify-center">
-          <Tooltip title="Crear nueva area">
+          <Tooltip title="Ver toda la estructura">
             <button
               onClick={ () => handleShowAllStructure() } 
               className={`z-10 absolute p-5 rounded-full hover:bg-lime-800 bottom-0 left-0 mb-28 ml-3 ${showAllTheStructure ? "bg-lime-800" : "bg-lime-600"}`} >

@@ -54,6 +54,7 @@ const Home = () => {
       // }
       return response;
     } catch (error) {
+      console.log(error)
       // ToastAlert doesn't work
       // dispatch(enqueueAlert({alertData: {
       //   alertType: EAlert.error, 

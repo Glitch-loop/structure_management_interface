@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { flushSync } from "react-dom";
 import Input from "../UIcomponents/Input";
 import { Autocomplete, TextField, Switch } from "@mui/material";
 import Button from "../UIcomponents/Button";
@@ -167,6 +168,9 @@ const FormPerson = (
     const [showLeaderInput, setShowLeaderInput] = useState<boolean>(false);
     const [showFollowerInput, setShowFollowerInput] = useState<boolean>(false);
     const [showGeographicArea, setShowGeographicArea] = useState<boolean>(false);
+
+    // Refs
+    const listFollowersRef = useRef<HTMLUListElement>(null); 
 
     //Reducers to alerts
     const dispatch:Dispatch<AnyAction> = useDispatch();
@@ -893,10 +897,17 @@ const FormPerson = (
         const currentFollower:IStructure[]|undefined = strategicInformationPerson.followers;
         if(currentFollower !== undefined) {
           currentFollower.push(follower);
-          setStrategicInformationPerson({
-            ...strategicInformationPerson,
-            followers: currentFollower
+          flushSync(() => {
+            setStrategicInformationPerson({
+              ...strategicInformationPerson,
+              followers: currentFollower
+            })
+          });
+          (listFollowersRef.current!.lastChild as HTMLElement).scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
           })
+
         }
       } 
     }
@@ -1066,10 +1077,10 @@ const FormPerson = (
         {/* Basic information */}
         <div className="flex flex-row">
           <div className="mr-3">
-            <p className="text-md">
+            <p className="text-md text-center">
               Información basica
             </p>
-            <div className="flex flex-row">
+            <div className="flex flex-row justify-center">
               <div className="mr-2">
                 <Input
                   onType={setPerson}
@@ -1090,7 +1101,7 @@ const FormPerson = (
                 required={true}
               />
             </div>
-            <div className="flex flex-row ">
+            <div className="flex flex-row justify-center">
               <Input
                 onType={setPerson}
                 objectValue={person} 
@@ -1100,7 +1111,7 @@ const FormPerson = (
                 required={true}
               />
             </div>
-            <div className="flex flex-row">
+            <div className="flex flex-row justify-center">
               <div className="mr-2">
                 <Input
                   onType={setPerson}
@@ -1138,7 +1149,7 @@ const FormPerson = (
                 renderInput={(params) => <TextField {...params} label="Colonia" />}
                 />
             </div>
-            <div className="flex flex-row">
+            <div className="flex flex-row justify-center">
               <div className="mr-2">
                 <Input
                     onType={setPerson}
@@ -1293,12 +1304,12 @@ const FormPerson = (
                                 <div className="w-52 py-1 flex flex-wrap justify-center">
                                   {
                                     strategicInformationPerson.followers.map((follower) => 
-                                      <div key={follower.id_member} className="my-1">
+                                      <ul key={follower.id_member} className="my-1" ref={listFollowersRef}>
                                         <Chip 
                                           label={`${follower.first_name} ${follower.last_name}`} 
                                           onDelete={() => handleDeleteFollower(follower)}
                                           />
-                                      </div>
+                                      </ul>
                                     )
                                   }                          
                                 </div>
