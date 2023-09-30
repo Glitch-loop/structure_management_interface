@@ -413,11 +413,12 @@ const TablePersons = ({ action }:{ action:number }) => {
           } 
 
           /* 
-            We do this because for the select leader "input" we use only 
-            "first_name_leader" field
+            We need to do in this way because in the "leader input", we only use
+            the "first_name_leader" field of the interface, so we need to charge 
+            the fullname of the leader to show the leader's name
           */
          if(strategicMemberInformation.first_name_leader !== undefined && 
-          strategicMemberInformation.last_name_leader === undefined)
+          strategicMemberInformation.last_name_leader !== undefined)
             strategicMemberInformation.first_name_leader = `${strategicMemberInformation.first_name_leader} ${strategicMemberInformation.last_name_leader}`
           
           /*
