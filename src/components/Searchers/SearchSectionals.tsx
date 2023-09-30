@@ -89,8 +89,8 @@ const SearchSectionals = ({onSelectItem}:{onSelectItem:any}) => {
       placeholder={"Buscar por nombre de seccional"}
       optionsToShow={searchItem.map(element => {
         let dataDisplayed = "";
-
-        if (element.sectional_address !== null) {
+        
+        if (element.sectional_address !== null && element.sectional_address !== "") {
           dataDisplayed = `/ ${element.sectional_address}`
         } 
         const option = {

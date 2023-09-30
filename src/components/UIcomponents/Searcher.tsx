@@ -50,7 +50,7 @@ const Searcher = (
           onKeyUp={handleType}
         />
       </div>
-      <div className='absolute z-10 mt-12 text-sm overflow-scroll max-h-48 flex flex-col'>
+      <div className='absolute z-10 mt-10 text-sm overflow-scroll max-h-48 flex flex-col w-80'>
         { optionsToShow !== undefined && 
           optionsToShow.map(element => 
             <button

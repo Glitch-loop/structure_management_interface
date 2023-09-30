@@ -453,7 +453,7 @@ const VisualizateGeographicArea = () => {
             Direccion de casilla: 
             <span className='italic ml-2'>
               {
-                sectionalArea?.sectional_address === null ? 
+                (sectionalArea?.sectional_address === null || sectionalArea?.sectional_address === "") ? 
                 "Aun no se ha registrado la dirección de la casilla" : 
                 sectionalArea?.sectional_address
               }
@@ -506,6 +506,7 @@ const VisualizateGeographicArea = () => {
           zoom={14}
           center={centerMap} 
           mapContainerClassName="map-container"
+          options={ { "disableDoubleClickZoom": true } }
         >
           {
             polygons[0]!==undefined &&

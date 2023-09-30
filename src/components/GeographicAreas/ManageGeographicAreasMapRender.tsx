@@ -1810,6 +1810,7 @@ function ManageGeographicAreasMapRender() {
           mapContainerClassName="map-container"
           onClick={(e: any) => handleClickMap(e)}
           onMouseMove={() => handleOnMouseMoveMap()}
+          options={ { "disableDoubleClickZoom": true } }
           >
             {
               polygons.map((polygon) =>
