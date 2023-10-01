@@ -7,7 +7,9 @@ import { useDispatch } from 'react-redux';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
 
-const StrategyAutocomplete = ({onSelect}:{onSelect:any}) => {
+const StrategyAutocomplete = (
+  {onSelect, popLastLevel = true}
+  :{onSelect:any, popLastLevel?:boolean}) => {
   const [arrayStrategyLevel, setArrayStrategyLevel] = useState<IStrategy[]>([]);
   const [searchStrategyLevelStructure, setSearchStrategyLevelStructure] = useState<string>("");
 
@@ -21,7 +23,10 @@ const StrategyAutocomplete = ({onSelect}:{onSelect:any}) => {
   useEffect(() => {
     getStrategy()
     .then((dataStrategyLevels:IStrategy[]) => {
-      dataStrategyLevels.pop();
+      
+      if(popLastLevel === true) {
+        dataStrategyLevels.pop();
+      }
       setArrayStrategyLevel(dataStrategyLevels);
     });
   }, [])

@@ -2,7 +2,7 @@ import { Options, Edge, Node } from "vis-network";
 import { useEffect, useState } from "react";
 import { DataSet } from "vis-data/esnext";
 import requester from "../../helpers/Requester";
-import { IRequest, IStructure } from "../../interfaces/interfaces";
+import { IRequest, IStructure, IStrategy } from "../../interfaces/interfaces";
 import Graphos from "./Graphos";
 import Searcher from "../UIcomponents/Searcher";
 import { Dispatch, AnyAction } from 'redux';
@@ -10,16 +10,32 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { EAlert } from "../../interfaces/enums";
 import { enqueueAlert } from "../../redux/slices/appSlice";
-import { Tooltip } from "@mui/material";
+import { Tooltip, Dialog } from "@mui/material";
 import { IoAppsSharp } from "react-icons/io5";
+import { RiFileExcel2Fill } from "react-icons/ri";
+import Button from "../UIcomponents/Button";
+import ExcelJS from 'exceljs';
 import Forbbiden from "../Authorization/Forbbiden";
+import StrategyAutocomplete from "../Autocompletes/StrategyAutocomplete";
 
+// interfaces especialized
 interface IColor {
   target: number;
   spectrum1: number;
   spectrum2: number;
   spectrum3: number;
   opactity: number;
+}
+
+interface IStructureSortedStrategyLevel {
+  data: IStructure,
+  childs: IStructureSortedStrategyLevel[]
+}
+
+interface IStyleExcelStructure extends IStrategy {
+  colPosition?: number,
+  fontSize?: number
+
 }
 
 const options: Options = {
@@ -62,6 +78,8 @@ const options: Options = {
     }
   }
 };
+
+
 
 const getHandlerCardinalityLevelNull = (members: IStructure[]):IStructure[] => { 
   //Get grater cardinality level
@@ -111,10 +129,25 @@ const generateColors = (members: IStructure[]):IColor[] => {
   return rangeColors;
 }
 
+// const traverseTreeRecu = (tree: IStructureSortedStrategyLevel[]):void => {
+
+// }
+
+const traverseTree = (
+      node: IStructureSortedStrategyLevel[], 
+      simplifiedLevelStructure: any[]):void => {
+  for(let i = 0; i < node.length; i++) {
+    simplifiedLevelStructure.push(node[i])
+    if(node[i].childs.length > 0) {
+      traverseTree(node[i].childs, simplifiedLevelStructure)
+    }
+  }  
+}
+
 const StructureVisualization = () => {
   //Privileges state
   const [viewAllStructurePrivilege, setViewAllStructurePrivilege] = useState<boolean>(false);
-  const [searchIndividualStruaturePrivilege, setSearchIndividualStruaturePrivilege] = useState<boolean>(false);
+  const [searchIndividualStructurePrivilege, setSearchIndividualStruaturePrivilege] = useState<boolean>(false);
   /*
     We can graph a "nodes graph" just using Node and Edges interfaces
     but use "DataSet" makes able to us to establish options for
@@ -127,7 +160,13 @@ const StructureVisualization = () => {
   const [dataSetEdges, setDataSetEdges] = useState<any>(undefined);
 
   const [searchMembers, setSearchMembers] = useState<IStructure[]>([]);
+  const [leaderIndividualStructure, setLeaderIndividualStructure] = useState<number>(0);
   const [storeResponseSearchMember, setStoreResponseSearchMember] = useState<IStructure[]>([]);
+  
+  // Excel report states
+  const [consultIndividualStructure, setConsultIndividualStructure] = useState<boolean>(false);
+  const [showDialog, setShowDialog] = useState<boolean>(false);
+  const [limitStrategyLevelShow, setLimitStrategyLevelShow] = useState<IStrategy|undefined>(undefined);
 
   const [showAllTheStructure, setShowAllTheStructure] = useState<boolean>(false);
 
@@ -201,6 +240,46 @@ const StructureVisualization = () => {
       dispatch(enqueueAlert({alertData: {
         alertType: EAlert.warning, 
         message: "Ha habido un problema al intentar hacer la busqueda, intente nuevamente"}}));  
+      return [];
+    } catch (error) {
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.error, 
+        message: "Hubo un error al intentar conectarse al servidor"}}));
+      return [];
+    }
+  }
+
+  const getIndividualStructureSortedByLevel = async (id_leader:number):Promise<IStructureSortedStrategyLevel[]> => {
+    try {
+      const individualStructure:IRequest<IStructureSortedStrategyLevel[]>  = await requester({
+        url: `/data/structure/strategyLevel/sorted/${id_leader}`
+      })
+  
+      if(individualStructure.data !== undefined) {
+        return individualStructure.data
+      } else {
+        return [];
+      }
+    } catch (error) {
+      return [];
+    }
+  }
+
+  const getStrategy = async():Promise<IStrategy[]> => {
+    try {
+      const response:IRequest<IStrategy[]> = await requester({
+        url: `/strategyLevels`,
+        method: 'GET'
+      })
+
+      if(response.code === 200)
+        if(response.data !== undefined) {
+          return response.data;
+        }
+
+      dispatch(enqueueAlert({alertData: {
+        alertType: EAlert.warning, 
+        message: "Ha habido un problema al intentar obtener los niveles de la estrategia, intente nuevamente"}}));  
       return [];
     } catch (error) {
       dispatch(enqueueAlert({alertData: {
@@ -310,23 +389,137 @@ const StructureVisualization = () => {
     const findDataLeader:undefined|IStructure = storeResponseSearchMember
       .find(member => member.id_member === idLeader);
     
-    if(findDataLeader !== undefined)
+    if(findDataLeader !== undefined) {
       await getMemberStructure(findDataLeader?.id_member);
+      setLeaderIndividualStructure(findDataLeader?.id_member);
+    }
 
-
+    setConsultIndividualStructure(true);
     setSearchMembers([]);
     setStoreResponseSearchMember([]);
   }
 
   const handleShowAllStructure = async():Promise<void> => {
+    setConsultIndividualStructure(false);
     setShowAllTheStructure(true)
     await getStructure();
   }
 
+  const handleDownloadExcel = async():Promise<void> => {
+    const simplifiedLevelStructure:IStructureSortedStrategyLevel[] = []
+    
+    //Get individual structure
+    const individualStructure:IStructureSortedStrategyLevel[]
+      = await getIndividualStructureSortedByLevel(leaderIndividualStructure);
+
+    //Get current strategy
+    const strategy:IStyleExcelStructure[] = await getStrategy();
+
+
+    /*
+      As the data is sorted "nestly", it's necessary simplify without lost
+      the previous sort.
+      So from have an nested array, we get an unidimensional array 
+      (without lost the sort that the data previosly had)
+
+      The first node, or position always it's going to be who the user search 
+      in the searcher, in short, the first position is the leader of the
+      structure.
+    */
+    traverseTree(individualStructure, simplifiedLevelStructure);    
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Sheet 1');
+
+    //Define the styles and position in the Excel
+    let maxSizeLetter = strategy[strategy.length - 1].cardinality_level + 11;
+    let strategyLevelStartPosition = simplifiedLevelStructure[0].data.cardinality_level;
+    let positionDeterminer = 0;
+
+    for(let i = 0; i < strategy.length; i++) {
+      strategy[i].fontSize = maxSizeLetter - 1;
+      maxSizeLetter -= 1;
+
+      if(strategyLevelStartPosition !== undefined) 
+        if(strategy[i].cardinality_level >= strategyLevelStartPosition) {
+          strategy[i].colPosition = positionDeterminer;
+          positionDeterminer += 1;
+        }
+    }
+
+
+    for(let i = 0; i < simplifiedLevelStructure.length; i++) {
+      const currentMember:IStructure = simplifiedLevelStructure[i].data;
+      if(limitStrategyLevelShow !== undefined) 
+        if(currentMember.cardinality_level !== undefined) {
+          if(currentMember.cardinality_level > limitStrategyLevelShow.cardinality_level) 
+              continue;
+        }
+          
+      const positionCol:IStyleExcelStructure|undefined = 
+        strategy
+        .find(strategyLevel => strategyLevel.id_strategy === currentMember.id_strategy)
+      
+      if(positionCol !== undefined) {
+        if(positionCol.colPosition !== undefined) {
+          //Slides the columns depending on the strategy level.
+          const row:any[] = [];
+          for(let j = 0; j < positionCol?.colPosition; j++) {
+            row.push("");
+          }
+
+          //Set the information
+          const {first_name, last_name, role} = currentMember;
+          const membersIdentifier = `${role}: ${first_name} ${last_name}`; 
+          
+          row.push(membersIdentifier)
+
+          const currentRow = worksheet.addRow(row);  
+          const currentColumn = worksheet.getColumn(row.length);  
+          
+          currentColumn.width = membersIdentifier.length + 5;
+          currentRow.font = { size: positionCol.fontSize }
+          currentRow.alignment = { horizontal: 'center' }
+          
+        }
+      }  
+    }
+    
+  // Create a Blob object and trigger the download
+    const blob = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${individualStructure[0].data.first_name}_${individualStructure[0].data.last_name}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+    handleOnCloseDialog();
+  }
+
+  const handleOnCloseDialog = () => { 
+    setShowDialog(false);
+    setLimitStrategyLevelShow(undefined);
+  }
+
   return(
-    (viewAllStructurePrivilege === true || searchIndividualStruaturePrivilege === true) ?
+    (viewAllStructurePrivilege === true || searchIndividualStructurePrivilege === true) ?
     <>
-      { searchIndividualStruaturePrivilege === true && 
+      <Dialog onClose={() => { handleOnCloseDialog }} open={showDialog}>
+        <div className="">
+          <div className="p-10 flex flex-col">
+            <StrategyAutocomplete 
+              onSelect={ setLimitStrategyLevelShow }
+              popLastLevel={ false }
+              />
+            <div className="mt-10 flex flex-row justify-around">
+              <Button label="Aceptar" onClick={ () => { handleDownloadExcel() } }/>
+              <Button label="Cancelar" colorButton={1} onClick={ handleOnCloseDialog }/>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+      { searchIndividualStructurePrivilege === true && 
         <div className="flex items-center justify-center">
           <div className="p-2 rounded-lg bg-slate-200 ">
             <Searcher 
@@ -342,6 +535,19 @@ const StructureVisualization = () => {
               onType={onSearchTypeMember}
             />
           </div>
+        </div>
+      }
+      { (searchIndividualStructurePrivilege === true && consultIndividualStructure === true) &&
+        <div className="absolute flex-col w-full h-full justify-center">
+          <Tooltip title="Descargar la estructura del lider en excel">
+            <button
+              onClick={ () => setShowDialog(true) } 
+              className={`z-10 absolute p-5 rounded-full hover:bg-cyan-800 bottom-0 left-0 mb-44 ml-3 ${showAllTheStructure ? "bg-cyan-800" : "bg-cyan-600"}`} >
+              <div className="text-white">
+                <RiFileExcel2Fill />
+              </div>
+            </button>
+          </Tooltip>
         </div>
       }
       { viewAllStructurePrivilege === true &&
