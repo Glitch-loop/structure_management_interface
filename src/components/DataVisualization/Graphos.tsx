@@ -53,6 +53,11 @@ const Graphos = ({
           network.setOptions({ physics: false });
         }
       });
+
+      network.on('click', (event) => {
+        // const { node: clickNode } = event;
+        console.log(event)
+      })
     }
   }, [dataSetNodes, dataSetEdges]);
 
