@@ -10,7 +10,6 @@ const AddMember = () => {
   useEffect(() => {
     requester({url: '/privileges/user/[1]', method: "GET"})
     .then(response => {
-      
       setAccess(response.data.privilege)
     })
   }, []);

@@ -24,7 +24,6 @@ const AppRouter = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/home" element={<Home />}/>
-          
           <Route element={<Guard />}>
             <Route path="/app" element={<Layout />}>
               <Route path="mainMenu" element={<MainMenu />} />

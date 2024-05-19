@@ -163,11 +163,14 @@ const FormPerson = (
     const [arrayFollower, setArrayFollower] = useState<IStructure[]>([]);
     const [arrayGeographicArea, setArrayGeographicArea] = useState<IGeographicArea[]>([]);
 
-    
     //Show data
     const [showLeaderInput, setShowLeaderInput] = useState<boolean>(false);
     const [showFollowerInput, setShowFollowerInput] = useState<boolean>(false);
     const [showGeographicArea, setShowGeographicArea] = useState<boolean>(false);
+
+    // State to store image
+    const [uploadStatus, setUploadStatus] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
 
     // Refs
     const listFollowersRef = useRef<HTMLUListElement>(null); 
@@ -572,6 +575,28 @@ const FormPerson = (
       }
     }
 
+    const searchColoniesApproximately = async (colonyToSearch: string):Promise<IColony[]> => {
+      try {
+        const response: IRequest<IColony[]> = await requester({
+          url: `/colonies/name/approximate/${colonyToSearch}`,
+          method: 'GET',
+        })
+        if(response.code === 200) {
+          if(response.data !== undefined) return response.data;
+        } else {
+          dispatch(enqueueAlert({alertData: {
+            alertType: EAlert.error, 
+            message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}})); 
+        }
+        return [];
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar buscar las colonias, intente mas tarde"}}));
+        return [];
+      }
+    }
+
     const searchSectionals = async (sectionalToSearch: string):Promise<ISectional[]> => {
       try {
         const response: IRequest<ISectional[]> = await requester({
@@ -660,6 +685,30 @@ const FormPerson = (
           alertType: EAlert.error, 
           message: "Hubo un error al intentar buscar los seguidores, intente mas tarde"}})); 
         return [];
+      }
+    }
+
+    const extratInformationFromImage = async (encodedImage:any):Promise<IMember> => {
+      try {    
+        const response: IRequest<IMember> = await requester({
+          url: `/members/information/image`,
+          method: `POST`,
+          data: {image: encodedImage}
+        }) 
+      
+        if(response.code === 200) 
+          if(response.data !== undefined) 
+            return response.data;
+        
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar analizar la image"}})); 
+        return initialPersonState;
+      } catch (error) {
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar analizar la image"}})); 
+        return initialPersonState;
       }
     }
 
@@ -1051,6 +1100,55 @@ const FormPerson = (
         }
     }
 
+    //Handle upload an image
+    const handleUpload = async () => {
+      console.log(selectedFile)
+      if (!selectedFile) {
+        setUploadStatus('Please select a file first.');
+        return;
+      }
+
+      try {
+        // Converting image into Base64
+        const base64Image = await convertToBase64(selectedFile);
+        //console.log(base64Image)
+        // Calling API
+        const item = await extratInformationFromImage(base64Image);
+        
+        // Calling API for complex fields
+        const sectional:ISectional[] = await searchSectionals(item.sectional_name);
+        const colony:IColony[] = await searchColoniesApproximately(item.colony_name);
+
+        if(sectional[0] != undefined) {
+          item.id_sectional = sectional[0].id_sectional;
+        }
+        
+        if(colony[0] != undefined) {
+          item.id_colony = colony[0].id_colony;
+          item.colony_name = colony[0].name_colony;
+        }
+        
+
+        console.log(item);
+        
+        setPerson(item)
+        setSelectedFile(null);
+      } catch (error) {
+        setSelectedFile(null);
+        dispatch(enqueueAlert({alertData: {
+          alertType: EAlert.error, 
+          message: "Hubo un error al intentar analizar la image"}})); 
+      }
+
+
+    }
+
+    const handleFileChange = (event:any) => {
+      const file = event.target.files[0];
+      setSelectedFile(event.target.files[0]);
+
+    };
+
     //Auxiliar functions
     const resetAllStates = ():void => {
       //Basic information states related
@@ -1068,307 +1166,331 @@ const FormPerson = (
       setSearchFollower('')
     }
 
-  return (
-    <>
-      <div className="text-center text-xl font-bold">
-        {label}
-      </div>
-      <form>
-        {/* Basic information */}
-        <div className="flex flex-row">
-          <div className="mr-3">
-            <p className="text-md text-center">
-              Información basica
-            </p>
-            <div className="flex flex-row justify-center">
-              <div className="mr-2">
-                <Input
-                  onType={setPerson}
+    const convertToBase64 = (file:any) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+      });
+    };
 
-                  objectValue={person} 
-                  inputName={"first_name"}
-                  placeholder={'Nombre(s)'}
-                  inputType={'text'}
-                  required={true}
-                />
-              </div>
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"last_name"}
-                placeholder={'Apellidos'}
-                inputType={'text'}
-                required={true}
-              />
-            </div>
-            <div className="flex flex-row justify-center">
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"street"}
-                placeholder={'Calle'}
-                inputType={'text'}
-                required={true}
-              />
-            </div>
-            <div className="flex flex-row justify-center">
-              <div className="mr-2">
-                <Input
-                  onType={setPerson}
-                  objectValue={person} 
-                  inputName={"ext_number"}
-                  placeholder={'No. Exterior'}
-                  inputType={'text'}
-                  required={true}
-                  testRegex={new RegExp(/^.{1,5}$/, 's')}
-                  testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
-                />
-              </div>
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"int_number"}
-                placeholder={'No. Interno (opcional)'}
-                inputType={'text'}
-                testRegex={new RegExp(/^.{1,5}$/, 's')}
-                testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
-              />
-            </div>
-            <div className="flex mt-3 justify-center">
-              <Autocomplete
-                disablePortal
-                id="combo-box-demo"
-                onInputChange={(event: any, newInputValue: string | null) => 
-                   handleSearchColony(event, newInputValue) }
-                onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
-                value={person.colony_name}
-                options={ 
-                  arraySearchColony.map((searchColony => searchColony.name_colony)) 
-                }
-                sx={{ width: 300 }}
-                renderInput={(params) => <TextField {...params} label="Colonia" />}
-                />
-            </div>
-            <div className="flex flex-row justify-center">
-              <div className="mr-2">
-                <Input
+
+
+  return (
+    <div className="flex flex-row">
+      <div>
+        <div className="text-center text-xl font-bold">
+          {label}
+        </div>
+        <form>
+          {/* Basic information */}
+          <div className="flex flex-row">
+            <div className="mr-3">
+              <p className="text-md text-center">
+                Información basica
+              </p>
+              <div className="flex flex-row justify-center">
+                <div className="mr-2">
+                  <Input
                     onType={setPerson}
+
                     objectValue={person} 
-                    inputName={"cell_phone_number"}
-                    placeholder={'Telefono'}
+                    inputName={"first_name"}
+                    placeholder={'Nombre(s)'}
                     inputType={'text'}
                     required={true}
-                    testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
-                    testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
+                  />
+                </div>
+                <Input
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"last_name"}
+                  placeholder={'Apellidos'}
+                  inputType={'text'}
+                  required={true}
+                />
+              </div>
+              <div className="flex flex-row justify-center">
+                <Input
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"street"}
+                  placeholder={'Calle'}
+                  inputType={'text'}
+                  required={true}
+                />
+              </div>
+              <div className="flex flex-row justify-center">
+                <div className="mr-2">
+                  <Input
+                    onType={setPerson}
+                    objectValue={person} 
+                    inputName={"ext_number"}
+                    placeholder={'No. Exterior'}
+                    inputType={'text'}
+                    required={true}
+                    testRegex={new RegExp(/^.{1,5}$/, 's')}
+                    testMessage={"EL numero exterior no puede ser mayor a 5 caracteres"}
+                  />
+                </div>
+                <Input
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"int_number"}
+                  placeholder={'No. Interno (opcional)'}
+                  inputType={'text'}
+                  testRegex={new RegExp(/^.{1,5}$/, 's')}
+                  testMessage={"EL numero interior no puede ser mayor a 5 caracteres"}
+                />
+              </div>
+              <div className="flex mt-3 justify-center">
+                <Autocomplete
+                  disablePortal
+                  id="combo-box-demo"
+                  onInputChange={(event: any, newInputValue: string | null) => 
+                    handleSearchColony(event, newInputValue) }
+                  onChange={(event: any, newValue: any) => handleSelectColony(event, newValue) }
+                  value={person.colony_name}
+                  options={ 
+                    arraySearchColony.map((searchColony => searchColony.name_colony)) 
+                  }
+                  sx={{ width: 300 }}
+                  renderInput={(params) => <TextField {...params} label="Colonia" />}
                   />
               </div>
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"ine"}
-                placeholder={'INE'}
-                inputType={'text'}
-                required={true}
-                testRegex={new RegExp(/^\d{13}$/, 's')}
-                testMessage={"Tienen que ser 13 numeros exactos"}
-                />
-            </div>
-            <div className="flex mt-3 justify-center">
-              <Autocomplete
-                disablePortal
-                id="selection-sectional-member"
-                onInputChange={(event: any, newInputValue: string | null) => 
-                  handleSearchSectional(event, newInputValue) }
-                onChange={(event: any, newValue: any) => 
-                  handleSelectSectional(event, newValue) }
-                value={person.sectional_name}
-                options={ 
-                  arraySearchSectional.map((searchSectionals => searchSectionals.sectional_name)) 
-                }
-                sx={{ width: 300 }}
-                renderInput={(params) => <TextField {...params} label="Seccional" />}
-                />
-            </div>
-            <div className="flex flex-row mt-1">
-              <div className="mr-2 flex flex-col basis-1/2">
-              <Input
-                onType={setPerson}
-                objectValue={person} 
-                inputName={"birthday"}
-                placeholder={'Fecha de nacimiento'}
-                inputType={'date'}
-                required={true}
-                />
-                {validBirthDay(person.birthday) === false && 
-                  <MessageAlert label="Fecha de nacimiento invalida, el miembro debe de ser mayor de edad" />
-                }
+              <div className="flex flex-row justify-center">
+                <div className="mr-2">
+                  <Input
+                      onType={setPerson}
+                      objectValue={person} 
+                      inputName={"cell_phone_number"}
+                      placeholder={'Telefono'}
+                      inputType={'text'}
+                      required={true}
+                      testRegex={new RegExp(/(^\d{2}\-\d{4}\-\d{4}$)|(^\d{3}\-\d{3}\-\d{4}$)/, 's')}
+                      testMessage={"Formatos validos: xx-xxxx-xxxx or xxx-xxx-xxxx"}
+                    />
+                </div>
+                <Input
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"ine"}
+                  placeholder={'INE'}
+                  inputType={'text'}
+                  required={true}
+                  testRegex={new RegExp(/^\d{13}$/, 's')}
+                  testMessage={"Tienen que ser 13 numeros exactos"}
+                  />
               </div>
-              <div className="mt-5 flex basis-1/2 items-center justify-center">
-                <p>Genero: </p>
-                <Switch 
-                  checked={person.gender === 0 ? false : true}
-                  onChange={handleChangeGender}/>
-                <p>{person.gender === 0 ? "Hombre" : "Mujer"}</p>
+              <div className="flex mt-3 justify-center">
+                <Autocomplete
+                  disablePortal
+                  id="selection-sectional-member"
+                  onInputChange={(event: any, newInputValue: string | null) => 
+                    handleSearchSectional(event, newInputValue) }
+                  onChange={(event: any, newValue: any) => 
+                    handleSelectSectional(event, newValue) }
+                  value={person.sectional_name}
+                  options={ 
+                    arraySearchSectional.map((searchSectionals => searchSectionals.sectional_name)) 
+                  }
+                  sx={{ width: 300 }}
+                  renderInput={(params) => <TextField {...params} label="Seccional" />}
+                  />
+              </div>
+              <div className="flex flex-row mt-1">
+                <div className="mr-2 flex flex-col basis-1/2">
+                <Input
+                  onType={setPerson}
+                  objectValue={person} 
+                  inputName={"birthday"}
+                  placeholder={'Fecha de nacimiento'}
+                  inputType={'date'}
+                  required={true}
+                  />
+                  {validBirthDay(person.birthday) === false && 
+                    <MessageAlert label="Fecha de nacimiento invalida, el miembro debe de ser mayor de edad" />
+                  }
+                </div>
+                <div className="mt-5 flex basis-1/2 items-center justify-center">
+                  <p>Genero: </p>
+                  <Switch 
+                    checked={person.gender === 0 ? false : true}
+                    onChange={handleChangeGender}/>
+                  <p>{person.gender === 0 ? "Hombre" : "Mujer"}</p>
+                </div>
               </div>
             </div>
-          </div>
-          {/* Strategic information */}
-            {
-              /*
-                Verify if the user has privileges enoguh.
+            {/* Strategic information */}
+              {
+                /*
+                  Verify if the user has privileges enoguh.
 
-                In the first case "action===0", if the user can add a member, then he can
-                choose the strategy level for the new member, we verified this privileges in previous steps (in the layout for this view)... Strategy level is considerated 
-                as strategic information, but it is necessary at the moment of add a new member.
+                  In the first case "action===0", if the user can add a member, then he can
+                  choose the strategy level for the new member, we verified this privileges in previous steps (in the layout for this view)... Strategy level is considerated 
+                  as strategic information, but it is necessary at the moment of add a new member.
 
-                For the second case "action===1", refers if the memeber has privileges to update
-                strategic information of a member that already exists. 
-              */
-              (action === 0 || (action === 1 && updateStrategycInformationToMember===true)) &&
-              <div className="mt-3">
-                <p className="text-md">Información estrategica</p>
-                <div className="flex flex-col">
-                  {/* Heirarchical level */}
-                  <div className="flex mt-3 justify-center">
-                    <Autocomplete
-                      disablePortal
-                      id="input-strategy"
-                      onInputChange={(event: any, newInputValue: string | null) => 
-                        { handleSearchStrategyLevel(event, newInputValue) }}
-                      onChange={(event: any, newValue: string | null) => 
-                        handleSelectStrategyLevel(event, newValue) }
-                      value={ strategicInformationPerson.role }
-                      options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
-                      sx={{ width: 300 }}
-                      renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
-                      />
-                  </div>
-                  {
-                    /*
-                      This if is to validate if the member has privileges to set strategic 
-                      information at the moment to add a new members.
-
-                      For the first part of the if "action===1", we just verified in the previous
-                      "if" if the user has the privileges, so we only verify the "scenario" 
-                      (update a member) 
-                    */
-                  (action === 1 || (addStrategycInformationToMember===true && action===0)) &&
-                  <>
-                    {/* Input leader */}
+                  For the second case "action===1", refers if the memeber has privileges to update
+                  strategic information of a member that already exists. 
+                */
+                (action === 0 || (action === 1 && updateStrategycInformationToMember===true)) &&
+                <div className="mt-3">
+                  <p className="text-md">Información estrategica</p>
+                  <div className="flex flex-col">
+                    {/* Heirarchical level */}
+                    <div className="flex mt-3 justify-center">
+                      <Autocomplete
+                        disablePortal
+                        id="input-strategy"
+                        onInputChange={(event: any, newInputValue: string | null) => 
+                          { handleSearchStrategyLevel(event, newInputValue) }}
+                        onChange={(event: any, newValue: string | null) => 
+                          handleSelectStrategyLevel(event, newValue) }
+                        value={ strategicInformationPerson.role }
+                        options={ arrayStrategyLevel.map((strategyLevel => strategyLevel.role)) }
+                        sx={{ width: 300 }}
+                        renderInput={(params) => <TextField {...params} label="Nivel jerarquico" />}
+                        />
+                    </div>
                     {
-                      (showLeaderInput) &&                  
-                      <div className="flex mt-3 justify-center">
-                        <Autocomplete
-                          disablePortal
-                          id="input-leader"
-                          onInputChange={(event: any, newInputValue: string | null) => 
-                            { handleSearchLeader(event, newInputValue) }}
-                          onChange={(event: any, newValue: string | null) => {
-                            handleSelectLeader(event, newValue)
-                          }}
-                          options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
-                          value={ strategicInformationPerson.first_name_leader }
-                          sx={{ width: 300 }}
-                          renderInput={(params) => <TextField {...params} label="Lider" />}
-                          />
-                      </div>
-                    }
-                    {/* Follower input */}
-                    {
-                      (showFollowerInput) && 
-                      <>
+                      /*
+                        This if is to validate if the member has privileges to set strategic 
+                        information at the moment to add a new members.
+
+                        For the first part of the if "action===1", we just verified in the previous
+                        "if" if the user has the privileges, so we only verify the "scenario" 
+                        (update a member) 
+                      */
+                    (action === 1 || (addStrategycInformationToMember===true && action===0)) &&
+                    <>
+                      {/* Input leader */}
+                      {
+                        (showLeaderInput) &&                  
                         <div className="flex mt-3 justify-center">
                           <Autocomplete
                             disablePortal
-                            id="input-follower"
+                            id="input-leader"
                             onInputChange={(event: any, newInputValue: string | null) => 
-                              handleSearchFollowers(event, newInputValue) }
-                            onChange={(event:any, newInputValue: string | null) => 
-                              handleSelectFollower(event,newInputValue)}
-                            options={ 
-                              filterSelectedFollowers(
-                                arrayFollower, 
-                                strategicInformationPerson.followers)
-                              .map(follower => 
-                                `${follower.first_name} ${follower.last_name}`)
-                            }
+                              { handleSearchLeader(event, newInputValue) }}
+                            onChange={(event: any, newValue: string | null) => {
+                              handleSelectLeader(event, newValue)
+                            }}
+                            options={arrayLeader.map(leader => `${leader.first_name} ${leader.last_name}`)}
+                            value={ strategicInformationPerson.first_name_leader }
                             sx={{ width: 300 }}
-                            value={searchFollower}
-                            renderInput={(params) => <TextField {...params} label="Seguidores" />}
+                            renderInput={(params) => <TextField {...params} label="Lider" />}
                             />
                         </div>
-                        {
-                          strategicInformationPerson.followers !== undefined  &&
-                            strategicInformationPerson.followers[0] !== undefined &&
-                              <div className="my-2 overflow-y-auto max-h-32 flex justify-center outline outline-2">
-                                <div className="w-52 py-1 flex flex-wrap justify-center">
-                                  {
-                                    strategicInformationPerson.followers.map((follower) => 
-                                      <ul key={follower.id_member} className="my-1" ref={listFollowersRef}>
-                                        <Chip 
-                                          label={`${follower.first_name} ${follower.last_name}`} 
-                                          onDelete={() => handleDeleteFollower(follower)}
-                                          />
-                                      </ul>
-                                    )
-                                  }                          
+                      }
+                      {/* Follower input */}
+                      {
+                        (showFollowerInput) && 
+                        <>
+                          <div className="flex mt-3 justify-center">
+                            <Autocomplete
+                              disablePortal
+                              id="input-follower"
+                              onInputChange={(event: any, newInputValue: string | null) => 
+                                handleSearchFollowers(event, newInputValue) }
+                              onChange={(event:any, newInputValue: string | null) => 
+                                handleSelectFollower(event,newInputValue)}
+                              options={ 
+                                filterSelectedFollowers(
+                                  arrayFollower, 
+                                  strategicInformationPerson.followers)
+                                .map(follower => 
+                                  `${follower.first_name} ${follower.last_name}`)
+                              }
+                              sx={{ width: 300 }}
+                              value={searchFollower}
+                              renderInput={(params) => <TextField {...params} label="Seguidores" />}
+                              />
+                          </div>
+                          {
+                            strategicInformationPerson.followers !== undefined  &&
+                              strategicInformationPerson.followers[0] !== undefined &&
+                                <div className="my-2 overflow-y-auto max-h-32 flex justify-center outline outline-2">
+                                  <div className="w-52 py-1 flex flex-wrap justify-center">
+                                    {
+                                      strategicInformationPerson.followers.map((follower) => 
+                                        <ul key={follower.id_member} className="my-1" ref={listFollowersRef}>
+                                          <Chip 
+                                            label={`${follower.first_name} ${follower.last_name}`} 
+                                            onDelete={() => handleDeleteFollower(follower)}
+                                            />
+                                        </ul>
+                                      )
+                                    }                          
+                                  </div>
                                 </div>
-                              </div>
-                        }
-                      </>
+                          }
+                        </>
+                      }
+                      
+                      {/* Geographic area  */}
+                      {
+                        (showGeographicArea) &&
+                        <div className="flex mt-3 justify-center">
+                          <Autocomplete
+                            disablePortal
+                            id="input-geographic-area"
+                            onInputChange={(event: any, newInputValue: string | null) => 
+                              { handleSearchGeographicArea(event, newInputValue) }}
+                            onChange={(event: any, newValue: string | null) => {
+                              handleSelectGeographicArea(event, newValue)
+                            }}
+                            options={
+                              arrayGeographicArea.map(geographicArea => 
+                                `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}`)
+                            }
+                            value={
+                              strategicInformationPerson.geographic_area_name
+                            }
+                            sx={{ width: 300 }}
+                            renderInput={(params) => <TextField {...params} label="Area geografica" />}
+                            />
+                        </div>
+                      } 
+                    </>   
                     }
-                    
-                    {/* Geographic area  */}
-                    {
-                      (showGeographicArea) &&
-                      <div className="flex mt-3 justify-center">
-                        <Autocomplete
-                          disablePortal
-                          id="input-geographic-area"
-                          onInputChange={(event: any, newInputValue: string | null) => 
-                            { handleSearchGeographicArea(event, newInputValue) }}
-                          onChange={(event: any, newValue: string | null) => {
-                            handleSelectGeographicArea(event, newValue)
-                          }}
-                          options={
-                            arrayGeographicArea.map(geographicArea => 
-                              `${geographicArea.geographic_area_name} - ${geographicArea.id_geographic_area}`)
-                          }
-                          value={
-                            strategicInformationPerson.geographic_area_name
-                          }
-                          sx={{ width: 300 }}
-                          renderInput={(params) => <TextField {...params} label="Area geografica" />}
-                          />
-                      </div>
-                    } 
-                  </>   
-                  }
+                  </div>
                 </div>
-              </div>
-            }    
-          
-        </div>
-        <div className="flex flex-row justify-center">
-          <Button 
-          label="Aceptar" 
-          onClick={(e:any) => {handleOnSubmit(e)}}
-          style="mr-3 mt-3"
-          />
-        {
-          (action===1 || action===3) && 
+              }    
+            
+          </div>
+          <div className="flex flex-row justify-center">
             <Button 
-              style="mt-3"
-              label="Cancelar" 
-              onClick={() => {
-                handleSubmit(true)
-              }}
-              colorButton={1}
-              />
-        }
-        </div>  
-      </form>
-    </>
+            label="Aceptar" 
+            onClick={(e:any) => {handleOnSubmit(e)}}
+            style="mr-3 mt-3"
+            />
+          {
+            (action===1 || action===3) && 
+              <Button 
+                style="mt-3"
+                label="Cancelar" 
+                onClick={() => {handleSubmit(true)}}
+                colorButton={1}
+                />
+            
+          }
+          </div>  
+        </form>
+      </div>
+      {
+        (action == 0) &&
+        <div className="ml-5 mt-10 flex flex-col items-center">
+            <input type="file" onChange={handleFileChange} />
+            <Button 
+            label="Analizar imagen" 
+            onClick={() => {handleUpload()}}
+            style="mr-3 mt-3"
+            />
+        </div>
+      }
+
+    </div>
   )
 }
 
